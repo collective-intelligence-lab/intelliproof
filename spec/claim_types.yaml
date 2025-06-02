@@ -1,0 +1,44 @@
+claim_types:
+  - name: Factual
+    description: Verifiable by observation or empirical data.
+
+  - name: Value
+    description: Expresses judgments, ethics, or aesthetics; cannot be verified empirically.
+
+  - name: Policy
+    description: Proposes actions or changes; includes normative statements like "should" or "must".
+
+type_interactions:
+  - from: Factual
+    to: Factual
+    interpretation: Typical deduction or induction.
+    possible_issue: Check inference validity.
+
+  - from: Factual
+    to: Value
+    interpretation: Attempts to derive value from fact.
+    possible_issue: Risk of naturalistic fallacy — “It is” doesn’t imply “it is good.”
+
+  - from: Factual
+    to: Policy
+    interpretation: Uses factual premise to justify normative action.
+    possible_issue: Often misses normative warrant — why this fact justifies this policy.
+
+  - from: Value
+    to: Policy
+    interpretation: Derives policy from ethical or moral premise.
+    possible_issue: Relies on shared moral framework — risk of relativism or subjective bias.
+
+  - from: Value
+    to: Value
+    interpretation: Ethical or aesthetic reasoning within a value system.
+    possible_issue: May become circular or dogmatic — hard to verify or challenge.
+
+  - from: Policy
+    to: Policy
+    interpretation: Strategic or comparative justification of policy.
+    possible_issue: May be circular, vague, or ideologically inconsistent.
+
+notes:
+  - Graph edges should respect claim type compatibility.
+  - A factual premise rarely justifies a value or policy conclusion without a hidden value-based assumption.

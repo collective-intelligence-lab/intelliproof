@@ -1,0 +1,137 @@
+/* IntelliProof UI Theme Scaffold */
+
+:root {
+  /* Colors */
+  --color-black: #000000;
+  --color-yellow: #FDD000;
+  --color-teal: #4FD9BD;
+  --color-indigo: #7283D9;
+  --color-white: #FFFFFF;
+  --color-light-gray: #FAFAFA;
+  --color-gray-border: #DDDDDD;
+
+  /* Font Stacks */
+  --font-main: 'Josefin Sans', 'Century Gothic', sans-serif;
+  --font-secondary: 'PT Serif', serif;
+
+  /* Font Sizes */
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-light-gray);
+  color: var(--color-black);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* Headings */
+h1, h2, h3, h4 {
+  font-family: var(--font-main);
+  margin: var(--space-md) 0 var(--space-sm);
+  color: var(--color-black);
+}
+
+/* Graph Node Styles */
+.graph-node.factual {
+  background-color: var(--color-teal);
+  border: 1px solid var(--color-black);
+  color: var(--color-black);
+}
+
+.graph-node.value {
+  background-color: var(--color-indigo);
+  border: 1px solid var(--color-black);
+  color: var(--color-black);
+}
+
+.graph-node.policy {
+  background-color: var(--color-yellow);
+  border: 1px solid var(--color-black);
+  color: var(--color-black);
+}
+
+/* Buttons */
+.button-primary {
+  background-color: var(--color-yellow);
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: var(--font-size-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out;
+}
+
+.button-primary:hover {
+  background-color: #e6c000;
+}
+
+.button-secondary {
+  background-color: transparent;
+  color: var(--color-black);
+  border: 1px solid var(--color-indigo);
+  font-family: var(--font-main);
+  font-size: var(--font-size-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Evidence Cards */
+.evidence-card {
+  border: 1px solid var(--color-gray-border);
+  border-radius: 6px;
+  background-color: var(--color-white);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  font-family: var(--font-secondary);
+}
+
+.evidence-card-title {
+  font-family: var(--font-main);
+  font-weight: bold;
+  font-size: var(--font-size-md);
+  margin-bottom: var(--space-sm);
+}
+
+/* Chat Bubbles */
+.chat-message.ai {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-gray-border);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-sm);
+  border-radius: 8px;
+  max-width: 80ch;
+}
+
+.chat-message.user {
+  background-color: #eaeaea;
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-sm);
+  border-radius: 8px;
+  max-width: 80ch;
+  align-self: flex-end;
+}
+
+/* Toasts */
+.toast {
+  background-color: var(--color-yellow);
+  color: var(--color-black);
+  font-weight: bold;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

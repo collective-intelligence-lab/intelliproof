@@ -1,0 +1,43 @@
+intelliproof/
+├── frontend/               # React (or Svelte) app
+│   ├── public/
+│   ├── src/
+│   │   ├── components/     # UI components (Graph, Chat, EvidenceCard, etc.)
+│   │   ├── pages/          # Route-level pages if using Next.js
+│   │   ├── hooks/          # React hooks (e.g., useGraph, useAIChat)
+│   │   ├── utils/          # UI helpers (formatting, constants)
+│   │   ├── api/            # Axios or fetch API bindings to backend
+│   │   └── App.tsx
+│   └── package.json
+│
+├── backend/                # FastAPI + AI logic
+│   ├── api/                # API routes (aligns with spec)
+│   │   ├── endpoints/      # One file per endpoint (e.g., analyze_node.py)
+│   │   └── schemas.py      # Pydantic models (Claim, Evidence, Graph, etc.)
+│   ├── core/               # Core AI logic (critique, retrieval, fallacy detection)
+│   │   ├── critique.py
+│   │   ├── assumptions.py
+│   │   └── retrieval.py
+│   ├── data/               # Local data files (YAMLs, JSONs, mock DB)
+│   │   ├── evidence.json
+│   │   ├── ground_truth_graph.json
+│   │   └── argument_patterns.yaml
+│   ├── main.py             # FastAPI app entrypoint
+│   └── requirements.txt
+│
+├── shared/                 # Data schemas or validation shared across UI/backend
+│   └── models/             # JSON Schema or OpenAPI for Graph, Claim, etc.
+│
+├── tests/                  # Unit + integration tests
+│   ├── frontend/           # Cypress/Playwright
+│   └── backend/            # Pytest for API + logic
+│
+├── docs/                   # Spec sheets, walkthroughs, architecture diagrams
+│
+├── scripts/                # CLI tools, data prep, exports
+│   └── convert_yaml_to_json.py
+│
+├── .env                    # Environment config
+├── README.md
+└── docker-compose.yml      # For full-stack containerization (if needed)
+

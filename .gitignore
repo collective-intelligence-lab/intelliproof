@@ -1,0 +1,58 @@
+# IntelliProof .gitignore
+
+# Node.js
+node_modules/
+.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# React/Vite/Next
+/build
+/dist
+/.next
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+*.pyo
+venv/
+.env
+.DS_Store
+
+# FastAPI
+instance/
+*.db
+
+# Testing
+coverage/
+htmlcov/
+.pytest_cache/
+.jest/
+
+# IDEs and OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Logs and artifacts
+logs/
+*.log
+
+# Jupyter / Experiments
+.ipynb_checkpoints/
+
+# Exports
+*.pdf
+*.md.backup
+export/
+
+# Static Builds
+frontend/static/build/
+frontend/.turbo/
+frontend/.parcel-cache/
+

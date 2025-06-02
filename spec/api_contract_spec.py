@@ -26,11 +26,12 @@ class Claim(BaseModel):
     id: str
     text: str
     claim_type: str  # Factual, Value, Policy
+    evidence: List[Evidence]
 
 class Edge(BaseModel):
     from_id: str
     to_id: str
-    type: str  # support, attack
+    type: str  # supports, attacks
 
 class ArgumentGraph(BaseModel):
     nodes: List[Claim]

@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
@@ -22,3 +23,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.local
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!.backend/.env.example
+
+# Python specific
+backend/venv/
+backend/__pycache__/
+*.py[cod]
+*$py.class

@@ -64,3 +64,59 @@ intelliproof/
 - TypeScript
 - Vite
 - Tailwind CSS
+
+
+
+CURRENT SQL 
+
+create type account_type_enum as enum ('basic', 'premium', 'admin'); -- Adjust as needed
+
+create table profiles (
+    email varchar(50) primary key,
+    user_id uuid unique,
+    account_type account_type_enum,
+    country varchar(50) ,
+    created_at timestamptz default now(),
+    first_name text,
+    last_name text
+);
+
+  
+create table graphs (
+    id uuid primary key default gen_random_uuid(),
+    owner_email text references profiles(email) on delete cascade,
+    graph_data jsonb,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now(),
+    graph_name varchar(50)
+);
+
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+ALTER TABLE profiles
+ALTER COLUMN user_id SET DEFAULT gen_random_uuid();
+
+
+Backend Server 
+
+Create a file named .env in the backend directory with the following content:
+
+SUPABASE_URL = your_supabase_url
+SUPABASE_KEY = your_supabase_anon_key
+JWT_SECRET_KEY = your_jwt_secret_key
+
+cd backend
+source venv/bin/activate
+uvicorn main:app --reload
+
+
+
+
+TODO
+
+1) Ensure that session data is stored to local storage on signup                        ( DONE ) 
+2) Add team members section and photos to the lib
+3) Secure access to the post-login pages (about, home, graph_editor)
+4) Reseach DS and Algos needed to incorporate multi-user graph editors
+5) Research policies and required triggers to secure the DB from unauthorized access

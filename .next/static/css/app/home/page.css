@@ -1,0 +1,154 @@
+/*!******************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[11].oneOf[7].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[11].oneOf[7].use[3]!./src/components/Services.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************/
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&display=swap');
+
+.Services_container__Nrt0g {
+    width: 100%;
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+    margin: 3rem auto;
+    padding: 0 1rem;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+.Services_card__0upfP {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    margin: 0 auto;
+    background: #dddddd;
+    transition: .5s;
+    border: 1px solid #333;
+    overflow: hidden;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+.Services_card__0upfP:nth-child(even):hover {
+    box-shadow: 0px 0px 0px 2px rgba(255, 255, 255, 0.16) inset,
+        0px 0px 30px 0px var(--colorEven);
+}
+
+.Services_card__0upfP:nth-child(odd):hover {
+    box-shadow: 0px 0px 0px 2px rgba(255, 255, 255, 0.16) inset,
+        0px 0px 30px 0px var(--colorOdd);
+}
+
+.Services_face__MM_1L {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.Services_face1__1DNFi {
+    box-sizing: border-box;
+    padding: 20px;
+    text-align: center;
+    background: #dddddd;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.Services_card__0upfP:hover .Services_face1__1DNFi {
+    opacity: 1;
+}
+
+.Services_content__INLDh {
+    width: 100%;
+}
+
+.Services_face1__1DNFi p {
+    color: var(--colorText);
+    margin-top: 60px;
+    line-height: 1.6;
+    padding: 0 20px;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+.Services_face2__9q_RC {
+    border: 1px solid #333;
+    background: #dddddd;
+    z-index: 1;
+}
+
+.Services_card__0upfP:nth-child(even) .Services_face2__9q_RC {
+    background: var(--colorEven);
+    transition: .5s;
+    flex-direction: column;
+}
+
+.Services_card__0upfP:nth-child(odd) .Services_face2__9q_RC {
+    background: var(--colorOdd);
+    transition: .5s;
+    flex-direction: column;
+}
+
+.Services_card__0upfP:hover .Services_face2__9q_RC {
+    height: 80px;
+    width: 80px;
+    border-radius: 50%;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: transparent;
+}
+
+.Services_card__0upfP:hover .Services_face2__9q_RC h2 {
+    font-size: 2.4em;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    max-width: none;
+    text-align: center;
+    transform: scale(0.6);
+    transition: all 0.5s ease;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+.Services_card__0upfP:nth-child(even):hover .Services_face2__9q_RC h2 {
+    color: var(--colorEven);
+}
+
+.Services_card__0upfP:nth-child(odd):hover .Services_face2__9q_RC h2 {
+    color: var(--colorOdd);
+}
+
+.Services_card__0upfP:nth-child(even):hover .Services_face2__9q_RC {
+    border: 2px solid var(--colorEven);
+}
+
+.Services_card__0upfP:nth-child(odd):hover .Services_face2__9q_RC {
+    border: 2px solid var(--colorOdd);
+}
+
+.Services_face2__9q_RC h2 {
+    font-size: 2em;
+    color: var(--colorText);
+    transform: scale(1);
+    transition: all 0.5s ease;
+    text-align: center;
+    padding: 0 20px;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+.Services_servicesSection__kcwM1 {
+    width: 100%;
+    padding: 2rem 0;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+.Services_header__xPqpo {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #ffffff;
+    margin-bottom: 3rem;
+    font-weight: 600;
+    font-family: 'Josefin Sans', sans-serif;
+}

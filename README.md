@@ -26,13 +26,20 @@ Follow these steps to run the project locally:
    npm install
    ```
 
-3. Start the development server:
+3. Create a .env.local file in the root directory and add the following to it: 
+
+
+NEXT_PUBLIC_SUPABASE_URL = your_key_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY = key_here
+            
+
+4. Start the development server:
 
    ```bash
    npm run dev
    ```
 
-4. Open your browser and navigate to:
+5. Open your browser and navigate to:
    ```
    http://localhost:5173
    ```
@@ -107,15 +114,14 @@ SUPABASE_KEY = your_supabase_anon_key
 JWT_SECRET_KEY = your_jwt_secret_key
 
 cd backend
+python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 uvicorn main:app --reload
-
-
-
 
 TODO
 
-1) Ensure that session data is stored to local storage on signup                        ( DONE ) 
+1) Ensure that session data is stored to local storage on signup                         ( DONE ) 
 2) Add team members section and photos to the lib
 3) Secure access to the post-login pages (about, home, graph_editor)
 4) Reseach DS and Algos needed to incorporate multi-user graph editors

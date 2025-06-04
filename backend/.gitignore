@@ -9,6 +9,8 @@ __pycache__/
 
 # macOS system files
 .DS_Store
+__pycache__
+__pycache__/
 
 # IDE specific files
 .vscode/

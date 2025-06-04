@@ -46,6 +46,12 @@ class SigninRequest(BaseModel):
 class SigninResponse(BaseModel):
     message: str
     user_id: Optional[str] = None
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    user: Optional[dict] = None
+
+class SignoutResponse(BaseModel):
+    message: str
 
 @app.post("/api/signup", response_model=SignupResponse)
 async def signup(request: SignupRequest):
@@ -111,11 +117,34 @@ async def signin(request: SigninRequest):
                 detail="Invalid email or password"
             )
 
+        # Get the session data
+        session = auth_response.session
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create session"
+            )
+
         return SigninResponse(
             message="Sign in successful",
-            user_id=auth_response.user.id
+            user_id=auth_response.user.id,
+            access_token=session.access_token,
+            refresh_token=session.refresh_token,
+            user=auth_response.user.dict()
         )
 
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.post("/api/signout", response_model=SignoutResponse)
+async def signout():
+    try:
+        # Sign out from Supabase
+        supabase.auth.sign_out()
+        return SignoutResponse(message="Sign out successful")
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

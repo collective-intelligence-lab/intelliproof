@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 export default function SigninPage() {
     return (
-        <div className="min-h-screen flex bg-white">
+        <div className="min-h-screen flex bg-white" style={{ fontFamily: 'Josefin Sans, sans-serif' }}>
             {/* Left: Logo and Welcome Back */}
             <div className="flex-1 flex flex-col justify-center items-center bg-white">
                 <Image src="/logo.png" alt="Intelliproof Logo" width={160} height={160} />

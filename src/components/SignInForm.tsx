@@ -37,6 +37,19 @@ export default function SignInForm() {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || "Failed to sign in");
             }
+
+            const data = await response.json();
+
+            // Store the session data in localStorage
+            const sessionData = {
+                currentSession: {
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                    user: data.user
+                }
+            };
+            localStorage.setItem('supabase.auth.token', JSON.stringify(sessionData));
+
             // On success, redirect to home
             router.push("/home");
         } catch (err: any) {

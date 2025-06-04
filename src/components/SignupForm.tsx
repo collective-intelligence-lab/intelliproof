@@ -70,7 +70,7 @@ export default function SignupForm() {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6 p-8 rounded-lg">
+        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6 p-8 rounded-lg" style={{ fontFamily: 'Josefin Sans, sans-serif' }}>
             <h2 className="text-2xl font-semibold text-black mb-2">Account Sign Up</h2>
             <p className="text-black text-sm mb-6">Enter your information below</p>
             <div className="flex flex-col gap-4">

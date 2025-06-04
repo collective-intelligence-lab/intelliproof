@@ -102,10 +102,21 @@ Backend Server
 
 Create a file named .env in the backend directory with the following content:
 
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-JWT_SECRET_KEY=your_jwt_secret_key
+SUPABASE_URL = your_supabase_url
+SUPABASE_KEY = your_supabase_anon_key
+JWT_SECRET_KEY = your_jwt_secret_key
 
 cd backend
 source venv/bin/activate
 uvicorn main:app --reload
+
+
+
+
+TODO
+
+1) Ensure that session data is stored to local storage on signup                        ( DONE ) 
+2) Add team members section and photos to the lib
+3) Secure access to the post-login pages (about, home, graph_editor)
+4) Reseach DS and Algos needed to incorporate multi-user graph editors
+5) Research policies and required triggers to secure the DB from unauthorized access

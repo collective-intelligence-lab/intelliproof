@@ -1,18 +1,7 @@
-import SignupForm from '../components/SignupForm';
-import Image from 'next/image';
+// This is the landing page of our NextJS application, forcing it to redirect to the signup page
 
-export default function SignupPage() {
-    return (
-        <div className="min-h-screen flex bg-white">
-            {/* Left: Logo and Company Name */}
-            <div className="flex-1 flex flex-col justify-center items-center bg-white">
-                <Image src="/logo.png" alt="Intelliproof Logo" width={160} height={160} />
-                <h1 className="text-black text-4xl font-bold mt-8 text-center">Welcome to Intelliproof</h1>
-            </div>
-            {/* Right: Signup Form */}
-            <div className="flex-1 flex flex-col justify-center items-center bg-white">
-                <SignupForm />
-            </div>
-        </div>
-    );
+import { redirect } from 'next/navigation';
+
+export default function Home() {
+    redirect('/signup');
 } 

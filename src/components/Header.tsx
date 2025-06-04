@@ -1,0 +1,99 @@
+"use client";
+import { useRouter } from 'next/navigation';
+
+interface HeaderProps {
+    userName: string;
+    onMenuClick: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ userName, onMenuClick }) => {
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        try {
+            // Get the session token from localStorage
+            const sessionData = localStorage.getItem('supabase.auth.token');
+            if (!sessionData) {
+                throw new Error("No active session found");
+            }
+
+            // Parse the session data
+            const session = JSON.parse(sessionData);
+            const accessToken = session?.currentSession?.access_token;
+
+            if (!accessToken) {
+                throw new Error("Invalid session format");
+            }
+
+            const response = await fetch("http://localhost:8000/api/signout", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to sign out");
+            }
+
+            // Clear the session from localStorage
+            localStorage.removeItem('supabase.auth.token');
+
+            // Redirect to signin page
+            router.push("/signin");
+        } catch (error) {
+            console.error("Error signing out:", error);
+            // Even if there's an error, try to clear the session and redirect
+            localStorage.removeItem('supabase.auth.token');
+            router.push("/signin");
+        }
+    };
+
+    return (
+        <header className="flex items-center justify-between px-8 py-4 bg-gradient-to-r from-black via-[#FAFAFA] to-black text-white" style={{ fontFamily: 'Josefin Sans, sans-serif' }}>
+            <div className="font-bold text-lg">{userName}</div>
+            <div className="flex items-center gap-4">
+                <div className="relative group">
+                    <button onClick={onMenuClick} aria-label="Open menu" className="focus:outline-none w-8 h-8 flex items-center justify-center">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-menu">
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
+                    </button>
+                    <div className="absolute right-0 mt-2 w-32 bg-black text-white text-sm py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                        Navigation Menu
+                    </div>
+                </div>
+                <div className="relative group">
+                    <button
+                        onClick={handleSignOut}
+                        className="focus:outline-none w-8 h-8 flex items-center justify-center"
+                        aria-label="Logout"
+                    >
+                        <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                    </button>
+                    <div className="absolute right-0 mt-2 w-20 bg-black text-white text-sm py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                        Logout
+                    </div>
+                </div>
+            </div>
+        </header>
+    );
+};
+
+export default Header; 

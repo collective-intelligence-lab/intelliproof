@@ -6,6 +6,7 @@ export type ClaimType = 'factual' | 'value' | 'policy';
 export interface ClaimData {
     text: string;
     type: ClaimType;
+    isEditing?: boolean;
 }
 
 export interface ClaimNode extends Node<ClaimData> {
@@ -33,10 +34,12 @@ export const createClaimNode = (
         },
     data: {
         text,
-        type
+        type,
+        isEditing: false
     },
     style: {
         width: 200,
+        minHeight: 80,
         padding: 16,
         borderRadius: 8,
         border: '1px solid #000000',
@@ -45,9 +48,14 @@ export const createClaimNode = (
             : type === 'value' 
                 ? '#7283D9'  // Indigo
                 : '#FDD000', // Yellow
-        color: '#000000',
+        color: '#1A1A1A', // Very dark grey for better readability
         fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
         fontSize: '14px',
-        transition: 'all 200ms ease-out'
+        transition: 'all 200ms ease-out',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center'
     }
 }); 

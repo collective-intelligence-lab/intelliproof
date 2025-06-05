@@ -1,14 +1,95 @@
-import { ReactFlow, Background, Controls, BackgroundVariant } from "reactflow";
-import { useState } from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  BackgroundVariant,
+  applyNodeChanges,
+} from "reactflow";
+import type { OnNodesChange, NodeProps } from "reactflow";
+import { useState, useCallback, useRef, useEffect } from "react";
 import "reactflow/dist/style.css";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { createClaimNode, type ClaimNode } from "../../types/graph";
+import {
+  createClaimNode,
+  type ClaimNode,
+  type ClaimType,
+  type ClaimData,
+} from "../../types/graph";
+
+const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [text, setText] = useState(data.text);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    data.text = text || "Click to edit"; // Ensure there's always some text
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      inputRef.current?.blur();
+    }
+    e.stopPropagation();
+  };
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing]);
+
+  return (
+    <div
+      onDoubleClick={handleDoubleClick}
+      className={`w-full h-full flex items-center justify-center ${
+        isEditing ? "nodrag" : ""
+      }`}
+      style={{ minHeight: "40px", minWidth: "100px" }}
+    >
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          onMouseDown={(e) => e.stopPropagation()} // Prevent node drag when selecting text
+          className="w-full min-w-[100px] bg-transparent border-none outline-none text-[#1A1A1A] font-josefin text-sm text-center cursor-text"
+          style={{
+            fontFamily: "inherit",
+            fontSize: "inherit",
+            lineHeight: "inherit",
+            minHeight: "24px",
+            padding: "4px",
+          }}
+          placeholder="Click to edit"
+        />
+      ) : (
+        <div className="w-full text-center break-words min-h-[24px] px-2">
+          {text || "Click to edit"}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const nodeTypes = {
+  default: CustomNode,
+};
 
 const GraphCanvas = () => {
   const [title, setTitle] = useState("Untitled Graph");
   const [isEditing, setIsEditing] = useState(false);
   const [isEvidencePanelOpen, setIsEvidencePanelOpen] = useState(true);
   const [nodes, setNodes] = useState<ClaimNode[]>([]);
+  const [isAddNodeOpen, setIsAddNodeOpen] = useState(false);
 
   const handleTitleChange = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -16,10 +97,14 @@ const GraphCanvas = () => {
     }
   };
 
-  const addNode = () => {
-    // Create node in center of viewport with slight random offset
-    const newNode = createClaimNode("New Claim", "factual");
+  const addNode = (type: ClaimType) => {
+    const newNode = createClaimNode("New Claim", type);
     setNodes((nds) => [...nds, newNode]);
+    setIsAddNodeOpen(false);
+  };
+
+  const onNodesChange: OnNodesChange = (changes) => {
+    setNodes((nds) => applyNodeChanges(changes, nds) as ClaimNode[]);
   };
 
   return (
@@ -123,13 +208,38 @@ const GraphCanvas = () => {
                   )}
                 </div>
 
-                {/* Add Node Button */}
-                <button
-                  onClick={addNode}
-                  className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-                >
-                  <span className="text-sm">Add Node</span>
-                </button>
+                {/* Add Node Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
+                    className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <span className="text-sm">Add Node</span>
+                  </button>
+                  {isAddNodeOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[120px] z-10">
+                      <button
+                        onClick={() => addNode("factual")}
+                        className="w-full text-left px-3 py-1.5 hover:bg-[#4FD9BD] hover:bg-opacity-10 text-sm transition-colors"
+                      >
+                        Factual
+                      </button>
+                      <button
+                        onClick={() => addNode("value")}
+                        className="w-full text-left px-3 py-1.5 hover:bg-[#7283D9] hover:bg-opacity-10 text-sm transition-colors"
+                      >
+                        Value
+                      </button>
+                      <button
+                        onClick={() => addNode("policy")}
+                        className="w-full text-left px-3 py-1.5 hover:bg-[#FDD000] hover:bg-opacity-10 text-sm transition-colors"
+                      >
+                        Policy
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <button className="p-2 hover:bg-gray-100 rounded-md transition-colors">
                   <span className="text-sm text-gray-700">Button 2</span>
                 </button>
@@ -161,7 +271,13 @@ const GraphCanvas = () => {
               </button>
             )}
 
-            <ReactFlow nodes={nodes} fitView className="bg-white h-full">
+            <ReactFlow
+              nodes={nodes}
+              onNodesChange={onNodesChange}
+              nodeTypes={nodeTypes}
+              fitView
+              className="bg-white h-full"
+            >
               <Background
                 color="#666"
                 gap={20}

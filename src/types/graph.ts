@@ -6,7 +6,7 @@ export type ClaimType = 'factual' | 'value' | 'policy';
 export interface ClaimData {
     text: string;
     type: ClaimType;
-    isEditing?: boolean;
+    onChange?: (newText: string) => void;
 }
 
 export interface ClaimNode extends Node<ClaimData> {
@@ -14,6 +14,7 @@ export interface ClaimNode extends Node<ClaimData> {
     type: 'default';
     position: { x: number; y: number };
     data: ClaimData;
+    style?: React.CSSProperties;
 }
 
 export const createClaimNode = (
@@ -35,7 +36,6 @@ export const createClaimNode = (
     data: {
         text,
         type,
-        isEditing: false
     },
     style: {
         width: 200,

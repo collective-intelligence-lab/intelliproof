@@ -8,10 +8,7 @@ export default function GraphEditorPage() {
   const [isNavbarOpen, setNavbarOpen] = useState(false);
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Header
-        userName="Anesu Gavhera"
-        onMenuClick={() => setNavbarOpen(true)}
-      />
+      <Header userName="USERNAME" onMenuClick={() => setNavbarOpen(true)} />
       <Navbar isOpen={isNavbarOpen} onClose={() => setNavbarOpen(false)} />
       <div>
         <MainLayout />

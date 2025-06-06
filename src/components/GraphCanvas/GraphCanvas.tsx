@@ -1,11 +1,28 @@
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   BackgroundVariant,
   applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+  Handle,
+  Position,
+  MarkerType,
+  useReactFlow,
+  ConnectionMode,
 } from "reactflow";
-import type { OnNodesChange, NodeProps } from "reactflow";
+import type {
+  OnNodesChange,
+  NodeProps,
+  Node,
+  Connection,
+  Edge,
+  OnEdgesChange,
+  OnConnectStart,
+  OnConnectEnd,
+} from "reactflow";
 import { useState, useCallback, useRef, useEffect } from "react";
 import "reactflow/dist/style.css";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -15,11 +32,19 @@ import {
   type ClaimType,
   type ClaimData,
 } from "../../types/graph";
+import type { ClaimEdge, EdgeType } from "../../types/edges";
+import NodeProperties from "../NodeProperties/NodeProperties";
+import CustomEdge from "../Edges/CustomEdge";
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [text, setText] = useState(data.text);
+  const [localText, setLocalText] = useState(data.text);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Update local text when data changes from outside
+  useEffect(() => {
+    setLocalText(data.text);
+  }, [data.text]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -28,12 +53,18 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
 
   const handleBlur = () => {
     setIsEditing(false);
-    data.text = text || "Click to edit"; // Ensure there's always some text
+    // Only update if the text has actually changed
+    if (localText !== data.text) {
+      data.onChange?.(localText);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       inputRef.current?.blur();
+    } else if (e.key === "Escape") {
+      setLocalText(data.text); // Reset to original text
+      setIsEditing(false);
     }
     e.stopPropagation();
   };
@@ -46,37 +77,42 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   }, [isEditing]);
 
   return (
-    <div
-      onDoubleClick={handleDoubleClick}
-      className={`w-full h-full flex items-center justify-center ${
-        isEditing ? "nodrag" : ""
-      }`}
-      style={{ minHeight: "40px", minWidth: "100px" }}
-    >
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onMouseDown={(e) => e.stopPropagation()} // Prevent node drag when selecting text
-          className="w-full min-w-[100px] bg-transparent border-none outline-none text-[#1A1A1A] font-josefin text-sm text-center cursor-text"
-          style={{
-            fontFamily: "inherit",
-            fontSize: "inherit",
-            lineHeight: "inherit",
-            minHeight: "24px",
-            padding: "4px",
-          }}
-          placeholder="Click to edit"
-        />
-      ) : (
-        <div className="w-full text-center break-words min-h-[24px] px-2">
-          {text || "Click to edit"}
-        </div>
-      )}
-    </div>
+    <>
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="w-3 h-3 bg-gray-400 border-2 border-white"
+      />
+      <div
+        onDoubleClick={handleDoubleClick}
+        className={`w-full h-full flex items-center justify-center ${
+          isEditing ? "nodrag" : ""
+        }`}
+        style={{ minHeight: "40px", minWidth: "100px" }}
+      >
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={localText}
+            onChange={(e) => setLocalText(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-full text-center bg-transparent outline-none border-b border-gray-300 px-2"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <div className="w-full text-center break-words min-h-[24px] px-2">
+            {data.text || "Click to edit"}
+          </div>
+        )}
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="w-3 h-3 bg-gray-400 border-2 border-white"
+      />
+    </>
   );
 };
 
@@ -84,12 +120,25 @@ const nodeTypes = {
   default: CustomNode,
 };
 
-const GraphCanvas = () => {
+const edgeTypes = {
+  custom: CustomEdge,
+};
+
+const GraphCanvasInner = () => {
   const [title, setTitle] = useState("Untitled Graph");
   const [isEditing, setIsEditing] = useState(false);
   const [isEvidencePanelOpen, setIsEvidencePanelOpen] = useState(true);
   const [nodes, setNodes] = useState<ClaimNode[]>([]);
+  const [edges, setEdges] = useState<ClaimEdge[]>([]);
   const [isAddNodeOpen, setIsAddNodeOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<ClaimNode | null>(null);
+  const [selectedEdgeType, setSelectedEdgeType] =
+    useState<EdgeType>("supporting");
+  const { project } = useReactFlow();
+  const [connectingNodeId, setConnectingNodeId] = useState<string | null>(null);
+  const [connectingHandleType, setConnectingHandleType] = useState<
+    "source" | "target" | null
+  >(null);
 
   const handleTitleChange = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -98,7 +147,17 @@ const GraphCanvas = () => {
   };
 
   const addNode = (type: ClaimType) => {
-    const newNode = createClaimNode("New Claim", type);
+    const newNode = {
+      ...createClaimNode("New Claim", type),
+      data: {
+        ...createClaimNode("New Claim", type).data,
+        onChange: (newText: string) => {
+          handleNodeUpdate(newNode.id, {
+            data: { ...newNode.data, text: newText },
+          });
+        },
+      },
+    };
     setNodes((nds) => [...nds, newNode]);
     setIsAddNodeOpen(false);
   };
@@ -106,6 +165,185 @@ const GraphCanvas = () => {
   const onNodesChange: OnNodesChange = (changes) => {
     setNodes((nds) => applyNodeChanges(changes, nds) as ClaimNode[]);
   };
+
+  const onEdgesChange: OnEdgesChange = useCallback((changes) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds) as ClaimEdge[]);
+  }, []);
+
+  const onConnect = useCallback(
+    (params: Connection) => {
+      const newEdge: ClaimEdge = {
+        id: `e${params.source}-${params.target}`,
+        source: params.source!,
+        target: params.target!,
+        type: "custom",
+        data: {
+          edgeType: selectedEdgeType,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: selectedEdgeType === "supporting" ? "#22C55E" : "#EF4444",
+        },
+      };
+      setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
+    },
+    [selectedEdgeType]
+  );
+
+  const onConnectStart: OnConnectStart = useCallback(
+    (_, { nodeId, handleType }) => {
+      setConnectingNodeId(nodeId);
+      setConnectingHandleType(handleType);
+    },
+    []
+  );
+
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event) => {
+      if (!connectingNodeId || !connectingHandleType) return;
+
+      const targetIsPane = (event.target as Element).classList.contains(
+        "react-flow__pane"
+      );
+      if (!targetIsPane) {
+        setConnectingNodeId(null);
+        setConnectingHandleType(null);
+        return;
+      }
+
+      // Get the position where the drag ended
+      const { top, left } = document
+        .querySelector(".react-flow")
+        ?.getBoundingClientRect() || { top: 0, left: 0 };
+      const position = project({
+        x: (event as MouseEvent).clientX - left,
+        y: (event as MouseEvent).clientY - top,
+      });
+
+      // Create the new node
+      const newNode = {
+        ...createClaimNode("New Claim", "factual"),
+        position,
+        data: {
+          ...createClaimNode("New Claim", "factual").data,
+          onChange: (newText: string) => {
+            handleNodeUpdate(newNode.id, {
+              data: { ...newNode.data, text: newText },
+            });
+          },
+        },
+      };
+
+      // Create the edge between the nodes
+      const newEdge: ClaimEdge = {
+        id: `e${connectingNodeId}-${newNode.id}`,
+        source:
+          connectingHandleType === "source" ? connectingNodeId : newNode.id,
+        target:
+          connectingHandleType === "source" ? newNode.id : connectingNodeId,
+        type: "custom",
+        data: {
+          edgeType: selectedEdgeType,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: selectedEdgeType === "supporting" ? "#22C55E" : "#EF4444",
+        },
+      };
+
+      setNodes((nds) => [...nds, newNode]);
+      setEdges((eds) => [...eds, newEdge]);
+      setConnectingNodeId(null);
+      setConnectingHandleType(null);
+    },
+    [connectingNodeId, connectingHandleType, project, selectedEdgeType]
+  );
+
+  const handleNodeClick = (event: React.MouseEvent, node: Node) => {
+    event.stopPropagation();
+    setSelectedNode(node as ClaimNode);
+  };
+
+  const handlePaneClick = () => {
+    setSelectedNode(null);
+  };
+
+  const handleNodeUpdate = (nodeId: string, updates: Partial<ClaimNode>) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          const updatedNode = {
+            ...node,
+            ...updates,
+            data: {
+              ...node.data,
+              ...updates.data,
+              onChange: (newText: string) => {
+                handleNodeUpdate(nodeId, {
+                  data: { ...node.data, text: newText },
+                });
+              },
+            },
+            style: {
+              ...node.style,
+              backgroundColor:
+                updates.data?.type === "factual"
+                  ? "#4FD9BD"
+                  : updates.data?.type === "value"
+                  ? "#7283D9"
+                  : "#FDD000",
+            },
+          };
+          if (selectedNode?.id === nodeId) {
+            setSelectedNode(updatedNode);
+          }
+          return updatedNode;
+        }
+        return node;
+      })
+    );
+  };
+
+  const onEdgeClick = (event: React.MouseEvent, edge: Edge) => {
+    event.stopPropagation();
+    const claimEdge = edge as ClaimEdge;
+    const newEdgeType: EdgeType =
+      claimEdge.data.edgeType === "supporting" ? "attacking" : "supporting";
+
+    setEdges((eds) =>
+      eds.map((e) => {
+        if (e.id === edge.id) {
+          return {
+            ...e,
+            data: {
+              ...e.data,
+              edgeType: newEdgeType,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: newEdgeType === "supporting" ? "#22C55E" : "#EF4444",
+            },
+          };
+        }
+        return e;
+      })
+    );
+  };
+
+  const handleDeleteNode = useCallback(() => {
+    if (selectedNode) {
+      // Delete all connected edges first
+      setEdges((eds) =>
+        eds.filter(
+          (edge) =>
+            edge.source !== selectedNode.id && edge.target !== selectedNode.id
+        )
+      );
+      // Delete the node
+      setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
+      setSelectedNode(null);
+    }
+  }, [selectedNode]);
 
   return (
     <div className="w-full h-full relative font-josefin">
@@ -116,52 +354,52 @@ const GraphCanvas = () => {
             <div className="h-full bg-white border-r border-black flex flex-col">
               {/* Panel Header */}
               <div className="p-4 border-b border-black flex justify-between items-center bg-[#FAFAFA]">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-medium tracking-wide uppercase">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-medium tracking-wide uppercase">
                     Evidence
                   </h2>
-                  <span className="text-xs text-gray-500 font-medium">
+                  <span className="text-base text-gray-500 font-medium">
                     (12)
                   </span>
                 </div>
                 <button
                   onClick={() => setIsEvidencePanelOpen(false)}
-                  className="p-1.5 hover:bg-white rounded-md transition-colors"
+                  className="p-2 hover:bg-white rounded-md transition-colors"
                   aria-label="Close evidence panel"
                 >
-                  ←
+                  <span className="text-lg">←</span>
                 </button>
               </div>
 
               {/* Search Bar */}
-              <div className="p-3 border-b border-gray-100">
+              <div className="p-4 border-b border-gray-200">
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Search evidence..."
-                    className="w-full px-3 py-1.5 bg-[#FAFAFA] rounded-md text-sm outline-none focus:ring-1 focus:ring-black"
+                    className="w-full px-4 py-2.5 bg-[#FAFAFA] rounded-md text-base outline-none focus:ring-1 focus:ring-black"
                   />
                 </div>
               </div>
 
               {/* Evidence Content */}
               <div className="flex-1 overflow-auto">
-                <div className="p-3 flex flex-col gap-3">
+                <div className="p-4 flex flex-col gap-4">
                   {/* Placeholder Evidence Items */}
-                  <div className="p-3 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
-                    <div className="text-sm font-medium mb-1">
+                  <div className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
+                    <div className="text-base font-medium mb-2">
                       Evidence Title
                     </div>
-                    <div className="text-xs text-gray-500 line-clamp-2">
+                    <div className="text-base text-gray-500 line-clamp-2">
                       Brief preview of the evidence content that might span
                       multiple lines...
                     </div>
                   </div>
-                  <div className="p-3 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
-                    <div className="text-sm font-medium mb-1">
+                  <div className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
+                    <div className="text-base font-medium mb-2">
                       Another Evidence
                     </div>
-                    <div className="text-xs text-gray-500 line-clamp-2">
+                    <div className="text-base text-gray-500 line-clamp-2">
                       More evidence content preview text here...
                     </div>
                   </div>
@@ -179,15 +417,15 @@ const GraphCanvas = () => {
         <Panel>
           <div className="relative h-full">
             {/* Floating Top Left Navbar */}
-            <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-2">
-              <div className="flex items-center gap-4">
+            <div className="absolute top-6 left-6 z-10 bg-white rounded-lg shadow-lg p-3">
+              <div className="flex items-center gap-5">
                 {/* Logo */}
-                <div className="w-8 h-8 bg-[#7283D9] rounded-md flex items-center justify-center text-white font-medium">
+                <div className="w-10 h-10 bg-[#7283D9] rounded-md flex items-center justify-center text-white font-medium text-lg">
                   IP
                 </div>
 
                 {/* Editable Title */}
-                <div className="min-w-[120px]">
+                <div className="min-w-[150px]">
                   {isEditing ? (
                     <input
                       type="text"
@@ -195,13 +433,13 @@ const GraphCanvas = () => {
                       onChange={(e) => setTitle(e.target.value)}
                       onKeyDown={handleTitleChange}
                       onBlur={() => setIsEditing(false)}
-                      className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-1 font-medium"
+                      className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-1 font-medium text-base"
                       autoFocus
                     />
                   ) : (
                     <span
                       onClick={() => setIsEditing(true)}
-                      className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded text-sm"
+                      className="cursor-pointer hover:bg-gray-100 px-3 py-1.5 rounded text-base"
                     >
                       {title}
                     </span>
@@ -212,27 +450,27 @@ const GraphCanvas = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                    className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                    className="px-3 py-2 hover:bg-gray-100 rounded-md transition-colors"
                   >
-                    <span className="text-sm">Add Node</span>
+                    <span className="text-base">Add Node</span>
                   </button>
                   {isAddNodeOpen && (
-                    <div className="absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[120px] z-10">
+                    <div className="absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[140px] z-10">
                       <button
                         onClick={() => addNode("factual")}
-                        className="w-full text-left px-3 py-1.5 hover:bg-[#4FD9BD] hover:bg-opacity-10 text-sm transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#4FD9BD] hover:bg-opacity-10 text-base transition-colors"
                       >
                         Factual
                       </button>
                       <button
                         onClick={() => addNode("value")}
-                        className="w-full text-left px-3 py-1.5 hover:bg-[#7283D9] hover:bg-opacity-10 text-sm transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#7283D9] hover:bg-opacity-10 text-base transition-colors"
                       >
                         Value
                       </button>
                       <button
                         onClick={() => addNode("policy")}
-                        className="w-full text-left px-3 py-1.5 hover:bg-[#FDD000] hover:bg-opacity-10 text-sm transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#FDD000] hover:bg-opacity-10 text-base transition-colors"
                       >
                         Policy
                       </button>
@@ -240,23 +478,57 @@ const GraphCanvas = () => {
                   )}
                 </div>
 
-                <button className="p-2 hover:bg-gray-100 rounded-md transition-colors">
-                  <span className="text-sm text-gray-700">Button 2</span>
+                {/* Delete Node Button */}
+                <button
+                  onClick={handleDeleteNode}
+                  disabled={!selectedNode}
+                  className={`px-3 py-2 rounded-md transition-colors ${
+                    selectedNode
+                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  <span className="text-base">Delete Node</span>
                 </button>
+
+                {/* Edge Type Selector */}
+                <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded-md">
+                  <span className="text-sm text-gray-500">Edge:</span>
+                  <button
+                    onClick={() => setSelectedEdgeType("supporting")}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                      selectedEdgeType === "supporting"
+                        ? "bg-green-500 text-white"
+                        : "bg-green-100 text-green-700 hover:bg-green-200"
+                    }`}
+                  >
+                    Supporting
+                  </button>
+                  <button
+                    onClick={() => setSelectedEdgeType("attacking")}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                      selectedEdgeType === "attacking"
+                        ? "bg-red-500 text-white"
+                        : "bg-red-100 text-red-700 hover:bg-red-200"
+                    }`}
+                  >
+                    Attacking
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Floating Top Right Navbar */}
-            <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2">
-              <div className="flex items-center gap-2">
-                <button className="px-3 py-1.5 hover:bg-gray-100 rounded-md transition-colors">
-                  <span className="text-sm text-gray-700">Share</span>
+            <div className="absolute top-6 right-6 z-10 bg-white rounded-lg shadow-lg p-3">
+              <div className="flex items-center gap-3">
+                <button className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors">
+                  <span className="text-base text-gray-700">Share</span>
                 </button>
-                <button className="px-3 py-1.5 hover:bg-gray-100 rounded-md transition-colors">
-                  <span className="text-sm text-gray-700">Export</span>
+                <button className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors">
+                  <span className="text-base text-gray-700">Export</span>
                 </button>
-                <button className="px-3 py-1.5 bg-[#7283D9] hover:bg-[#6274ca] text-white rounded-md transition-colors">
-                  <span className="text-sm">Save</span>
+                <button className="px-4 py-2 bg-[#7283D9] hover:bg-[#6274ca] text-white rounded-md transition-colors">
+                  <span className="text-base">Save</span>
                 </button>
               </div>
             </div>
@@ -273,10 +545,29 @@ const GraphCanvas = () => {
 
             <ReactFlow
               nodes={nodes}
+              edges={edges}
               onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onConnectStart={onConnectStart}
+              onConnectEnd={onConnectEnd}
+              onEdgeClick={onEdgeClick}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               fitView
               className="bg-white h-full"
+              onNodeClick={handleNodeClick}
+              onPaneClick={handlePaneClick}
+              defaultEdgeOptions={{
+                type: "custom",
+                animated: true,
+                style: { cursor: "pointer" },
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: "#22C55E",
+                },
+              }}
+              connectionMode={ConnectionMode.Loose}
             >
               <Background
                 color="#666"
@@ -284,12 +575,32 @@ const GraphCanvas = () => {
                 size={1}
                 variant={BackgroundVariant.Dots}
               />
-              <Controls />
+              <Controls
+                showZoom={true}
+                showFitView={true}
+                showInteractive={true}
+              />
             </ReactFlow>
+
+            {selectedNode && (
+              <NodeProperties
+                node={selectedNode}
+                onClose={() => setSelectedNode(null)}
+                onUpdate={handleNodeUpdate}
+              />
+            )}
           </div>
         </Panel>
       </PanelGroup>
     </div>
+  );
+};
+
+const GraphCanvas = () => {
+  return (
+    <ReactFlowProvider>
+      <GraphCanvasInner />
+    </ReactFlowProvider>
   );
 };
 

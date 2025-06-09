@@ -2,6 +2,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserName } from '../hooks/useUserName';
+import Image from 'next/image';
+import Link from 'next/link';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -52,8 +54,20 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
     return (
         <header className="flex items-center justify-between px-8 py-4 bg-gradient-to-r from-black via-[#FAFAFA] to-black text-white" style={{ fontFamily: 'Josefin Sans, sans-serif' }}>
-            <div className="font-bold text-lg">{userName}</div>
             <div className="flex items-center gap-4">
+                <Link href="/graph-manager" className="cursor-pointer">
+                    <Image src="/logo.png" alt="Intelliproof Logo" width={40} height={40} />
+                </Link>
+                <Link href="/home" className="font-bold text-lg hover:text-gray-300 transition-colors duration-200">
+                    Intelliproof
+                </Link>
+            </div>
+            <div className="flex items-center gap-4">
+                {userName && (
+                    <Link href="/profile" className="font-bold text-lg hover:text-gray-300 transition-colors duration-200">
+                        {userName}
+                    </Link>
+                )}
                 <div className="relative group">
                     <button onClick={onMenuClick} aria-label="Open menu" className="focus:outline-none w-8 h-8 flex items-center justify-center">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-menu">

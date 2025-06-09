@@ -5,6 +5,8 @@ import Input from "./Input";
 import { useRouter } from "next/navigation";
 import { createClient } from '@supabase/supabase-js';
 import PasswordToggleButton from "./PasswordToggleButton";
+import { useDispatch } from "react-redux";
+import { fetchUserData } from "../store/slices/userSlice";
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +20,7 @@ export default function SignupForm() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
+    const dispatch = useDispatch();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -61,20 +64,27 @@ export default function SignupForm() {
             const data = await response.json();
             console.log('Signup response:', data);
 
-            // Store the user ID in localStorage
-            localStorage.setItem('user_id', data.user_id);
+            // Store the session data in localStorage
+            if (data.access_token) {
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token);
+                localStorage.setItem('user_id', data.user_id);
+                localStorage.setItem('user_data', JSON.stringify(data.user));
 
-            // Store user data
-            const userData = {
-                email: form.email.toLowerCase().trim(),
-                first_name: form.firstName.trim(),
-                last_name: form.lastName.trim(),
-                account_type: 'basic'
-            };
-            localStorage.setItem('user_data', JSON.stringify(userData));
+                // Update Redux store
+                try {
+                    await dispatch(fetchUserData(data.access_token) as any);
+                    console.log('[SignupForm] Redux store updated successfully');
+                } catch (error) {
+                    console.error('[SignupForm] Error updating Redux store:', error);
+                }
 
-            setSuccess(data.message);
-            router.push("/home");
+                setSuccess(data.message);
+                router.push("/home");
+            } else {
+                console.error('[SignupForm] No access token in response');
+                throw new Error('No access token received from server');
+            }
         } catch (error: any) {
             console.error('Signup error:', error);
             setError(error.message || 'An error occurred during signup');

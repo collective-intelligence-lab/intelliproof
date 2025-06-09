@@ -99,7 +99,7 @@ export default function ProfilePage() {
                                 <div>
                                     <p className="text-gray-600">Member Since</p>
                                     <p className="font-semibold">
-                                        {new Date(profile.created_at).toLocaleDateString()}
+                                        {new Date(profile.created_at).toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -112,13 +112,13 @@ export default function ProfilePage() {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {graphs.map((graph: Graph) => (
-                                        <div key={graph.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                        <div key={graph.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow w-96">
                                             <h3 className="font-semibold mb-2">{graph.graph_name}</h3>
                                             <p className="text-sm text-gray-500">
-                                                Created: {new Date(graph.created_at).toLocaleDateString()}
+                                                Created: {new Date(graph.created_at).toLocaleString()}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                Last Updated: {new Date(graph.updated_at).toLocaleDateString()}
+                                                Last Updated: {new Date(graph.updated_at).toLocaleString()}
                                             </p>
                                         </div>
                                     ))}

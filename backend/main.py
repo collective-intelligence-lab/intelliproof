@@ -38,6 +38,9 @@ class SignupRequest(BaseModel):
 class SignupResponse(BaseModel):
     message: str
     user_id: Optional[str] = None
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    user: Optional[dict] = None
 
 class SigninRequest(BaseModel):
     email: EmailStr
@@ -72,6 +75,14 @@ async def signup(request: SignupRequest):
                 detail="Failed to create user account"
             )
 
+        # Get the session data
+        session = auth_response.session
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create session"
+            )
+
         # Then, insert into profiles table
         profile_data = {
             "email": request.email.lower().strip(),
@@ -97,7 +108,10 @@ async def signup(request: SignupRequest):
 
         return SignupResponse(
             message="Account created successfully! Please check your email to verify your account.",
-            user_id=auth_response.user.id
+            user_id=auth_response.user.id,
+            access_token=session.access_token,
+            refresh_token=session.refresh_token,
+            user=auth_response.user.dict()
         )
 
     except Exception as e:

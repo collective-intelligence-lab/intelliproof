@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Header from "../../components/Header";
 import ContinueButton from "../../components/ContinueButton";
 import Navbar from "../../components/Navbar";
+import { fetchUserData } from "../../store/slices/userSlice";
 
 // Placeholder for GraphCard and GraphModal components
 
@@ -27,15 +28,27 @@ interface Graph {
 
 export default function GraphManagerPage() {
     const dispatch = useDispatch();
+    const router = useRouter();
     const graphs = useSelector((state: RootState) => state.graphs.items as Graph[]);
     const selected = useSelector((state: RootState) => state.graphs.selected as Graph | null);
     const loading = useSelector((state: RootState) => state.graphs.loading);
     const error = useSelector((state: RootState) => state.graphs.error);
     const userEmail = useSelector((state: RootState) => state.user.profile?.email);
-    const router = useRouter();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newGraphName, setNewGraphName] = useState("");
     const [isNavbarOpen, setNavbarOpen] = useState(false);
+
+    useEffect(() => {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            console.log('[GraphManagerPage] No access token found, redirecting to signin');
+            router.push('/signin');
+            return;
+        }
+
+        console.log('[GraphManagerPage] Loading user data with token');
+        dispatch(fetchUserData(accessToken) as any);
+    }, [dispatch, router]);
 
     useEffect(() => {
         if (userEmail) {
@@ -75,15 +88,17 @@ export default function GraphManagerPage() {
             <div className="p-4">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-black">Your Graphs</h1>
-                    <ContinueButton
-                        onClick={() => {
-                            console.log('[GraphManagerPage] New Graph button clicked');
-                            setIsCreateModalOpen(true);
-                        }}
-                        className="w-auto px-6"
-                    >
-                        New Graph
-                    </ContinueButton>
+                    <div className="w-32">
+                        <ContinueButton
+                            onClick={() => {
+                                console.log('[GraphManagerPage] New Graph button clicked');
+                                setIsCreateModalOpen(true);
+                            }}
+                            className="w-full"
+                        >
+                            New Graph
+                        </ContinueButton>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-6">
                     {graphs && graphs.length > 0 ? (
@@ -105,7 +120,7 @@ export default function GraphManagerPage() {
                                 <div className="relative z-20 p-4 h-full flex flex-col justify-end">
                                     <h3 className="text-xl font-bold text-white mb-2">{graph.graph_name}</h3>
                                     <p className="text-sm text-gray-200">
-                                        Last updated: {new Date(graph.updated_at).toLocaleDateString()}
+                                        Last updated: {new Date(graph.updated_at).toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -146,32 +161,38 @@ export default function GraphManagerPage() {
                             <div className="text-black text-sm">{selected.owner_email}</div>
                         </div>
                         <div className="flex items-center gap-2 mt-4 justify-center">
-                            <button
-                                className="bg-gray-200 px-6 h-12 w-auto rounded text-black"
-                                onClick={() => dispatch(setSelectedGraph(null))}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="bg-red-600 px-6 h-12 w-auto rounded text-white"
-                                onClick={async () => {
-                                    console.log('[GraphModal] Delete button clicked:', selected.id);
-                                    await dispatch((await import('../../store/slices/graphsSlice')).deleteGraph(selected.id) as any);
-                                    dispatch(setSelectedGraph(null));
-                                }}
-                            >
-                                Delete
-                            </button>
-                            <ContinueButton
-                                onClick={() => {
-                                    console.log('[GraphModal] Open button clicked:', selected.id);
-                                    dispatch(setSelectedGraph(null));
-                                    window.location.href = `/graph-editor?id=${selected.id}`;
-                                }}
-                                className="w-auto px-6 h-12"
-                            >
-                                Open
-                            </ContinueButton>
+                            <div className="w-28">
+                                <button
+                                    className="bg-gray-200 px-6 h-12 w-full rounded text-black"
+                                    onClick={() => dispatch(setSelectedGraph(null))}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                            <div className="w-28">
+                                <button
+                                    className="bg-red-600 px-6 h-12 w-full rounded text-white"
+                                    onClick={async () => {
+                                        console.log('[GraphModal] Delete button clicked:', selected.id);
+                                        await dispatch((await import('../../store/slices/graphsSlice')).deleteGraph(selected.id) as any);
+                                        dispatch(setSelectedGraph(null));
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                            <div className="w-28">
+                                <ContinueButton
+                                    onClick={() => {
+                                        console.log('[GraphModal] Open button clicked:', selected.id);
+                                        dispatch(setSelectedGraph(null));
+                                        window.location.href = `/graph-editor?id=${selected.id}`;
+                                    }}
+                                    className="w-full h-12"
+                                >
+                                    Open
+                                </ContinueButton>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -201,6 +222,7 @@ export default function GraphManagerPage() {
                                     console.log('[GraphModal] Create button clicked');
                                     if (userEmail) {
                                         try {
+                                            console.log('Starting graph creation with name:', newGraphName || "Untitled Graph");
                                             const result = await dispatch(createGraph({
                                                 name: newGraphName || "Untitled Graph",
                                                 email: userEmail
@@ -209,7 +231,10 @@ export default function GraphManagerPage() {
                                             console.log('Graph creation result:', result);
 
                                             if (result.payload?.id) {
+                                                console.log('Graph created successfully with ID:', result.payload.id);
+                                                console.log('Setting current graph in store:', result.payload);
                                                 dispatch(setCurrentGraph(result.payload));
+                                                console.log('Navigating to graph editor...');
                                                 router.push(`/graph-editor?id=${result.payload.id}`);
                                             } else {
                                                 console.error('No graph ID returned from creation:', result);

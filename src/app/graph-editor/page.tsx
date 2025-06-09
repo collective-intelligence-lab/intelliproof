@@ -29,22 +29,23 @@ export default function GraphEditorPage() {
   // Load graph data when graphId changes
   useEffect(() => {
     if (graphId) {
-      console.log('Loading graph with ID:', graphId); // Debug log
+      console.log('[GraphEditor] Loading graph with ID:', graphId);
       const graph = graphs.find(g => g.id === graphId);
       if (graph) {
-        console.log('Found graph:', graph); // Debug log
+        console.log('[GraphEditor] Found graph in store:', graph);
         dispatch(setCurrentGraph(graph));
       } else {
-        console.warn('Graph not found in store:', graphId); // Debug log
+        console.log('[GraphEditor] Graph not found in store, attempting to fetch...');
         // If graph not found in store, try to fetch it
         const fetchGraph = async () => {
           try {
             const accessToken = localStorage.getItem('access_token');
             if (!accessToken) {
-              console.error('No access token found');
+              console.error('[GraphEditor] No access token found');
               return;
             }
 
+            console.log('[GraphEditor] Fetching graph from API...');
             const response = await fetch(`/api/graphs/${graphId}`, {
               headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -53,17 +54,19 @@ export default function GraphEditorPage() {
             });
             if (response.ok) {
               const data = await response.json();
-              console.log('Fetched graph data:', data); // Debug log
+              console.log('[GraphEditor] Successfully fetched graph data:', data);
               dispatch(setCurrentGraph(data));
             } else {
-              console.error('Failed to fetch graph:', response.statusText);
+              console.error('[GraphEditor] Failed to fetch graph:', response.statusText);
             }
           } catch (error) {
-            console.error('Error fetching graph:', error);
+            console.error('[GraphEditor] Error fetching graph:', error);
           }
         };
         fetchGraph();
       }
+    } else {
+      console.log('[GraphEditor] No graph ID provided in URL');
     }
   }, [graphId, graphs, dispatch]);
 

@@ -4,6 +4,8 @@ import Input from "./Input";
 import ContinueButton from "./ContinueButton";
 import PasswordToggleButton from "./PasswordToggleButton";
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { fetchUserData } from "../store/slices/userSlice";
 
 export default function SignInForm() {
     const [form, setForm] = useState({ email: "", password: "" });
@@ -11,6 +13,7 @@ export default function SignInForm() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
+    const dispatch = useDispatch();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,20 +42,21 @@ export default function SignInForm() {
             }
 
             const data = await response.json();
+            console.log('Signin response:', data);
 
             // Store the session data in localStorage
-            const sessionData = {
-                currentSession: {
-                    access_token: data.access_token,
-                    refresh_token: data.refresh_token,
-                    user: data.user
-                }
-            };
-            localStorage.setItem('supabase.auth.token', JSON.stringify(sessionData));
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('refresh_token', data.refresh_token);
+            localStorage.setItem('user_id', data.user_id);
+            localStorage.setItem('user_data', JSON.stringify(data.user));
+
+            // Fetch full user profile from backend
+            await dispatch(fetchUserData(data.access_token) as any);
 
             // On success, redirect to home
             router.push("/home");
         } catch (err: any) {
+            console.error('Signin error:', err);
             setError(err.message || "An error occurred during sign in");
         } finally {
             setLoading(false);

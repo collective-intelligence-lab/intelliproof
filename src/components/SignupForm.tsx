@@ -59,6 +59,20 @@ export default function SignupForm() {
             }
 
             const data = await response.json();
+            console.log('Signup response:', data);
+
+            // Store the user ID in localStorage
+            localStorage.setItem('user_id', data.user_id);
+
+            // Store user data
+            const userData = {
+                email: form.email.toLowerCase().trim(),
+                first_name: form.firstName.trim(),
+                last_name: form.lastName.trim(),
+                account_type: 'basic'
+            };
+            localStorage.setItem('user_data', JSON.stringify(userData));
+
             setSuccess(data.message);
             router.push("/home");
         } catch (error: any) {

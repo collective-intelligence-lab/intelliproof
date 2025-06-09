@@ -6,6 +6,9 @@ export type ClaimType = 'factual' | 'value' | 'policy';
 export interface ClaimData {
     text: string;
     type: ClaimType;
+    author?: string;
+    belief?: number;
+    created_on?: string;
     onChange?: (newText: string) => void;
 }
 
@@ -24,12 +27,12 @@ export const createClaimNode = (
 ): ClaimNode => ({
     id: uuidv4(),
     type: 'default',
-    position: mousePosition 
-        ? { 
+    position: mousePosition
+        ? {
             x: mousePosition.x + (Math.random() - 0.5) * 100,
             y: mousePosition.y + (Math.random() - 0.5) * 100
         }
-        : { 
+        : {
             x: window.innerWidth / 2 + (Math.random() - 0.5) * 100,
             y: window.innerHeight / 2 + (Math.random() - 0.5) * 100
         },
@@ -43,9 +46,9 @@ export const createClaimNode = (
         padding: 16,
         borderRadius: 8,
         border: '1px solid #000000',
-        backgroundColor: type === 'factual' 
+        backgroundColor: type === 'factual'
             ? '#4FD9BD'  // Teal
-            : type === 'value' 
+            : type === 'value'
                 ? '#7283D9'  // Indigo
                 : '#FDD000', // Yellow
         color: '#1A1A1A', // Very dark grey for better readability

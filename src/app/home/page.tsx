@@ -15,7 +15,7 @@ export default function HomePage() {
 
     return (
         <div className="min-h-screen flex flex-col bg-white" style={{ fontFamily: 'Josefin Sans, sans-serif' }}>
-            <Header userName="Anesu Gavhera" onMenuClick={() => setNavbarOpen(true)} />
+            <Header onMenuClick={() => setNavbarOpen(true)} />
             <Navbar isOpen={isNavbarOpen} onClose={() => setNavbarOpen(false)} />
             {selectedTab === "home" && (
                 <div className="flex-1 flex flex-col">

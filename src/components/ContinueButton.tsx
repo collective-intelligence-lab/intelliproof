@@ -22,7 +22,7 @@ export default function ContinueButton({
     return (
         <button
             type={type}
-            className={`w-full py-3 rounded bg-[#7283d9] text-black font-semibold hover:bg-[#5f6fc0] mt-8 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7283d9] disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+            className={`w-full py-3 rounded bg-[#7283d9] text-black font-semibold hover:bg-[#5f6fc0] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7283d9] disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
             onClick={onClick}
             disabled={disabled || loading}
         >

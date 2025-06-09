@@ -35,6 +35,10 @@ import {
 import type { ClaimEdge, EdgeType } from "../../types/edges";
 import NodeProperties from "../NodeProperties/NodeProperties";
 import CustomEdge from "../Edges/CustomEdge";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../../store";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { saveGraph, setCurrentGraph } from '../../store/slices/graphsSlice';
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -85,9 +89,8 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
       />
       <div
         onDoubleClick={handleDoubleClick}
-        className={`w-full h-full flex items-center justify-center ${
-          isEditing ? "nodrag" : ""
-        }`}
+        className={`w-full h-full flex items-center justify-center ${isEditing ? "nodrag" : ""
+          }`}
         style={{ minHeight: "40px", minWidth: "100px" }}
       >
         {isEditing ? (
@@ -125,7 +128,18 @@ const edgeTypes = {
 };
 
 const GraphCanvasInner = () => {
-  const [title, setTitle] = useState("Untitled Graph");
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const searchParams = useSearchParams();
+  const graphId = searchParams.get('id');
+
+  const currentGraph = useSelector((state: RootState) => state.graphs.currentGraph as {
+    id?: string;
+    graph_name?: string;
+    graph_data?: { nodes?: ClaimNode[]; edges?: ClaimEdge[] };
+  } | null);
+  const { profile } = useSelector((state: RootState) => state.user);
+  const [title, setTitle] = useState(currentGraph?.graph_name || "Untitled Graph");
   const [isEditing, setIsEditing] = useState(false);
   const [isEvidencePanelOpen, setIsEvidencePanelOpen] = useState(true);
   const [nodes, setNodes] = useState<ClaimNode[]>([]);
@@ -139,6 +153,94 @@ const GraphCanvasInner = () => {
   const [connectingHandleType, setConnectingHandleType] = useState<
     "source" | "target" | null
   >(null);
+  const [currentGraphId, setCurrentGraphId] = useState<string | undefined>(undefined);
+
+  // Add effect to handle URL params
+  useEffect(() => {
+    if (graphId && !currentGraph?.id) {
+      console.log('Graph ID from URL:', graphId);
+      // If we have a graph ID in the URL but no current graph, try to load it
+      dispatch(setCurrentGraph({ id: graphId }));
+    }
+  }, [graphId, currentGraph, dispatch]);
+
+  // Load graph data into state when currentGraph changes
+  useEffect(() => {
+    if (currentGraph) {
+      console.log('Loading graph data:', currentGraph); // Debug log
+
+      // Set the title from the graph name
+      if (currentGraph.graph_name) {
+        console.log('Setting graph title to:', currentGraph.graph_name); // Debug log
+        setTitle(currentGraph.graph_name);
+      } else {
+        console.warn('No graph name found in currentGraph:', currentGraph);
+        setTitle("Untitled Graph");
+      }
+
+      // Ensure we set the graph ID first
+      if (currentGraph.id) {
+        console.log('Setting current graph ID:', currentGraph.id); // Debug log
+        setCurrentGraphId(currentGraph.id);
+      } else {
+        console.error('No graph ID in currentGraph:', currentGraph);
+      }
+
+      // Transform nodes to include required ReactFlow properties
+      const formattedNodes = (currentGraph.graph_data?.nodes || []).map(node => {
+        // If node.data is undefined, fallback to node itself (for legacy data)
+        const nodeData = node.data || node;
+        return {
+          id: node.id,
+          type: 'default' as const,
+          position: node.position,
+          data: {
+            text: nodeData.text || 'New Claim',
+            type: nodeData.type || 'factual',
+            author: nodeData.author,
+            belief: nodeData.belief || 0.5,
+            created_on: nodeData.created_on || new Date().toISOString(),
+            onChange: (newText: string) => {
+              handleNodeUpdate(node.id, {
+                data: { ...nodeData, text: newText },
+              });
+            },
+          },
+          style: {
+            backgroundColor: (nodeData.type === 'factual')
+              ? '#4FD9BD'
+              : (nodeData.type === 'value')
+                ? '#7283D9'
+                : '#FDD000',
+          },
+        };
+      });
+
+      // Transform edges to include required ReactFlow properties
+      const formattedEdges = (currentGraph.graph_data?.edges || []).map(edge => {
+        const edgeData = edge.data || edge;
+        return {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          type: 'custom' as const,
+          data: {
+            edgeType: edgeData.edgeType || 'supporting',
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: (edgeData.edgeType === 'supporting') ? '#22C55E' : '#EF4444',
+          },
+        };
+      });
+
+      console.log('Formatted nodes:', formattedNodes); // Debug log
+      console.log('Formatted edges:', formattedEdges); // Debug log
+
+      setNodes(formattedNodes);
+      setEdges(formattedEdges);
+    }
+  }, [currentGraph]);
 
   const handleTitleChange = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -151,6 +253,7 @@ const GraphCanvasInner = () => {
       ...createClaimNode("New Claim", type),
       data: {
         ...createClaimNode("New Claim", type).data,
+        author: profile?.email || "Anonymous",
         onChange: (newText: string) => {
           handleNodeUpdate(newNode.id, {
             data: { ...newNode.data, text: newText },
@@ -290,8 +393,8 @@ const GraphCanvasInner = () => {
                 updates.data?.type === "factual"
                   ? "#4FD9BD"
                   : updates.data?.type === "value"
-                  ? "#7283D9"
-                  : "#FDD000",
+                    ? "#7283D9"
+                    : "#FDD000",
             },
           };
           if (selectedNode?.id === nodeId) {
@@ -344,6 +447,64 @@ const GraphCanvasInner = () => {
       setSelectedNode(null);
     }
   }, [selectedNode]);
+
+  const handleSave = async () => {
+    try {
+      // Add debug logging
+      console.log('Current graph ID:', currentGraphId);
+      console.log('Current graph:', currentGraph);
+
+      // Get the graph ID from either source
+      const graphId = currentGraphId || currentGraph?.id;
+
+      if (!graphId) {
+        console.error('No graph ID found for saving');
+        alert('Cannot save: No graph ID found. Please try refreshing the page.');
+        return;
+      }
+
+      // Format the graph data according to the required structure
+      const graphData = {
+        nodes: nodes.map(node => ({
+          id: node.id,
+          text: node.data.text,
+          type: node.data.type,
+          author: node.data.author,
+          belief: node.data.belief || 0.5,
+          position: node.position,
+          created_on: node.data.created_on || new Date().toISOString()
+        })),
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          weight: edge.data.edgeType === 'supporting' ? 0.5 : -0.5
+        }))
+      };
+
+      console.log('Saving graph with ID:', graphId);
+      console.log('Graph data:', graphData);
+
+      // Save the graph with the current ID
+      const saveResult = await dispatch(saveGraph({
+        id: graphId,
+        graphData,
+        graphName: title
+      }) as any);
+
+      console.log('Save result:', saveResult);
+
+      if (saveResult.error) {
+        throw new Error(saveResult.error);
+      }
+
+      // Navigate back to graph manager
+      router.push('/graph-manager');
+    } catch (error) {
+      console.error('Error saving graph:', error);
+      alert('Failed to save graph. Please try again.');
+    }
+  };
 
   return (
     <div className="w-full h-full relative font-josefin">
@@ -424,6 +585,13 @@ const GraphCanvasInner = () => {
                   IP
                 </div>
 
+                {/* User Info */}
+                {profile && (
+                  <div className="text-sm text-gray-600">
+                    {profile.first_name} {profile.last_name}
+                  </div>
+                )}
+
                 {/* Editable Title */}
                 <div className="min-w-[150px]">
                   {isEditing ? (
@@ -482,11 +650,10 @@ const GraphCanvasInner = () => {
                 <button
                   onClick={handleDeleteNode}
                   disabled={!selectedNode}
-                  className={`px-3 py-2 rounded-md transition-colors ${
-                    selectedNode
-                      ? "bg-red-100 text-red-700 hover:bg-red-200"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`px-3 py-2 rounded-md transition-colors ${selectedNode
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}
                 >
                   <span className="text-base">Delete Node</span>
                 </button>
@@ -496,21 +663,19 @@ const GraphCanvasInner = () => {
                   <span className="text-sm text-gray-500">Edge:</span>
                   <button
                     onClick={() => setSelectedEdgeType("supporting")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      selectedEdgeType === "supporting"
-                        ? "bg-green-500 text-white"
-                        : "bg-green-100 text-green-700 hover:bg-green-200"
-                    }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "supporting"
+                      ? "bg-green-500 text-white"
+                      : "bg-green-100 text-green-700 hover:bg-green-200"
+                      }`}
                   >
                     Supporting
                   </button>
                   <button
                     onClick={() => setSelectedEdgeType("attacking")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      selectedEdgeType === "attacking"
-                        ? "bg-red-500 text-white"
-                        : "bg-red-100 text-red-700 hover:bg-red-200"
-                    }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "attacking"
+                      ? "bg-red-500 text-white"
+                      : "bg-red-100 text-red-700 hover:bg-red-200"
+                      }`}
                   >
                     Attacking
                   </button>
@@ -527,7 +692,10 @@ const GraphCanvasInner = () => {
                 <button className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors">
                   <span className="text-base text-gray-700">Export</span>
                 </button>
-                <button className="px-4 py-2 bg-[#7283D9] hover:bg-[#6274ca] text-white rounded-md transition-colors">
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-[#7283D9] hover:bg-[#6274ca] text-white rounded-md transition-colors"
+                >
                   <span className="text-base">Save</span>
                 </button>
               </div>

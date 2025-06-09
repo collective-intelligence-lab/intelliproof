@@ -1,28 +1,22 @@
 "use client";
+import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useUserName } from '../hooks/useUserName';
 
 interface HeaderProps {
-    userName: string;
     onMenuClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userName, onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     const router = useRouter();
+    const userName = useUserName();
 
     const handleSignOut = async () => {
         try {
-            // Get the session token from localStorage
-            const sessionData = localStorage.getItem('supabase.auth.token');
-            if (!sessionData) {
-                throw new Error("No active session found");
-            }
-
-            // Parse the session data
-            const session = JSON.parse(sessionData);
-            const accessToken = session?.currentSession?.access_token;
-
+            // Get the access token from localStorage
+            const accessToken = localStorage.getItem('access_token');
             if (!accessToken) {
-                throw new Error("Invalid session format");
+                throw new Error("No active session found");
             }
 
             const response = await fetch("http://localhost:8000/api/signout", {
@@ -37,15 +31,21 @@ const Header: React.FC<HeaderProps> = ({ userName, onMenuClick }) => {
                 throw new Error("Failed to sign out");
             }
 
-            // Clear the session from localStorage
-            localStorage.removeItem('supabase.auth.token');
+            // Clear all session data from localStorage
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_data');
 
             // Redirect to signin page
             router.push("/signin");
         } catch (error) {
             console.error("Error signing out:", error);
             // Even if there's an error, try to clear the session and redirect
-            localStorage.removeItem('supabase.auth.token');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_data');
             router.push("/signin");
         }
     };

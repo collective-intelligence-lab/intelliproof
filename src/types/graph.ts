@@ -29,12 +29,12 @@ export const createClaimNode = (
     type: 'default',
     position: mousePosition
         ? {
-            x: mousePosition.x + (Math.random() - 0.5) * 100,
-            y: mousePosition.y + (Math.random() - 0.5) * 100
+            x: mousePosition.x + 200,
+            y: mousePosition.y + (Math.random() - 0.5) * 50
         }
         : {
-            x: window.innerWidth / 2 + (Math.random() - 0.5) * 100,
-            y: window.innerHeight / 2 + (Math.random() - 0.5) * 100
+            x: window.innerWidth / 3,
+            y: window.innerHeight / 2 + (Math.random() - 0.5) * 50
         },
     data: {
         text,
@@ -47,10 +47,10 @@ export const createClaimNode = (
         borderRadius: 8,
         border: '1px solid #000000',
         backgroundColor: type === 'factual'
-            ? '#4FD9BD'  // Teal
+            ? 'hsl(168, 65%, 75%)'  // Lighter, softer teal for better contrast
             : type === 'value'
-                ? '#7283D9'  // Indigo
-                : '#FDD000', // Yellow
+                ? 'hsl(228, 65%, 80%)'  // Lighter, softer indigo for better contrast
+                : 'hsl(48, 65%, 85%)', // Very light yellow for better contrast
         color: '#1A1A1A', // Very dark grey for better readability
         fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
         fontSize: '14px',

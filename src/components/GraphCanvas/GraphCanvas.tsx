@@ -12,6 +12,8 @@ import {
   MarkerType,
   useReactFlow,
   ConnectionMode,
+  getIncomers,
+  getOutgoers,
 } from "reactflow";
 import type {
   OnNodesChange,
@@ -37,13 +39,15 @@ import NodeProperties from "../NodeProperties/NodeProperties";
 import CustomEdge from "../Edges/CustomEdge";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../store";
-import { useRouter, useSearchParams } from 'next/navigation';
-import { saveGraph, setCurrentGraph } from '../../store/slices/graphsSlice';
+import { useRouter, useSearchParams } from "next/navigation";
+import { saveGraph, setCurrentGraph } from "../../store/slices/graphsSlice";
+import { ControlButton } from "reactflow";
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localText, setLocalText] = useState(data.text);
   const inputRef = useRef<HTMLInputElement>(null);
+  const CHARACTER_LIMIT = 200;
 
   // Update local text when data changes from outside
   useEffect(() => {
@@ -80,17 +84,24 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
     }
   }, [isEditing]);
 
+  // Function to truncate text with ellipsis
+  const truncateText = (text: string) => {
+    if (text.length <= CHARACTER_LIMIT) return text;
+    return text.slice(0, CHARACTER_LIMIT) + "...";
+  };
+
   return (
     <>
       <Handle
         type="target"
-        position={Position.Top}
-        className="w-3 h-3 bg-gray-400 border-2 border-white"
+        position={Position.Left}
+        className="w-4 h-4 bg-gray-400 border-2 border-white"
       />
       <div
         onDoubleClick={handleDoubleClick}
-        className={`w-full h-full flex items-center justify-center ${isEditing ? "nodrag" : ""
-          }`}
+        className={`w-full h-full flex items-center justify-center ${
+          isEditing ? "nodrag" : ""
+        }`}
         style={{ minHeight: "40px", minWidth: "100px" }}
       >
         {isEditing ? (
@@ -106,14 +117,14 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
           />
         ) : (
           <div className="w-full text-center break-words min-h-[24px] px-2">
-            {data.text || "Click to edit"}
+            {truncateText(data.text || "Click to edit")}
           </div>
         )}
       </div>
       <Handle
         type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 bg-gray-400 border-2 border-white"
+        position={Position.Right}
+        className="w-4 h-4 bg-gray-400 border-2 border-white"
       />
     </>
   );
@@ -131,15 +142,20 @@ const GraphCanvasInner = () => {
   const router = useRouter();
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
-  const graphId = searchParams.get('id');
+  const graphId = searchParams.get("id");
 
-  const currentGraph = useSelector((state: RootState) => state.graphs.currentGraph as {
-    id?: string;
-    graph_name?: string;
-    graph_data?: { nodes?: ClaimNode[]; edges?: ClaimEdge[] };
-  } | null);
+  const currentGraph = useSelector(
+    (state: RootState) =>
+      state.graphs.currentGraph as {
+        id?: string;
+        graph_name?: string;
+        graph_data?: { nodes?: ClaimNode[]; edges?: ClaimEdge[] };
+      } | null
+  );
   const { profile } = useSelector((state: RootState) => state.user);
-  const [title, setTitle] = useState(currentGraph?.graph_name || "Untitled Graph");
+  const [title, setTitle] = useState(
+    currentGraph?.graph_name || "Untitled Graph"
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [isEvidencePanelOpen, setIsEvidencePanelOpen] = useState(true);
   const [nodes, setNodes] = useState<ClaimNode[]>([]);
@@ -153,12 +169,15 @@ const GraphCanvasInner = () => {
   const [connectingHandleType, setConnectingHandleType] = useState<
     "source" | "target" | null
   >(null);
-  const [currentGraphId, setCurrentGraphId] = useState<string | undefined>(undefined);
+  const [currentGraphId, setCurrentGraphId] = useState<string | undefined>(
+    undefined
+  );
+  const connectionCompleted = useRef(false);
 
   // Add effect to handle URL params
   useEffect(() => {
     if (graphId && !currentGraph?.id) {
-      console.log('Graph ID from URL:', graphId);
+      console.log("Graph ID from URL:", graphId);
       // If we have a graph ID in the URL but no current graph, try to load it
       dispatch(setCurrentGraph({ id: graphId }));
     }
@@ -167,75 +186,80 @@ const GraphCanvasInner = () => {
   // Load graph data into state when currentGraph changes
   useEffect(() => {
     if (currentGraph) {
-      console.log('Loading graph data:', currentGraph); // Debug log
+      console.log("Loading graph data:", currentGraph); // Debug log
 
       // Set the title from the graph name
       if (currentGraph.graph_name) {
-        console.log('Setting graph title to:', currentGraph.graph_name); // Debug log
+        console.log("Setting graph title to:", currentGraph.graph_name); // Debug log
         setTitle(currentGraph.graph_name);
       } else {
-        console.warn('No graph name found in currentGraph:', currentGraph);
+        console.warn("No graph name found in currentGraph:", currentGraph);
         setTitle("Untitled Graph");
       }
 
       // Ensure we set the graph ID first
       if (currentGraph.id) {
-        console.log('Setting current graph ID:', currentGraph.id); // Debug log
+        console.log("Setting current graph ID:", currentGraph.id); // Debug log
         setCurrentGraphId(currentGraph.id);
       } else {
-        console.error('No graph ID in currentGraph:', currentGraph);
+        console.error("No graph ID in currentGraph:", currentGraph);
       }
 
       // Transform nodes to include required ReactFlow properties
-      const formattedNodes = (currentGraph.graph_data?.nodes || []).map(node => {
-        // If node.data is undefined, fallback to node itself (for legacy data)
-        const nodeData = node.data || node;
-        return {
-          id: node.id,
-          type: 'default' as const,
-          position: node.position,
-          data: {
-            text: nodeData.text || 'New Claim',
-            type: nodeData.type || 'factual',
-            author: nodeData.author,
-            belief: nodeData.belief || 0.5,
-            created_on: nodeData.created_on || new Date().toISOString(),
-            onChange: (newText: string) => {
-              handleNodeUpdate(node.id, {
-                data: { ...nodeData, text: newText },
-              });
+      const formattedNodes = (currentGraph.graph_data?.nodes || []).map(
+        (node) => {
+          // If node.data is undefined, fallback to node itself (for legacy data)
+          const nodeData = node.data || node;
+          return {
+            id: node.id,
+            type: "default" as const,
+            position: node.position,
+            data: {
+              text: nodeData.text || "New Claim",
+              type: nodeData.type || "factual",
+              author: nodeData.author,
+              belief: nodeData.belief || 0.5,
+              created_on: nodeData.created_on || new Date().toISOString(),
+              onChange: (newText: string) => {
+                handleNodeUpdate(node.id, {
+                  data: { ...nodeData, text: newText },
+                });
+              },
             },
-          },
-          style: {
-            backgroundColor: (nodeData.type === 'factual')
-              ? '#4FD9BD'
-              : (nodeData.type === 'value')
-                ? '#7283D9'
-                : '#FDD000',
-          },
-        };
-      });
+            style: {
+              backgroundColor:
+                nodeData.type === "factual"
+                  ? "hsl(168, 65%, 75%)"
+                  : nodeData.type === "value"
+                  ? "hsl(228, 65%, 80%)"
+                  : "hsl(48, 65%, 85%)",
+            },
+          };
+        }
+      );
 
       // Transform edges to include required ReactFlow properties
-      const formattedEdges = (currentGraph.graph_data?.edges || []).map(edge => {
-        const edgeData = edge.data || edge;
-        return {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          type: 'custom' as const,
-          data: {
-            edgeType: edgeData.edgeType || 'supporting',
-          },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: (edgeData.edgeType === 'supporting') ? '#22C55E' : '#EF4444',
-          },
-        };
-      });
+      const formattedEdges = (currentGraph.graph_data?.edges || []).map(
+        (edge) => {
+          const edgeData = edge.data || edge;
+          return {
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            type: "custom" as const,
+            data: {
+              edgeType: edgeData.edgeType || "supporting",
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: edgeData.edgeType === "supporting" ? "#22C55E" : "#EF4444",
+            },
+          };
+        }
+      );
 
-      console.log('Formatted nodes:', formattedNodes); // Debug log
-      console.log('Formatted edges:', formattedEdges); // Debug log
+      console.log("Formatted nodes:", formattedNodes); // Debug log
+      console.log("Formatted edges:", formattedEdges); // Debug log
 
       setNodes(formattedNodes);
       setEdges(formattedEdges);
@@ -275,6 +299,17 @@ const GraphCanvasInner = () => {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      connectionCompleted.current = true; // Mark that a connection was made
+      // Check if an edge already exists between these nodes
+      const edgeExists = edges.some(
+        (edge) =>
+          (edge.source === params.source && edge.target === params.target) ||
+          (edge.source === params.target && edge.target === params.source)
+      );
+
+      // If edge exists, don't create a new one
+      if (edgeExists) return;
+
       const newEdge: ClaimEdge = {
         id: `e${params.source}-${params.target}`,
         source: params.source!,
@@ -283,14 +318,10 @@ const GraphCanvasInner = () => {
         data: {
           edgeType: selectedEdgeType,
         },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: selectedEdgeType === "supporting" ? "#22C55E" : "#EF4444",
-        },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
     },
-    [selectedEdgeType]
+    [selectedEdgeType, edges]
   );
 
   const onConnectStart: OnConnectStart = useCallback(
@@ -305,59 +336,77 @@ const GraphCanvasInner = () => {
     (event) => {
       if (!connectingNodeId || !connectingHandleType) return;
 
-      const targetIsPane = (event.target as Element).classList.contains(
-        "react-flow__pane"
+      const target = event.target as Element;
+      const targetIsPane = target.classList.contains("react-flow__pane");
+      const targetIsHandle = target.classList.contains("react-flow__handle");
+      const insideNode = !!target.closest(".react-flow__node");
+
+      // Debug log
+      console.log(
+        "onConnectEnd event target:",
+        target,
+        "targetIsPane:",
+        targetIsPane,
+        "targetIsHandle:",
+        targetIsHandle,
+        "insideNode:",
+        insideNode,
+        "connectionCompleted:",
+        connectionCompleted.current
       );
-      if (!targetIsPane) {
-        setConnectingNodeId(null);
-        setConnectingHandleType(null);
-        return;
-      }
 
-      // Get the position where the drag ended
-      const { top, left } = document
-        .querySelector(".react-flow")
-        ?.getBoundingClientRect() || { top: 0, left: 0 };
-      const position = project({
-        x: (event as MouseEvent).clientX - left,
-        y: (event as MouseEvent).clientY - top,
-      });
-
-      // Create the new node
-      const newNode = {
-        ...createClaimNode("New Claim", "factual"),
-        position,
-        data: {
-          ...createClaimNode("New Claim", "factual").data,
-          onChange: (newText: string) => {
-            handleNodeUpdate(newNode.id, {
-              data: { ...newNode.data, text: newText },
-            });
-          },
-        },
-      };
-
-      // Create the edge between the nodes
-      const newEdge: ClaimEdge = {
-        id: `e${connectingNodeId}-${newNode.id}`,
-        source:
-          connectingHandleType === "source" ? connectingNodeId : newNode.id,
-        target:
-          connectingHandleType === "source" ? newNode.id : connectingNodeId,
-        type: "custom",
-        data: {
-          edgeType: selectedEdgeType,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: selectedEdgeType === "supporting" ? "#22C55E" : "#EF4444",
-        },
-      };
-
-      setNodes((nds) => [...nds, newNode]);
-      setEdges((eds) => [...eds, newEdge]);
+      // Clean up connection state
       setConnectingNodeId(null);
       setConnectingHandleType(null);
+
+      // Use setTimeout to check after the event loop
+      setTimeout(() => {
+        if (connectionCompleted.current) {
+          connectionCompleted.current = false; // Reset for next attempt
+          return;
+        }
+        // Only create new node when dropping on empty canvas space (not on node or handle)
+        if (!targetIsPane || targetIsHandle || insideNode) return;
+
+        // Get the position where the drag ended
+        const { top, left } = document
+          .querySelector(".react-flow")
+          ?.getBoundingClientRect() || { top: 0, left: 0 };
+        const position = project({
+          x: (event as MouseEvent).clientX - left,
+          y: (event as MouseEvent).clientY - top,
+        });
+
+        // Create the new node
+        const newNode = {
+          ...createClaimNode("New Claim", "factual"),
+          position,
+          data: {
+            ...createClaimNode("New Claim", "factual").data,
+            onChange: (newText: string) => {
+              handleNodeUpdate(newNode.id, {
+                data: { ...newNode.data, text: newText },
+              });
+            },
+          },
+        };
+
+        // Create the edge between the nodes
+        const newEdge: ClaimEdge = {
+          id: `e${connectingNodeId}-${newNode.id}`,
+          source:
+            connectingHandleType === "source" ? connectingNodeId : newNode.id,
+          target:
+            connectingHandleType === "source" ? newNode.id : connectingNodeId,
+          type: "custom",
+          data: {
+            edgeType: selectedEdgeType,
+          },
+        };
+
+        setNodes((nds) => [...nds, newNode]);
+        setEdges((eds) => [...eds, newEdge]);
+      }, 0);
     },
     [connectingNodeId, connectingHandleType, project, selectedEdgeType]
   );
@@ -391,10 +440,10 @@ const GraphCanvasInner = () => {
               ...node.style,
               backgroundColor:
                 updates.data?.type === "factual"
-                  ? "#4FD9BD"
+                  ? "hsl(168, 65%, 75%)"
                   : updates.data?.type === "value"
-                    ? "#7283D9"
-                    : "#FDD000",
+                  ? "hsl(228, 65%, 80%)"
+                  : "hsl(48, 65%, 85%)",
             },
           };
           if (selectedNode?.id === nodeId) {
@@ -451,58 +500,62 @@ const GraphCanvasInner = () => {
   const handleSave = async () => {
     try {
       // Add debug logging
-      console.log('Current graph ID:', currentGraphId);
-      console.log('Current graph:', currentGraph);
+      console.log("Current graph ID:", currentGraphId);
+      console.log("Current graph:", currentGraph);
 
       // Get the graph ID from either source
       const graphId = currentGraphId || currentGraph?.id;
 
       if (!graphId) {
-        console.error('No graph ID found for saving');
-        alert('Cannot save: No graph ID found. Please try refreshing the page.');
+        console.error("No graph ID found for saving");
+        alert(
+          "Cannot save: No graph ID found. Please try refreshing the page."
+        );
         return;
       }
 
       // Format the graph data according to the required structure
       const graphData = {
-        nodes: nodes.map(node => ({
+        nodes: nodes.map((node) => ({
           id: node.id,
           text: node.data.text,
           type: node.data.type,
           author: node.data.author,
           belief: node.data.belief || 0.5,
           position: node.position,
-          created_on: node.data.created_on || new Date().toISOString()
+          created_on: node.data.created_on || new Date().toISOString(),
         })),
-        edges: edges.map(edge => ({
+        edges: edges.map((edge) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          weight: edge.data.edgeType === 'supporting' ? 0.5 : -0.5
-        }))
+          weight: edge.data.edgeType === "supporting" ? 0.5 : -0.5,
+        })),
       };
 
-      console.log('Saving graph with ID:', graphId);
-      console.log('Graph data:', graphData);
+      console.log("Saving graph with ID:", graphId);
+      console.log("Graph data:", graphData);
 
       // Save the graph with the current ID
-      const saveResult = await dispatch(saveGraph({
-        id: graphId,
-        graphData,
-        graphName: title
-      }) as any);
+      const saveResult = await dispatch(
+        saveGraph({
+          id: graphId,
+          graphData,
+          graphName: title,
+        }) as any
+      );
 
-      console.log('Save result:', saveResult);
+      console.log("Save result:", saveResult);
 
       if (saveResult.error) {
         throw new Error(saveResult.error);
       }
 
       // Navigate back to graph manager
-      router.push('/graph-manager');
+      router.push("/graph-manager");
     } catch (error) {
-      console.error('Error saving graph:', error);
-      alert('Failed to save graph. Please try again.');
+      console.error("Error saving graph:", error);
+      alert("Failed to save graph. Please try again.");
     }
   };
 
@@ -650,10 +703,11 @@ const GraphCanvasInner = () => {
                 <button
                   onClick={handleDeleteNode}
                   disabled={!selectedNode}
-                  className={`px-3 py-2 rounded-md transition-colors ${selectedNode
-                    ? "bg-red-100 text-red-700 hover:bg-red-200"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
+                  className={`px-3 py-2 rounded-md transition-colors ${
+                    selectedNode
+                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
                 >
                   <span className="text-base">Delete Node</span>
                 </button>
@@ -663,19 +717,21 @@ const GraphCanvasInner = () => {
                   <span className="text-sm text-gray-500">Edge:</span>
                   <button
                     onClick={() => setSelectedEdgeType("supporting")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "supporting"
-                      ? "bg-green-500 text-white"
-                      : "bg-green-100 text-green-700 hover:bg-green-200"
-                      }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                      selectedEdgeType === "supporting"
+                        ? "bg-green-500 text-white"
+                        : "bg-green-100 text-green-700 hover:bg-green-200"
+                    }`}
                   >
                     Supporting
                   </button>
                   <button
                     onClick={() => setSelectedEdgeType("attacking")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "attacking"
-                      ? "bg-red-500 text-white"
-                      : "bg-red-100 text-red-700 hover:bg-red-200"
-                      }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                      selectedEdgeType === "attacking"
+                        ? "bg-red-500 text-white"
+                        : "bg-red-100 text-red-700 hover:bg-red-200"
+                    }`}
                   >
                     Attacking
                   </button>
@@ -736,13 +792,12 @@ const GraphCanvasInner = () => {
                 },
               }}
               connectionMode={ConnectionMode.Loose}
+              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+              fitViewOptions={{ padding: 0.2 }}
+              snapToGrid={true}
+              snapGrid={[20, 20]}
             >
-              <Background
-                color="#666"
-                gap={20}
-                size={1}
-                variant={BackgroundVariant.Dots}
-              />
+              <Background color="#aaa" variant={BackgroundVariant.Dots} />
               <Controls
                 showZoom={true}
                 showFitView={true}

@@ -173,6 +173,33 @@ const GraphCanvasInner = () => {
     undefined
   );
   const connectionCompleted = useRef(false);
+  const [supportingDocuments, setSupportingDocuments] = useState<
+    Array<{
+      id: string;
+      name: string;
+      type: "document" | "image";
+      url: string;
+      uploadDate: Date;
+      uploader: string;
+      size?: number;
+    }>
+  >([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [isAddEvidenceOpen, setIsAddEvidenceOpen] = useState(false);
+  const [newEvidence, setNewEvidence] = useState({
+    title: "",
+    supportingDocId: "",
+    excerpt: "",
+  });
+  const [evidenceCards, setEvidenceCards] = useState<
+    Array<{
+      id: string;
+      title: string;
+      supportingDocId: string;
+      supportingDocName: string;
+      excerpt: string;
+    }>
+  >([]);
 
   // Add effect to handle URL params
   useEffect(() => {
@@ -559,6 +586,46 @@ const GraphCanvasInner = () => {
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      // Duplicate check: same name and size
+      const isDuplicate = supportingDocuments.some(
+        (doc) => doc.name === file.name && doc.size === file.size
+      );
+      if (isDuplicate) {
+        setToast(`A file named "${file.name}" has already been uploaded.`);
+        setTimeout(() => setToast(null), 2000);
+        return;
+      }
+      const fileType = file.type.startsWith("image/") ? "image" : "document";
+      const fileUrl = URL.createObjectURL(file);
+      setSupportingDocuments((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          type: fileType,
+          url: fileUrl,
+          uploadDate: new Date(),
+          uploader: "You", // TODO: Replace with real user info
+          size: file.size,
+        },
+      ]);
+    });
+  };
+
+  const handleDeleteDocument = (id: string) => {
+    setSupportingDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  };
+
+  const closeEvidenceModal = () => {
+    setIsAddEvidenceOpen(false);
+    setNewEvidence({ title: "", supportingDocId: "", excerpt: "" });
+  };
+
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -566,8 +633,8 @@ const GraphCanvasInner = () => {
         {isEvidencePanelOpen && (
           <Panel defaultSize={20} minSize={15} maxSize={40}>
             <div className="h-full bg-white border-r border-black flex flex-col">
-              {/* Panel Header */}
-              <div className="p-4 border-b border-black flex justify-between items-center bg-[#FAFAFA]">
+              {/* Evidence Header */}
+              <div className="p-4 border-b border-black flex justify-between items-center bg-[#FAFAFA] relative">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-medium tracking-wide uppercase">
                     Evidence
@@ -585,36 +652,263 @@ const GraphCanvasInner = () => {
                 </button>
               </div>
 
-              {/* Search Bar */}
-              <div className="p-4 border-b border-gray-200">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search evidence..."
-                    className="w-full px-4 py-2.5 bg-[#FAFAFA] rounded-md text-base outline-none focus:ring-1 focus:ring-black"
-                  />
+              {/* Evidence Management Section */}
+              <div className="p-4 border-b-0">
+                <div className="flex justify-end mb-2">
+                  <button
+                    className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm"
+                    onClick={() => setIsAddEvidenceOpen(true)}
+                  >
+                    + Add Evidence
+                  </button>
+                </div>
+                {/* Evidence cards */}
+                <div className="space-y-3">
+                  {evidenceCards.length === 0 ? (
+                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center text-gray-500 text-sm">
+                      No evidence added yet.
+                    </div>
+                  ) : (
+                    evidenceCards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="p-4 bg-[#FAFAFA] rounded-md border border-gray-200"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="font-medium text-base truncate">
+                            {card.title}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            from: {card.supportingDocName}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700 mt-1 whitespace-pre-line">
+                          {card.excerpt}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
-              {/* Evidence Content */}
+              {/* Evidence Creation Modal */}
+              {isAddEvidenceOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                  <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+                    <h2 className="text-lg font-semibold mb-4">Add Evidence</h2>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        // Save evidence logic
+                        const doc = supportingDocuments.find(
+                          (d) => d.id === newEvidence.supportingDocId
+                        );
+                        if (!doc) return;
+                        setEvidenceCards((prev) => [
+                          ...prev,
+                          {
+                            id: Math.random().toString(36).substr(2, 9),
+                            title: newEvidence.title,
+                            supportingDocId: doc.id,
+                            supportingDocName: doc.name,
+                            excerpt: newEvidence.excerpt,
+                          },
+                        ]);
+                        closeEvidenceModal();
+                      }}
+                      className="space-y-4"
+                    >
+                      {/* Title */}
+                      <div>
+                        <label className="block text-base font-medium mb-1">
+                          Title
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                          value={newEvidence.title}
+                          onChange={(e) =>
+                            setNewEvidence((ev) => ({
+                              ...ev,
+                              title: e.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </div>
+                      {/* Supporting Doc Select */}
+                      <div>
+                        <label className="block text-base font-medium mb-1">
+                          Supporting Document
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                          value={newEvidence.supportingDocId}
+                          onChange={(e) =>
+                            setNewEvidence((ev) => ({
+                              ...ev,
+                              supportingDocId: e.target.value,
+                              excerpt: "",
+                            }))
+                          }
+                          required
+                        >
+                          <option value="" disabled>
+                            Select a document...
+                          </option>
+                          {supportingDocuments.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              {doc.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Excerpt/Lines for text docs */}
+                      {(() => {
+                        const doc = supportingDocuments.find(
+                          (d) => d.id === newEvidence.supportingDocId
+                        );
+                        if (doc && doc.type === "document") {
+                          return (
+                            <div>
+                              <label className="block text-base font-medium mb-1">
+                                Excerpt / Lines
+                              </label>
+                              <textarea
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] min-h-[60px]"
+                                placeholder="Paste or type the relevant excerpt or lines here..."
+                                value={newEvidence.excerpt}
+                                onChange={(e) =>
+                                  setNewEvidence((ev) => ({
+                                    ...ev,
+                                    excerpt: e.target.value,
+                                  }))
+                                }
+                                required
+                              />
+                            </div>
+                          );
+                        }
+                        if (doc && doc.type === "image") {
+                          return (
+                            <div>
+                              <label className="block text-base font-medium mb-1">
+                                Comment / Description
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                                placeholder="Describe the relevant part of the image..."
+                                value={newEvidence.excerpt}
+                                onChange={(e) =>
+                                  setNewEvidence((ev) => ({
+                                    ...ev,
+                                    excerpt: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {/* Actions */}
+                      <div className="flex justify-end gap-2 mt-4">
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          onClick={closeEvidenceModal}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 rounded-md bg-[#7283D9] text-white hover:bg-[#6274ca]"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Divider */}
+              <div className="border-t border-gray-200"></div>
+
+              {/* Supporting Documents Section */}
               <div className="flex-1 overflow-auto">
                 <div className="p-4 flex flex-col gap-4">
-                  {/* Placeholder Evidence Items */}
-                  <div className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
-                    <div className="text-base font-medium mb-2">
-                      Evidence Title
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-medium tracking-wide uppercase">
+                        Supporting Documents
+                      </h3>
+                      <label className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm cursor-pointer">
+                        Upload
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                          multiple
+                          onChange={handleFileUpload}
+                        />
+                      </label>
                     </div>
-                    <div className="text-base text-gray-500 line-clamp-2">
-                      Brief preview of the evidence content that might span
-                      multiple lines...
-                    </div>
-                  </div>
-                  <div className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
-                    <div className="text-base font-medium mb-2">
-                      Another Evidence
-                    </div>
-                    <div className="text-base text-gray-500 line-clamp-2">
-                      More evidence content preview text here...
+                    {/* Documents List */}
+                    <div className="space-y-3">
+                      {supportingDocuments.length === 0 ? (
+                        <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center">
+                          <p className="text-gray-500 text-sm">
+                            No supporting documents yet.
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">
+                            Upload documents or images to get started.
+                          </p>
+                        </div>
+                      ) : (
+                        supportingDocuments.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-base font-medium truncate">
+                                    {doc.name}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    ({doc.type})
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  Uploaded by {doc.uploader}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Uploaded {doc.uploadDate.toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={doc.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                >
+                                  <span className="text-lg">↗</span>
+                                </a>
+                                <button
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                                >
+                                  <span className="text-lg">×</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

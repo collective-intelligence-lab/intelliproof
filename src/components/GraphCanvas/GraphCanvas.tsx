@@ -48,6 +48,7 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [localText, setLocalText] = useState(data.text);
   const inputRef = useRef<HTMLInputElement>(null);
   const CHARACTER_LIMIT = 200;
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Update local text when data changes from outside
   useEffect(() => {
@@ -90,6 +91,21 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
     return text.slice(0, CHARACTER_LIMIT) + "...";
   };
 
+  // Drag-and-drop evidence support
+  const handleEvidenceDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  const handleEvidenceDragLeave = () => setIsDragOver(false);
+  const handleEvidenceDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const evidenceId = e.dataTransfer.getData("application/x-evidence-id");
+    if (evidenceId && data.onEvidenceDrop) {
+      data.onEvidenceDrop(evidenceId);
+    }
+  };
+
   return (
     <>
       <Handle
@@ -99,9 +115,12 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
       />
       <div
         onDoubleClick={handleDoubleClick}
+        onDragOver={handleEvidenceDragOver}
+        onDragLeave={handleEvidenceDragLeave}
+        onDrop={handleEvidenceDrop}
         className={`w-full h-full flex items-center justify-center ${
           isEditing ? "nodrag" : ""
-        }`}
+        } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
         style={{ minHeight: "40px", minWidth: "100px" }}
       >
         {isEditing ? (
@@ -200,6 +219,9 @@ const GraphCanvasInner = () => {
       excerpt: string;
     }>
   >([]);
+  const [selectedEvidenceCard, setSelectedEvidenceCard] = useState<
+    null | (typeof evidenceCards)[0]
+  >(null);
 
   // Add effect to handle URL params
   useEffect(() => {
@@ -250,6 +272,16 @@ const GraphCanvasInner = () => {
               onChange: (newText: string) => {
                 handleNodeUpdate(node.id, {
                   data: { ...nodeData, text: newText },
+                });
+              },
+              evidenceIds: nodeData.evidenceIds || [],
+              onEvidenceDrop: (evidenceId: string) => {
+                // Add evidenceId to this node
+                handleNodeUpdate(node.id, {
+                  data: {
+                    ...nodeData,
+                    evidenceIds: [...(nodeData.evidenceIds || []), evidenceId],
+                  },
                 });
               },
             },
@@ -626,6 +658,12 @@ const GraphCanvasInner = () => {
     setNewEvidence({ title: "", supportingDocId: "", excerpt: "" });
   };
 
+  // Drag start handler for evidence cards
+  const handleEvidenceDragStart = (event: React.DragEvent, cardId: string) => {
+    event.dataTransfer.setData("application/x-evidence-id", cardId);
+    event.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -640,7 +678,7 @@ const GraphCanvasInner = () => {
                     Evidence
                   </h2>
                   <span className="text-base text-gray-500 font-medium">
-                    (12)
+                    ({evidenceCards.length})
                   </span>
                 </div>
                 <button
@@ -663,30 +701,63 @@ const GraphCanvasInner = () => {
                   </button>
                 </div>
                 {/* Evidence cards */}
-                <div className="space-y-3">
+                <div
+                  className="grid gap-3"
+                  style={{
+                    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                  }}
+                >
                   {evidenceCards.length === 0 ? (
-                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center text-gray-500 text-sm">
+                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center text-gray-500 text-sm col-span-full">
                       No evidence added yet.
                     </div>
                   ) : (
-                    evidenceCards.map((card) => (
-                      <div
-                        key={card.id}
-                        className="p-4 bg-[#FAFAFA] rounded-md border border-gray-200"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="font-medium text-base truncate">
-                            {card.title}
+                    evidenceCards.map((card) => {
+                      const doc = supportingDocuments.find(
+                        (d) => d.id === card.supportingDocId
+                      );
+                      const isImage = doc?.type === "image";
+                      return (
+                        <button
+                          key={card.id}
+                          className="flex flex-col items-stretch justify-between aspect-square min-h-[110px] max-h-[150px] bg-[#FAFAFA] rounded-lg border border-gray-200 shadow-sm overflow-hidden focus:outline-none hover:shadow-md transition-shadow"
+                          onClick={() => setSelectedEvidenceCard(card)}
+                          type="button"
+                          draggable
+                          onDragStart={(e) =>
+                            handleEvidenceDragStart(e, card.id)
+                          }
+                        >
+                          <div className="flex items-center gap-1 p-2 border-b border-gray-100">
+                            {/* Type Icon/Preview */}
+                            {isImage ? (
+                              <img
+                                src={doc?.url}
+                                alt="preview"
+                                className="w-6 h-6 object-cover rounded"
+                              />
+                            ) : (
+                              <span className="w-6 h-6 flex items-center justify-center bg-[#7283D9] text-white rounded text-xs font-bold">
+                                DOC
+                              </span>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-xs truncate">
+                                {card.title}
+                              </div>
+                              <span className="text-[10px] text-gray-500">
+                                from: {card.supportingDocName}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-xs text-gray-500">
-                            from: {card.supportingDocName}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-700 mt-1 whitespace-pre-line">
-                          {card.excerpt}
-                        </div>
-                      </div>
-                    ))
+                          <div className="flex-1 p-2 overflow-hidden">
+                            <div className="text-xs text-gray-700 line-clamp-3 whitespace-pre-line">
+                              {card.excerpt}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -1104,7 +1175,75 @@ const GraphCanvasInner = () => {
                 node={selectedNode}
                 onClose={() => setSelectedNode(null)}
                 onUpdate={handleNodeUpdate}
+                evidenceCards={evidenceCards}
+                supportingDocuments={supportingDocuments}
               />
+            )}
+
+            {/* Evidence Card Preview Modal */}
+            {selectedEvidenceCard && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+                  <button
+                    className="absolute top-2 right-2 text-2xl text-gray-400 hover:text-gray-700"
+                    onClick={() => setSelectedEvidenceCard(null)}
+                    aria-label="Close preview"
+                  >
+                    ×
+                  </button>
+                  <h2 className="text-lg font-semibold mb-2">
+                    {selectedEvidenceCard.title}
+                  </h2>
+                  <div className="mb-2 text-xs text-gray-500">
+                    from: {selectedEvidenceCard.supportingDocName}
+                  </div>
+                  {/* Supporting doc link */}
+                  {(() => {
+                    const doc = supportingDocuments.find(
+                      (d) => d.id === selectedEvidenceCard.supportingDocId
+                    );
+                    if (doc) {
+                      return (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mb-3 text-xs text-[#7283D9] underline hover:text-[#3c4a8c]"
+                        >
+                          View Supporting Document
+                        </a>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <div className="mb-4">
+                    <span className="block text-xs font-medium mb-1">
+                      Excerpt / Description:
+                    </span>
+                    <div className="text-sm text-gray-700 whitespace-pre-line bg-[#FAFAFA] rounded p-2 border border-gray-100">
+                      {selectedEvidenceCard.excerpt}
+                    </div>
+                  </div>
+                  {/* Optionally, show supporting doc preview if image */}
+                  {(() => {
+                    const doc = supportingDocuments.find(
+                      (d) => d.id === selectedEvidenceCard.supportingDocId
+                    );
+                    if (doc && doc.type === "image") {
+                      return (
+                        <div className="mt-2">
+                          <img
+                            src={doc.url}
+                            alt="preview"
+                            className="w-full max-h-48 object-contain rounded"
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
             )}
           </div>
         </Panel>

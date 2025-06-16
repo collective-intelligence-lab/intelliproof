@@ -10,6 +10,8 @@ export interface ClaimData {
     belief?: number;
     created_on?: string;
     onChange?: (newText: string) => void;
+    evidenceIds?: string[];
+    onEvidenceDrop?: (evidenceId: string) => void;
 }
 
 export interface ClaimNode extends Node<ClaimData> {

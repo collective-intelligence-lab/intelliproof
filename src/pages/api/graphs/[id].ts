@@ -4,8 +4,8 @@ import { getEmailFromSupabaseJWT } from '../../../lib/verifySupabaseToken';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
-    if (!id || typeof id !== 'string') {
-        return res.status(400).json({ error: 'Invalid graph ID' });
+    if (!id || typeof id !== 'string' || id === 'undefined') {
+        return res.status(400).json({ error: 'Invalid or missing graph ID' });
     }
 
     // Get the user's email from the JWT token

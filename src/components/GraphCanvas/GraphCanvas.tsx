@@ -33,6 +33,8 @@ import {
   type ClaimNode,
   type ClaimType,
   type ClaimData,
+  type Evidence,
+  type ExportedGraphData,
 } from "../../types/graph";
 import type { ClaimEdge, EdgeType } from "../../types/edges";
 import NodeProperties from "../NodeProperties/NodeProperties";
@@ -40,8 +42,11 @@ import CustomEdge from "../Edges/CustomEdge";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../store";
 import { useRouter, useSearchParams } from "next/navigation";
-import { saveGraph, setCurrentGraph } from "../../store/slices/graphsSlice";
+import { saveGraph, setCurrentGraph, fetchSupportingDocuments } from "../../store/slices/graphsSlice";
 import { ControlButton } from "reactflow";
+import SupportingDocumentUploadModal from './SupportingDocumentUploadModal';
+import type { GraphItem, SupportingDocument } from '../../store/slices/graphsSlice';
+import { v4 as uuidv4 } from 'uuid';
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -50,10 +55,12 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const CHARACTER_LIMIT = 200;
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Update local text when data changes from outside
+  // Update local text when data changes from outside, but only if we're not currently editing
   useEffect(() => {
-    setLocalText(data.text);
-  }, [data.text]);
+    if (!isEditing && localText !== data.text) {
+      setLocalText(data.text);
+    }
+  }, [data.text, isEditing, localText]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -118,9 +125,8 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
         onDragOver={handleEvidenceDragOver}
         onDragLeave={handleEvidenceDragLeave}
         onDrop={handleEvidenceDrop}
-        className={`w-full h-full flex items-center justify-center ${
-          isEditing ? "nodrag" : ""
-        } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
+        className={`w-full h-full flex items-center justify-center ${isEditing ? "nodrag" : ""
+          } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
         style={{ minHeight: "40px", minWidth: "100px" }}
       >
         {isEditing ? (
@@ -159,7 +165,7 @@ const edgeTypes = {
 
 const GraphCanvasInner = () => {
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch: any = useDispatch();
   const searchParams = useSearchParams();
   const graphId = searchParams.get("id");
 
@@ -168,7 +174,11 @@ const GraphCanvasInner = () => {
       state.graphs.currentGraph as {
         id?: string;
         graph_name?: string;
-        graph_data?: { nodes?: ClaimNode[]; edges?: ClaimEdge[] };
+        graph_data?: {
+          nodes?: ClaimNode[];
+          edges?: ClaimEdge[];
+          evidence?: Evidence[];
+        };
       } | null
   );
   const { profile } = useSelector((state: RootState) => state.user);
@@ -222,15 +232,64 @@ const GraphCanvasInner = () => {
   const [selectedEvidenceCard, setSelectedEvidenceCard] = useState<
     null | (typeof evidenceCards)[0]
   >(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // Use supportingDocuments from Redux
+  const supportingDocumentsRedux = useSelector((state: RootState) =>
+    currentGraphId ? state.graphs.supportingDocuments[currentGraphId] || [] : []
+  );
+
+  // Map Redux docs to local state shape
+  useEffect(() => {
+    const newDocs = supportingDocumentsRedux.map((doc) => ({
+      id: doc.id,
+      name: doc.name,
+      type: doc.type as 'document' | 'image',
+      url: doc.url,
+      uploadDate: doc.upload_date ? new Date(doc.upload_date) : new Date(),
+      uploader: doc.uploader_email || 'Unknown',
+      size: doc.size,
+    }));
+
+    // Only update if the documents have actually changed
+    const hasChanged = JSON.stringify(newDocs) !== JSON.stringify(supportingDocuments);
+    if (hasChanged) {
+      setSupportingDocuments(newDocs);
+    }
+  }, [supportingDocumentsRedux, supportingDocuments]);
 
   // Add effect to handle URL params
+  const graphs = useSelector((state: RootState) => state.graphs.items);
+
   useEffect(() => {
     if (graphId && !currentGraph?.id) {
-      console.log("Graph ID from URL:", graphId);
-      // If we have a graph ID in the URL but no current graph, try to load it
-      dispatch(setCurrentGraph({ id: graphId }));
+      const graphItem = graphs.find((g: GraphItem) => g.id === graphId) || null;
+      if (graphItem) {
+        console.log('Setting currentGraph from graphs:', graphItem);
+        dispatch(setCurrentGraph(graphItem));
+        setCurrentGraphId(graphId);
+      }
     }
-  }, [graphId, currentGraph, dispatch]);
+  }, [graphId, currentGraph, dispatch, graphs]);
+
+  // Add effect to fetch supporting documents when currentGraphId changes
+  useEffect(() => {
+    if (currentGraphId) {
+      console.log('Fetching supporting documents for graph:', currentGraphId);
+      dispatch(fetchSupportingDocuments(currentGraphId));
+    }
+  }, [currentGraphId, dispatch]);
+
+  // After graph loads, set currentGraphId and log profile
+  useEffect(() => {
+    if (currentGraph && currentGraph.id) {
+      setCurrentGraphId(currentGraph.id);
+      console.log('currentGraphId set:', currentGraph.id);
+    }
+    if (profile) {
+      console.log('Profile loaded:', profile);
+    }
+  }, [currentGraph, profile]);
 
   // Load graph data into state when currentGraph changes
   useEffect(() => {
@@ -290,8 +349,8 @@ const GraphCanvasInner = () => {
                 nodeData.type === "factual"
                   ? "hsl(168, 65%, 75%)"
                   : nodeData.type === "value"
-                  ? "hsl(228, 65%, 80%)"
-                  : "hsl(48, 65%, 85%)",
+                    ? "hsl(228, 65%, 80%)"
+                    : "hsl(48, 65%, 85%)",
             },
           };
         }
@@ -322,6 +381,15 @@ const GraphCanvasInner = () => {
 
       setNodes(formattedNodes);
       setEdges(formattedEdges);
+    }
+  }, [currentGraph]);
+
+  // Load evidence from graph_data when currentGraph changes
+  useEffect(() => {
+    if (currentGraph?.graph_data?.evidence) {
+      setEvidenceCards(currentGraph.graph_data.evidence);
+    } else {
+      setEvidenceCards([]);
     }
   }, [currentGraph]);
 
@@ -501,8 +569,8 @@ const GraphCanvasInner = () => {
                 updates.data?.type === "factual"
                   ? "hsl(168, 65%, 75%)"
                   : updates.data?.type === "value"
-                  ? "hsl(228, 65%, 80%)"
-                  : "hsl(48, 65%, 85%)",
+                    ? "hsl(228, 65%, 80%)"
+                    : "hsl(48, 65%, 85%)",
             },
           };
           if (selectedNode?.id === nodeId) {
@@ -575,6 +643,7 @@ const GraphCanvasInner = () => {
 
       // Format the graph data according to the required structure
       const graphData = {
+        evidence: evidenceCards,
         nodes: nodes.map((node) => ({
           id: node.id,
           text: node.data.text,
@@ -583,6 +652,7 @@ const GraphCanvasInner = () => {
           belief: node.data.belief || 0.5,
           position: node.position,
           created_on: node.data.created_on || new Date().toISOString(),
+          evidenceIds: node.data.evidenceIds || [],
         })),
         edges: edges.map((edge) => ({
           id: edge.id,
@@ -618,35 +688,14 @@ const GraphCanvasInner = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-
-    Array.from(files).forEach((file) => {
-      // Duplicate check: same name and size
-      const isDuplicate = supportingDocuments.some(
-        (doc) => doc.name === file.name && doc.size === file.size
-      );
-      if (isDuplicate) {
-        setToast(`A file named "${file.name}" has already been uploaded.`);
-        setTimeout(() => setToast(null), 2000);
-        return;
-      }
-      const fileType = file.type.startsWith("image/") ? "image" : "document";
-      const fileUrl = URL.createObjectURL(file);
-      setSupportingDocuments((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          type: fileType,
-          url: fileUrl,
-          uploadDate: new Date(),
-          uploader: "You", // TODO: Replace with real user info
-          size: file.size,
-        },
-      ]);
-    });
+  // Handler for successful upload
+  const handleUploadSuccess = (doc: SupportingDocument) => {
+    if (currentGraphId) {
+      dispatch(fetchSupportingDocuments(currentGraphId));
+    }
+    setIsUploadModalOpen(false);
+    setToast('Document uploaded!');
+    setTimeout(() => setToast(null), 2000);
   };
 
   const handleDeleteDocument = (id: string) => {
@@ -664,6 +713,50 @@ const GraphCanvasInner = () => {
     event.dataTransfer.effectAllowed = "move";
   };
 
+  const handleExport = () => {
+    // Format the graph data according to the required structure
+    const graphData: ExportedGraphData = {
+      evidence: evidenceCards || [],
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        text: node.data.text,
+        type: node.data.type,
+        author: node.data.author,
+        belief: node.data.belief || 0.5,
+        position: node.position,
+        created_on: node.data.created_on || new Date().toISOString(),
+        evidenceIds: node.data.evidenceIds || [],
+      })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        weight: edge.data.edgeType === "supporting" ? 0.5 : -0.5,
+      })),
+    };
+
+    // Create a blob with the graph data
+    const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link element and trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title || 'graph'}-export.json`;
+    document.body.appendChild(link);
+    link.click();
+
+    // Clean up
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Add debug log before return
+  console.log('Rendering SupportingDocumentUploadModal:', {
+    isUploadModalOpen,
+    currentGraphId,
+    uploaderEmail: profile?.email,
+  });
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -770,15 +863,12 @@ const GraphCanvasInner = () => {
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        // Save evidence logic
-                        const doc = supportingDocuments.find(
-                          (d) => d.id === newEvidence.supportingDocId
-                        );
+                        const doc = supportingDocuments.find((d) => d.id === newEvidence.supportingDocId);
                         if (!doc) return;
                         setEvidenceCards((prev) => [
                           ...prev,
                           {
-                            id: Math.random().toString(36).substr(2, 9),
+                            id: uuidv4(),
                             title: newEvidence.title,
                             supportingDocId: doc.id,
                             supportingDocName: doc.name,
@@ -915,16 +1005,16 @@ const GraphCanvasInner = () => {
                       <h3 className="text-base font-medium tracking-wide uppercase">
                         Supporting Documents
                       </h3>
-                      <label className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm cursor-pointer">
+                      <button
+                        className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm cursor-pointer"
+                        onClick={() => {
+                          console.log('Upload button clicked');
+                          setIsUploadModalOpen(true);
+                        }}
+                        type="button"
+                      >
                         Upload
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                          multiple
-                          onChange={handleFileUpload}
-                        />
-                      </label>
+                      </button>
                     </div>
                     {/* Documents List */}
                     <div className="space-y-3">
@@ -1068,11 +1158,10 @@ const GraphCanvasInner = () => {
                 <button
                   onClick={handleDeleteNode}
                   disabled={!selectedNode}
-                  className={`px-3 py-2 rounded-md transition-colors ${
-                    selectedNode
-                      ? "bg-red-100 text-red-700 hover:bg-red-200"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`px-3 py-2 rounded-md transition-colors ${selectedNode
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}
                 >
                   <span className="text-base">Delete Node</span>
                 </button>
@@ -1082,21 +1171,19 @@ const GraphCanvasInner = () => {
                   <span className="text-sm text-gray-500">Edge:</span>
                   <button
                     onClick={() => setSelectedEdgeType("supporting")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      selectedEdgeType === "supporting"
-                        ? "bg-green-500 text-white"
-                        : "bg-green-100 text-green-700 hover:bg-green-200"
-                    }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "supporting"
+                      ? "bg-green-500 text-white"
+                      : "bg-green-100 text-green-700 hover:bg-green-200"
+                      }`}
                   >
                     Supporting
                   </button>
                   <button
                     onClick={() => setSelectedEdgeType("attacking")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      selectedEdgeType === "attacking"
-                        ? "bg-red-500 text-white"
-                        : "bg-red-100 text-red-700 hover:bg-red-200"
-                    }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "attacking"
+                      ? "bg-red-500 text-white"
+                      : "bg-red-100 text-red-700 hover:bg-red-200"
+                      }`}
                   >
                     Attacking
                   </button>
@@ -1110,7 +1197,10 @@ const GraphCanvasInner = () => {
                 <button className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors">
                   <span className="text-base text-gray-700">Share</span>
                 </button>
-                <button className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors">
+                <button
+                  onClick={handleExport}
+                  className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors"
+                >
                   <span className="text-base text-gray-700">Export</span>
                 </button>
                 <button
@@ -1248,6 +1338,13 @@ const GraphCanvasInner = () => {
           </div>
         </Panel>
       </PanelGroup>
+      <SupportingDocumentUploadModal
+        open={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        graphId={currentGraphId || ''}
+        uploaderEmail={profile?.email || ''}
+        onSuccess={handleUploadSuccess}
+      />
     </div>
   );
 };

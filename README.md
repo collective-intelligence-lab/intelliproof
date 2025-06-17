@@ -105,6 +105,43 @@ ALTER TABLE profiles
 ALTER COLUMN user_id SET DEFAULT gen_random_uuid();
 
 
+-- Supporting documents table
+create table supporting_documents (
+    id uuid primary key default gen_random_uuid(),
+    graph_id uuid references graphs(id) on delete cascade,
+    name text not null,
+    type text not null,
+    url text not null,
+    size float,
+    upload_date timestamptz default now(),
+    uploader_email text references profiles(email) on delete set null,
+    metadata jsonb default '{}'::jsonb
+);
+
+-- Create index for faster queries
+CREATE INDEX idx_supporting_documents_graph_id ON supporting_documents(graph_id);
+CREATE INDEX idx_supporting_documents_uploader ON supporting_documents(uploader_email);
+
+-- Created a storage bucket named "supporting-document-storage" With a 10mb file limite size
+
+
+-- Enable RLS on the supporting_documents table
+ALTER TABLE supporting_documents ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow all authenticated users to insert documents
+CREATE POLICY "Allow authenticated users to insert documents"
+ON supporting_documents
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Create policy to allow all authenticated users to read documents
+CREATE POLICY "Allow authenticated users to read documents"
+ON supporting_documents
+FOR SELECT
+TO authenticated
+USING (true);
+
 Backend Server 
 
 Create a file named .env in the backend directory with the following content:
@@ -126,3 +163,6 @@ TODO
 3) Secure access to the post-login pages (about, home, graph_editor)
 4) Reseach DS and Algos needed to incorporate multi-user graph editors
 5) Research policies and required triggers to secure the DB from unauthorized access
+
+npm install @supabase/supabase-js formidable
+npm install --save-dev @types/formidable

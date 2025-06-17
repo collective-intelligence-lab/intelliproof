@@ -16,6 +16,7 @@ interface Graph {
 
 export default function ProfilePage() {
     const [isNavbarOpen, setNavbarOpen] = useState(false);
+    const [supportingDocCounts, setSupportingDocCounts] = useState<{ [graphId: string]: number | null }>({});
     const dispatch = useDispatch();
     const { profile, graphs, loading, error } = useSelector((state: RootState) => state.user);
 
@@ -30,6 +31,22 @@ export default function ProfilePage() {
             dispatch(fetchUserData(accessToken));
         }
     }, [dispatch]);
+
+    // Fetch supporting document counts for all graphs
+    useEffect(() => {
+        if (graphs && graphs.length > 0) {
+            graphs.forEach((graph: Graph) => {
+                fetch(`/api/supporting-documents/count?graph_id=${graph.id}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        setSupportingDocCounts(prev => ({ ...prev, [graph.id]: typeof data.count === 'number' ? data.count : null }));
+                    })
+                    .catch(() => {
+                        setSupportingDocCounts(prev => ({ ...prev, [graph.id]: null }));
+                    });
+            });
+        }
+    }, [graphs]);
 
     // Add effect to log state changes
     useEffect(() => {
@@ -110,16 +127,36 @@ export default function ProfilePage() {
                             {graphs.length === 0 ? (
                                 <p className="text-gray-500">No graphs created yet</p>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
                                     {graphs.map((graph: Graph) => (
-                                        <div key={graph.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow w-96">
-                                            <h3 className="font-semibold mb-2">{graph.graph_name}</h3>
-                                            <p className="text-sm text-gray-500">
-                                                Created: {new Date(graph.created_at).toLocaleString()}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                Last Updated: {new Date(graph.updated_at).toLocaleString()}
-                                            </p>
+                                        <div key={graph.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
+                                            <h3 className="font-semibold mb-2 text-lg">{graph.graph_name}</h3>
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                <div className="bg-white rounded p-2">
+                                                    <div className="text-xs text-gray-600">Nodes</div>
+                                                    <div className="font-bold text-black">{graph.graph_data?.nodes?.length || 0}</div>
+                                                </div>
+                                                <div className="bg-white rounded p-2">
+                                                    <div className="text-xs text-gray-600">Connections</div>
+                                                    <div className="font-bold text-black">{graph.graph_data?.edges?.length || 0}</div>
+                                                </div>
+                                                <div className="bg-white rounded p-2">
+                                                    <div className="text-xs text-gray-600">Evidence</div>
+                                                    <div className="font-bold text-black">{graph.graph_data?.evidence?.length || 0}</div>
+                                                </div>
+                                                <div className="bg-white rounded p-2">
+                                                    <div className="text-xs text-gray-600">Supporting Documents</div>
+                                                    <div className="font-bold text-black">{supportingDocCounts[graph.id] !== undefined && supportingDocCounts[graph.id] !== null ? supportingDocCounts[graph.id] : 'Loading...'}</div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white rounded p-2 mb-1">
+                                                <div className="text-xs text-gray-600">Created On</div>
+                                                <div className="text-black text-sm">{new Date(graph.created_at).toLocaleString()}</div>
+                                            </div>
+                                            <div className="bg-white rounded p-2">
+                                                <div className="text-xs text-gray-600">Last Modified</div>
+                                                <div className="text-black text-sm">{new Date(graph.updated_at).toLocaleString()}</div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

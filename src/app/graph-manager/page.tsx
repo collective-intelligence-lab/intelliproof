@@ -9,6 +9,7 @@ import Header from "../../components/Header";
 import ContinueButton from "../../components/ContinueButton";
 import Navbar from "../../components/Navbar";
 import { fetchUserData } from "../../store/slices/userSlice";
+import type { Evidence, ClaimType } from "../../types/graph";
 
 // Placeholder for GraphCard and GraphModal components
 
@@ -19,9 +20,24 @@ interface Graph {
     owner_email: string;
     created_at: string;
     updated_at: string;
-    graph_data?: {
-        nodes: any[];
-        edges: any[];
+    graph_data: {
+        evidence: Evidence[];
+        nodes: Array<{
+            id: string;
+            text: string;
+            type: ClaimType;
+            author: string | undefined;
+            belief: number;
+            position: { x: number; y: number };
+            created_on: string;
+            evidenceIds: string[];
+        }>;
+        edges: Array<{
+            id: string;
+            source: string;
+            target: string;
+            weight: number;
+        }>;
     };
     new?: boolean;
 }
@@ -30,13 +46,15 @@ export default function GraphManagerPage() {
     const dispatch = useDispatch();
     const router = useRouter();
     const graphs = useSelector((state: RootState) => state.graphs.items as Graph[]);
-    const selected = useSelector((state: RootState) => state.graphs.selected as Graph | null);
+    const selected = useSelector((state: RootState) => state.graphs.selected as string | null);
     const loading = useSelector((state: RootState) => state.graphs.loading);
     const error = useSelector((state: RootState) => state.graphs.error);
     const userEmail = useSelector((state: RootState) => state.user.profile?.email);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newGraphName, setNewGraphName] = useState("");
     const [isNavbarOpen, setNavbarOpen] = useState(false);
+    const currentGraph = useSelector((state: RootState) => state.graphs.currentGraph as Graph | null);
+    const [supportingDocCount, setSupportingDocCount] = useState<number | null>(null);
 
     useEffect(() => {
         const accessToken = localStorage.getItem('access_token');
@@ -56,6 +74,24 @@ export default function GraphManagerPage() {
             dispatch(loadGraphs(userEmail) as any);
         }
     }, [dispatch, userEmail]);
+
+    useEffect(() => {
+        if (selected) {
+            setSupportingDocCount(null); // reset
+            fetch(`/api/supporting-documents/count?graph_id=${selected}`)
+                .then(res => res.json())
+                .then(data => setSupportingDocCount(typeof data.count === 'number' ? data.count : null))
+                .catch(() => setSupportingDocCount(null));
+        }
+    }, [selected]);
+
+    // Debug logs for modal state
+    useEffect(() => {
+        if (selected || currentGraph) {
+            console.log('[GraphManagerPage][Modal Debug] selected:', selected);
+            console.log('[GraphManagerPage][Modal Debug] currentGraph:', currentGraph);
+        }
+    }, [selected, currentGraph]);
 
     if (loading) {
         return (
@@ -106,14 +142,48 @@ export default function GraphManagerPage() {
                             <div
                                 key={graph.id}
                                 className="relative w-80 h-56 rounded-xl shadow-lg cursor-pointer overflow-hidden group"
-                                onClick={() => {
+                                onClick={async () => {
                                     console.log('[GraphManagerPage] Graph card clicked:', graph);
-                                    dispatch(setSelectedGraph(graph));
+                                    try {
+                                        // First set the selected graph ID to show the modal
+                                        dispatch(setSelectedGraph(graph.id));
+
+                                        // Then fetch the complete graph data
+                                        const accessToken = localStorage.getItem('access_token');
+                                        if (!accessToken) {
+                                            throw new Error('No access token found');
+                                        }
+
+                                        const response = await fetch(`/api/graphs/${graph.id}`, {
+                                            headers: {
+                                                'Authorization': `Bearer ${accessToken}`,
+                                                'Content-Type': 'application/json'
+                                            }
+                                        });
+
+                                        if (!response.ok) {
+                                            throw new Error('Failed to fetch graph data');
+                                        }
+
+                                        const completeGraphData = await response.json();
+                                        console.log('[GraphManagerPage][Click Handler Debug] completeGraphData:', completeGraphData);
+                                        dispatch(setCurrentGraph(completeGraphData));
+                                        console.log('[GraphManagerPage][Click Handler Debug] setCurrentGraph dispatched');
+                                    } catch (error) {
+                                        console.error('[GraphManagerPage] Error fetching graph data:', error);
+                                        alert('Failed to load graph data. Please try again.');
+                                    }
                                 }}
                             >
                                 {/* Background image */}
                                 <div className="absolute inset-0 z-0">
-                                    <Image src="/graphIcon.png" alt="Graph Icon" fill style={{ objectFit: 'fill' }} />
+                                    <Image
+                                        src="/graphIcon.png"
+                                        alt="Graph Icon"
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        style={{ objectFit: 'cover' }}
+                                    />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
                                 </div>
                                 {/* Content overlay */}
@@ -137,63 +207,60 @@ export default function GraphManagerPage() {
             {selected && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
-                        <h2 className="text-2xl font-bold mb-6 text-black">{selected.graph_name}</h2>
-                        <div className="flex gap-4 mb-6">
-                            <div className="flex-1 bg-gray-100 rounded-lg p-4">
-                                <div className="text-gray-600 text-xs mb-1">Nodes</div>
-                                <div className="text-xl font-bold text-black">{selected.graph_data?.nodes?.length || 0}</div>
+                        {currentGraph && currentGraph.id === selected ? (
+                            <>
+                                <h2 className="text-2xl font-bold mb-6 text-black">{currentGraph.graph_name}</h2>
+                                <div className="flex gap-4 mb-6">
+                                    <div className="flex-1 bg-gray-100 rounded-lg p-4">
+                                        <div className="text-gray-600 text-xs mb-1">Nodes</div>
+                                        <div className="text-xl font-bold text-black">{currentGraph.graph_data?.nodes?.length || 0}</div>
+                                    </div>
+                                    <div className="flex-1 bg-gray-100 rounded-lg p-4">
+                                        <div className="text-gray-600 text-xs mb-1">Connections</div>
+                                        <div className="text-xl font-bold text-black">{currentGraph.graph_data?.edges?.length || 0}</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 mb-6">
+                                    <div className="flex-1 bg-gray-100 rounded-lg p-4">
+                                        <div className="text-gray-600 text-xs mb-1">Evidence</div>
+                                        <div className="text-xl font-bold text-black">{currentGraph.graph_data?.evidence?.length || 0}</div>
+                                    </div>
+                                    <div className="flex-1 bg-gray-100 rounded-lg p-4">
+                                        <div className="text-gray-600 text-xs mb-1">Supporting Documents</div>
+                                        <div className="text-xl font-bold text-black">{supportingDocCount !== null ? supportingDocCount : "Loading..."}</div>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-100 rounded-lg p-4 mb-2">
+                                    <div className="text-gray-600 text-xs mb-1">Created On</div>
+                                    <div className="text-black">{currentGraph.created_at ? new Date(currentGraph.created_at).toLocaleString() : 'N/A'}</div>
+                                </div>
+                                <div className="bg-gray-100 rounded-lg p-4 mb-6">
+                                    <div className="text-gray-600 text-xs mb-1">Last Modified</div>
+                                    <div className="text-black">{currentGraph.updated_at ? new Date(currentGraph.updated_at).toLocaleString() : 'N/A'}</div>
+                                </div>
+                                <div className="flex justify-end gap-4">
+                                    <button
+                                        onClick={() => dispatch(setSelectedGraph(null))}
+                                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                    >
+                                        Close
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            router.push(`/graph-editor?id=${currentGraph.id}`);
+                                        }}
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    >
+                                        Edit Graph
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center min-h-[200px]">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mb-4"></div>
+                                <div>Loading graph details...</div>
                             </div>
-                            <div className="flex-1 bg-gray-100 rounded-lg p-4">
-                                <div className="text-gray-600 text-xs mb-1">Connections</div>
-                                <div className="text-xl font-bold text-black">{selected.graph_data?.edges?.length || 0}</div>
-                            </div>
-                        </div>
-                        <div className="bg-gray-100 rounded-lg p-4 mb-2">
-                            <div className="text-gray-600 text-xs mb-1">Created On</div>
-                            <div className="text-black text-sm">{new Date(selected.created_at).toLocaleString()}</div>
-                        </div>
-                        <div className="bg-gray-100 rounded-lg p-4 mb-2">
-                            <div className="text-gray-600 text-xs mb-1">Last Modified</div>
-                            <div className="text-black text-sm">{new Date(selected.updated_at).toLocaleString()}</div>
-                        </div>
-                        <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                            <div className="text-gray-600 text-xs mb-1">Created By</div>
-                            <div className="text-black text-sm">{selected.owner_email}</div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-4 justify-center">
-                            <div className="w-28">
-                                <button
-                                    className="bg-gray-200 px-6 h-12 w-full rounded text-black"
-                                    onClick={() => dispatch(setSelectedGraph(null))}
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                            <div className="w-28">
-                                <button
-                                    className="bg-red-600 px-6 h-12 w-full rounded text-white"
-                                    onClick={async () => {
-                                        console.log('[GraphModal] Delete button clicked:', selected.id);
-                                        await dispatch((await import('../../store/slices/graphsSlice')).deleteGraph(selected.id) as any);
-                                        dispatch(setSelectedGraph(null));
-                                    }}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                            <div className="w-28">
-                                <ContinueButton
-                                    onClick={() => {
-                                        console.log('[GraphModal] Open button clicked:', selected.id);
-                                        dispatch(setSelectedGraph(null));
-                                        window.location.href = `/graph-editor?id=${selected.id}`;
-                                    }}
-                                    className="w-full h-12"
-                                >
-                                    Open
-                                </ContinueButton>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -257,4 +324,4 @@ export default function GraphManagerPage() {
             )}
         </div>
     );
-} 
+}

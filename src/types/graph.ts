@@ -3,6 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 export type ClaimType = 'factual' | 'value' | 'policy';
 
+export type Evidence = {
+    id: string;
+    title: string;
+    supportingDocId: string;
+    supportingDocName: string;
+    excerpt: string;
+};
+
 export interface ClaimData {
     text: string;
     type: ClaimType;
@@ -63,4 +71,24 @@ export const createClaimNode = (
         justifyContent: 'center',
         textAlign: 'center'
     }
-}); 
+});
+
+export type ExportedGraphData = {
+    evidence: Evidence[];
+    nodes: Array<{
+        id: string;
+        text: string;
+        type: ClaimType;
+        author: string | undefined;
+        belief: number;
+        position: { x: number; y: number };
+        created_on: string;
+        evidenceIds: string[];
+    }>;
+    edges: Array<{
+        id: string;
+        source: string;
+        target: string;
+        weight: number;
+    }>;
+}; 

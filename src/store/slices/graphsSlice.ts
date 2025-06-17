@@ -1,20 +1,96 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
+import type { Evidence, ClaimType } from '../../types/graph';
 
-export const loadGraphs = createAsyncThunk('graphs/load', async (email: string) => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-        throw new Error('No access token found');
-    }
+export interface SupportingDocument {
+    id: string;
+    graph_id: string;
+    name: string;
+    type: string;
+    url: string;
+    size?: number;
+    upload_date?: string;
+    uploader_email?: string;
+    metadata?: any;
+}
 
-    const response = await axios.get(`/api/graphs`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+export interface GraphItem {
+    id: string;
+    graph_name: string;
+    graph_data: {
+        evidence: Evidence[];
+        nodes: Array<{
+            id: string;
+            text: string;
+            type: ClaimType;
+            author: string | undefined;
+            belief: number;
+            position: { x: number; y: number };
+            created_on: string;
+            evidenceIds: string[];
+        }>;
+        edges: Array<{
+            id: string;
+            source: string;
+            target: string;
+            weight: number;
+        }>;
+    };
+    created_at?: string;
+    updated_at?: string;
+    owner_email?: string;
+}
+
+export interface GraphsState {
+    items: GraphItem[];
+    selected: string | null;
+    currentGraph: GraphItem | null;
+    loading: boolean;
+    error: string | null;
+    supportingDocuments: { [graphId: string]: SupportingDocument[] };
+}
+
+export const fetchSupportingDocuments = createAsyncThunk(
+    'graphs/fetchSupportingDocuments',
+    async (graphId: string) => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            throw new Error('No access token found');
         }
-    });
-    return response.data;
-});
+        const response = await axios.get(`/api/supporting-documents?graph_id=${graphId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        return { graphId, documents: response.data };
+    }
+);
+
+export const loadGraphs = createAsyncThunk<GraphItem[], string, { dispatch: any }>(
+    'graphs/load',
+    async (email: string, { dispatch }) => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            throw new Error('No access token found');
+        }
+
+        const response = await axios.get(`/api/graphs`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        // For each graph, fetch supporting documents
+        for (const graph of response.data) {
+            if (graph.id) {
+                dispatch(fetchSupportingDocuments(graph.id));
+            }
+        }
+        return response.data;
+    }
+);
 
 export const saveGraph = createAsyncThunk(
     'graphs/save',
@@ -82,23 +158,26 @@ export const deleteGraph = createAsyncThunk('graphs/delete', async (id: string) 
     return id;
 });
 
+const initialState: GraphsState = {
+    items: [],
+    selected: null,
+    currentGraph: null,
+    loading: false,
+    error: null,
+    supportingDocuments: {}, // { [graphId]: SupportingDocument[] }
+};
+
 const graphsSlice = createSlice({
     name: 'graphs',
-    initialState: {
-        items: [],
-        selected: null,
-        currentGraph: null,
-        loading: false,
-        error: null
-    },
+    initialState,
     reducers: {
-        setSelectedGraph(state, action) {
+        setSelectedGraph(state, action: PayloadAction<string | null>) {
             state.selected = action.payload;
         },
-        setCurrentGraph(state, action) {
+        setCurrentGraph(state, action: PayloadAction<GraphItem | null>) {
             state.currentGraph = action.payload;
         },
-        updateCurrentGraph(state, action) {
+        updateCurrentGraph(state, action: PayloadAction<any>) {
             if (state.currentGraph) {
                 state.currentGraph.graph_data = action.payload;
             }
@@ -117,6 +196,10 @@ const graphsSlice = createSlice({
             .addCase(loadGraphs.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message || 'Failed to load graphs';
+            })
+            .addCase(fetchSupportingDocuments.fulfilled, (state, action) => {
+                const { graphId, documents } = action.payload;
+                state.supportingDocuments[graphId] = documents;
             })
             .addCase(saveGraph.fulfilled, (state, action) => {
                 const index = state.items.findIndex(g => g.id === action.payload.id);

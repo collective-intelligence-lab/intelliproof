@@ -42,11 +42,18 @@ import CustomEdge from "../Edges/CustomEdge";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../store";
 import { useRouter, useSearchParams } from "next/navigation";
-import { saveGraph, setCurrentGraph, fetchSupportingDocuments } from "../../store/slices/graphsSlice";
+import {
+  saveGraph,
+  setCurrentGraph,
+  fetchSupportingDocuments,
+} from "../../store/slices/graphsSlice";
 import { ControlButton } from "reactflow";
-import SupportingDocumentUploadModal from './SupportingDocumentUploadModal';
-import type { GraphItem, SupportingDocument } from '../../store/slices/graphsSlice';
-import { v4 as uuidv4 } from 'uuid';
+import SupportingDocumentUploadModal from "./SupportingDocumentUploadModal";
+import type {
+  GraphItem,
+  SupportingDocument,
+} from "../../store/slices/graphsSlice";
+import { v4 as uuidv4 } from "uuid";
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -125,8 +132,9 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
         onDragOver={handleEvidenceDragOver}
         onDragLeave={handleEvidenceDragLeave}
         onDrop={handleEvidenceDrop}
-        className={`w-full h-full flex items-center justify-center ${isEditing ? "nodrag" : ""
-          } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
+        className={`w-full h-full flex items-center justify-center ${
+          isEditing ? "nodrag" : ""
+        } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
         style={{ minHeight: "40px", minWidth: "100px" }}
       >
         {isEditing ? (
@@ -141,7 +149,12 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <div className="w-full text-center break-words min-h-[24px] px-2">
+          <div
+            className="w-full text-center break-words min-h-[24px] px-2"
+            style={{
+              color: "#E5E7EB",
+            }}
+          >
             {truncateText(data.text || "Click to edit")}
           </div>
         )}
@@ -244,15 +257,16 @@ const GraphCanvasInner = () => {
     const newDocs = supportingDocumentsRedux.map((doc) => ({
       id: doc.id,
       name: doc.name,
-      type: doc.type as 'document' | 'image',
+      type: doc.type as "document" | "image",
       url: doc.url,
       uploadDate: doc.upload_date ? new Date(doc.upload_date) : new Date(),
-      uploader: doc.uploader_email || 'Unknown',
+      uploader: doc.uploader_email || "Unknown",
       size: doc.size,
     }));
 
     // Only update if the documents have actually changed
-    const hasChanged = JSON.stringify(newDocs) !== JSON.stringify(supportingDocuments);
+    const hasChanged =
+      JSON.stringify(newDocs) !== JSON.stringify(supportingDocuments);
     if (hasChanged) {
       setSupportingDocuments(newDocs);
     }
@@ -265,7 +279,7 @@ const GraphCanvasInner = () => {
     if (graphId && !currentGraph?.id) {
       const graphItem = graphs.find((g: GraphItem) => g.id === graphId) || null;
       if (graphItem) {
-        console.log('Setting currentGraph from graphs:', graphItem);
+        console.log("Setting currentGraph from graphs:", graphItem);
         dispatch(setCurrentGraph(graphItem));
         setCurrentGraphId(graphId);
       }
@@ -275,7 +289,7 @@ const GraphCanvasInner = () => {
   // Add effect to fetch supporting documents when currentGraphId changes
   useEffect(() => {
     if (currentGraphId) {
-      console.log('Fetching supporting documents for graph:', currentGraphId);
+      console.log("Fetching supporting documents for graph:", currentGraphId);
       dispatch(fetchSupportingDocuments(currentGraphId));
     }
   }, [currentGraphId, dispatch]);
@@ -284,10 +298,10 @@ const GraphCanvasInner = () => {
   useEffect(() => {
     if (currentGraph && currentGraph.id) {
       setCurrentGraphId(currentGraph.id);
-      console.log('currentGraphId set:', currentGraph.id);
+      console.log("currentGraphId set:", currentGraph.id);
     }
     if (profile) {
-      console.log('Profile loaded:', profile);
+      console.log("Profile loaded:", profile);
     }
   }, [currentGraph, profile]);
 
@@ -347,10 +361,10 @@ const GraphCanvasInner = () => {
             style: {
               backgroundColor:
                 nodeData.type === "factual"
-                  ? "hsl(168, 65%, 75%)"
+                  ? "#38444D"
                   : nodeData.type === "value"
-                    ? "hsl(228, 65%, 80%)"
-                    : "hsl(48, 65%, 85%)",
+                  ? "#6B715C"
+                  : "#A3A7A9",
             },
           };
         }
@@ -370,7 +384,7 @@ const GraphCanvasInner = () => {
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: edgeData.edgeType === "supporting" ? "#22C55E" : "#EF4444",
+              color: edgeData.edgeType === "supporting" ? "#166534" : "#991B1B",
             },
           };
         }
@@ -567,10 +581,10 @@ const GraphCanvasInner = () => {
               ...node.style,
               backgroundColor:
                 updates.data?.type === "factual"
-                  ? "hsl(168, 65%, 75%)"
+                  ? "#38444D"
                   : updates.data?.type === "value"
-                    ? "hsl(228, 65%, 80%)"
-                    : "hsl(48, 65%, 85%)",
+                  ? "#6B715C"
+                  : "#A3A7A9",
             },
           };
           if (selectedNode?.id === nodeId) {
@@ -600,7 +614,7 @@ const GraphCanvasInner = () => {
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: newEdgeType === "supporting" ? "#22C55E" : "#EF4444",
+              color: newEdgeType === "supporting" ? "#166534" : "#991B1B",
             },
           };
         }
@@ -694,7 +708,7 @@ const GraphCanvasInner = () => {
       dispatch(fetchSupportingDocuments(currentGraphId));
     }
     setIsUploadModalOpen(false);
-    setToast('Document uploaded!');
+    setToast("Document uploaded!");
     setTimeout(() => setToast(null), 2000);
   };
 
@@ -736,13 +750,15 @@ const GraphCanvasInner = () => {
     };
 
     // Create a blob with the graph data
-    const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(graphData, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
 
     // Create a temporary link element and trigger the download
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `${title || 'graph'}-export.json`;
+    link.download = `${title || "graph"}-export.json`;
     document.body.appendChild(link);
     link.click();
 
@@ -752,7 +768,7 @@ const GraphCanvasInner = () => {
   };
 
   // Add debug log before return
-  console.log('Rendering SupportingDocumentUploadModal:', {
+  console.log("Rendering SupportingDocumentUploadModal:", {
     isUploadModalOpen,
     currentGraphId,
     uploaderEmail: profile?.email,
@@ -863,7 +879,9 @@ const GraphCanvasInner = () => {
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        const doc = supportingDocuments.find((d) => d.id === newEvidence.supportingDocId);
+                        const doc = supportingDocuments.find(
+                          (d) => d.id === newEvidence.supportingDocId
+                        );
                         if (!doc) return;
                         setEvidenceCards((prev) => [
                           ...prev,
@@ -1008,7 +1026,7 @@ const GraphCanvasInner = () => {
                       <button
                         className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm cursor-pointer"
                         onClick={() => {
-                          console.log('Upload button clicked');
+                          console.log("Upload button clicked");
                           setIsUploadModalOpen(true);
                         }}
                         type="button"
@@ -1134,19 +1152,19 @@ const GraphCanvasInner = () => {
                     <div className="absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[140px] z-10">
                       <button
                         onClick={() => addNode("factual")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#4FD9BD] hover:bg-opacity-10 text-base transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#38444D] hover:text-[#F3F4F6] text-base transition-colors"
                       >
                         Factual
                       </button>
                       <button
                         onClick={() => addNode("value")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#7283D9] hover:bg-opacity-10 text-base transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#6B715C] hover:text-[#F3F4F6] text-base transition-colors"
                       >
                         Value
                       </button>
                       <button
                         onClick={() => addNode("policy")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#FDD000] hover:bg-opacity-10 text-base transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#A3A7A9] hover:text-[#38444D] text-base transition-colors"
                       >
                         Policy
                       </button>
@@ -1158,10 +1176,11 @@ const GraphCanvasInner = () => {
                 <button
                   onClick={handleDeleteNode}
                   disabled={!selectedNode}
-                  className={`px-3 py-2 rounded-md transition-colors ${selectedNode
-                    ? "bg-red-100 text-red-700 hover:bg-red-200"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
+                  className={`px-3 py-2 rounded-md transition-colors ${
+                    selectedNode
+                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
                 >
                   <span className="text-base">Delete Node</span>
                 </button>
@@ -1171,19 +1190,21 @@ const GraphCanvasInner = () => {
                   <span className="text-sm text-gray-500">Edge:</span>
                   <button
                     onClick={() => setSelectedEdgeType("supporting")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "supporting"
-                      ? "bg-green-500 text-white"
-                      : "bg-green-100 text-green-700 hover:bg-green-200"
-                      }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                      selectedEdgeType === "supporting"
+                        ? "bg-[#166534] text-white"
+                        : "bg-[#166534] bg-opacity-20 text-[#166534] hover:bg-opacity-30"
+                    }`}
                   >
                     Supporting
                   </button>
                   <button
                     onClick={() => setSelectedEdgeType("attacking")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedEdgeType === "attacking"
-                      ? "bg-red-500 text-white"
-                      : "bg-red-100 text-red-700 hover:bg-red-200"
-                      }`}
+                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                      selectedEdgeType === "attacking"
+                        ? "bg-[#991B1B] text-white"
+                        : "bg-[#991B1B] bg-opacity-20 text-[#991B1B] hover:bg-opacity-30"
+                    }`}
                   >
                     Attacking
                   </button>
@@ -1243,7 +1264,7 @@ const GraphCanvasInner = () => {
                 style: { cursor: "pointer" },
                 markerEnd: {
                   type: MarkerType.ArrowClosed,
-                  color: "#22C55E",
+                  color: "#166534",
                 },
               }}
               connectionMode={ConnectionMode.Loose}
@@ -1341,8 +1362,8 @@ const GraphCanvasInner = () => {
       <SupportingDocumentUploadModal
         open={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        graphId={currentGraphId || ''}
-        uploaderEmail={profile?.email || ''}
+        graphId={currentGraphId || ""}
+        uploaderEmail={profile?.email || ""}
         onSuccess={handleUploadSuccess}
       />
     </div>

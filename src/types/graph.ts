@@ -51,17 +51,15 @@ export const createClaimNode = (
         type,
     },
     style: {
-        width: 200,
-        minHeight: 80,
-        padding: 16,
-        borderRadius: 8,
-        border: '1px solid #000000',
+        padding: '4px 10px',
+        borderRadius: 0,
+        border: '2px solid #181A1B',
         backgroundColor: type === 'factual'
-            ? 'hsl(168, 65%, 75%)'  // Lighter, softer teal for better contrast
+            ? '#38444D'
             : type === 'value'
-                ? 'hsl(228, 65%, 80%)'  // Lighter, softer indigo for better contrast
-                : 'hsl(48, 65%, 85%)', // Very light yellow for better contrast
-        color: '#1A1A1A', // Very dark grey for better readability
+                ? '#6B715C'
+                : '#A3A7A9',
+        color: '#F3F4F6',
         fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
         fontSize: '14px',
         transition: 'all 200ms ease-out',
@@ -69,7 +67,8 @@ export const createClaimNode = (
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        textAlign: 'center'
+        textAlign: 'center',
+        minHeight: 28
     }
 });
 

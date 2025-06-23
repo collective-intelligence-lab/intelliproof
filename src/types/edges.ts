@@ -17,6 +17,6 @@ export interface ClaimEdge {
 }
 
 export const EDGE_COLORS = {
-  supporting: '#22C55E', // green
-  attacking: '#EF4444',  // red
+  supporting: '#166534', // darker green
+  attacking: '#991B1B',  // darker red
 } as const; 

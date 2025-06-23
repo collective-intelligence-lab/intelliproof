@@ -1,5 +1,5 @@
 import React from "react";
-import { BaseEdge, getBezierPath } from "reactflow";
+import { BaseEdge, getBezierPath, Position } from "reactflow";
 import type { EdgeProps } from "reactflow";
 import { EDGE_COLORS, type EdgeType } from "../../types/edges";
 
@@ -7,35 +7,69 @@ interface CustomEdgeData {
   edgeType: EdgeType;
 }
 
-// Supporting edge: small arrowhead
-const ArrowMarker = ({ color }: { color: string }) => (
-  <marker
-    id="arrow-marker"
-    viewBox="0 0 7 7"
-    refX="7"
-    refY="3.5"
-    markerWidth="7"
-    markerHeight="7"
-    orient="auto-start-reverse"
-  >
-    <path d="M 0 0 L 7 3.5 L 0 7 z" fill={color} />
-  </marker>
-);
+// Helper to get a point and tangent on a cubic bezier at t
+function cubicBezierPointAndTangent(
+  t: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  x3: number,
+  y3: number
+) {
+  // Point
+  const x =
+    Math.pow(1 - t, 3) * x0 +
+    3 * Math.pow(1 - t, 2) * t * x1 +
+    3 * (1 - t) * Math.pow(t, 2) * x2 +
+    Math.pow(t, 3) * x3;
+  const y =
+    Math.pow(1 - t, 3) * y0 +
+    3 * Math.pow(1 - t, 2) * t * y1 +
+    3 * (1 - t) * Math.pow(t, 2) * y2 +
+    Math.pow(t, 3) * y3;
+  // Tangent (derivative)
+  const dx =
+    3 * Math.pow(1 - t, 2) * (x1 - x0) +
+    6 * (1 - t) * t * (x2 - x1) +
+    3 * Math.pow(t, 2) * (x3 - x2);
+  const dy =
+    3 * Math.pow(1 - t, 2) * (y1 - y0) +
+    6 * (1 - t) * t * (y2 - y1) +
+    3 * Math.pow(t, 2) * (y3 - y2);
+  return { x, y, dx, dy };
+}
 
-// Attacking edge: small circle
-const CircleMarker = ({ color }: { color: string }) => (
-  <marker
-    id="circle-marker"
-    viewBox="0 0 7 7"
-    refX="7"
-    refY="3.5"
-    markerWidth="7"
-    markerHeight="7"
-    orient="auto-start-reverse"
-  >
-    <circle cx="3.5" cy="3.5" r="3" fill={color} />
-  </marker>
-);
+// Helper to get control points (from React Flow's getBezierPath logic)
+function getControlPoints(
+  sourceX: number,
+  sourceY: number,
+  sourcePosition: Position,
+  targetX: number,
+  targetY: number,
+  targetPosition: Position,
+  curvature = 0.25
+) {
+  let cpx1 = sourceX;
+  let cpy1 = sourceY;
+  let cpx2 = targetX;
+  let cpy2 = targetY;
+  if (
+    (sourcePosition === Position.Left && targetPosition === Position.Right) ||
+    (sourcePosition === Position.Right && targetPosition === Position.Left)
+  ) {
+    const c = Math.abs(targetX - sourceX) * curvature;
+    cpx1 = sourcePosition === Position.Left ? sourceX - c : sourceX + c;
+    cpx2 = targetPosition === Position.Left ? targetX - c : targetX + c;
+  } else {
+    const c = Math.abs(targetY - sourceY) * curvature;
+    cpy1 = sourcePosition === Position.Top ? sourceY - c : sourceY + c;
+    cpy2 = targetPosition === Position.Top ? targetY - c : targetY + c;
+  }
+  return [cpx1, cpy1, cpx2, cpy2];
+}
 
 const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   id,
@@ -48,6 +82,9 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   data,
   style,
 }) => {
+  const color = EDGE_COLORS[data?.edgeType || "supporting"];
+
+  // Get the bezier path for the edge
   const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
@@ -57,19 +94,11 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
     targetPosition,
   });
 
-  const color = EDGE_COLORS[data?.edgeType || "supporting"];
-  const isAttacking = data?.edgeType === "attacking";
-
   return (
     <>
-      {isAttacking ? (
-        <CircleMarker color={color} />
-      ) : (
-        <ArrowMarker color={color} />
-      )}
+      {/* The main edge path */}
       <BaseEdge
         path={edgePath}
-        markerStart={isAttacking ? "url(#circle-marker)" : "url(#arrow-marker)"}
         style={{
           ...style,
           stroke: color,

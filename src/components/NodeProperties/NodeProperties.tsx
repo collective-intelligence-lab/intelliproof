@@ -120,28 +120,31 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
-                  ? "bg-[#4FD9BD] text-white"
-                  : "bg-[#4FD9BD] bg-opacity-10 hover:bg-opacity-20"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "factual"
+                  ? "bg-[#38444D] text-[#E5E7EB]"
+                  : "bg-[#38444D] bg-opacity-60 text-[#E5E7EB] hover:bg-opacity-80"
+              }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
-                  ? "bg-[#7283D9] text-white"
-                  : "bg-[#7283D9] bg-opacity-10 hover:bg-opacity-20"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "value"
+                  ? "bg-[#6B715C] text-[#E5E7EB]"
+                  : "bg-[#6B715C] bg-opacity-60 text-[#E5E7EB] hover:bg-opacity-80"
+              }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
-                  ? "bg-[#FDD000] text-white"
-                  : "bg-[#FDD000] bg-opacity-10 hover:bg-opacity-20"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "policy"
+                  ? "bg-[#A3A7A9] text-[#E5E7EB]"
+                  : "bg-[#A3A7A9] bg-opacity-60 text-[#E5E7EB] hover:bg-opacity-80"
+              }`}
             >
               Policy
             </button>
@@ -183,7 +186,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0 ? (
+            node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;

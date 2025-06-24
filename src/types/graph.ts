@@ -55,11 +55,11 @@ export const createClaimNode = (
         borderRadius: 0,
         border: '2px solid #181A1B',
         backgroundColor: type === 'factual'
-            ? '#38444D'
+            ? '#4A5663'
             : type === 'value'
-                ? '#6B715C'
-                : '#A3A7A9',
-        color: '#F3F4F6',
+                ? '#889178'
+                : '#888C94',
+        color: '#23272A',
         fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
         fontSize: '14px',
         transition: 'all 200ms ease-out',
@@ -83,6 +83,7 @@ export type ExportedGraphData = {
         position: { x: number; y: number };
         created_on: string;
         evidenceIds: string[];
+        style?: React.CSSProperties;
     }>;
     edges: Array<{
         id: string;

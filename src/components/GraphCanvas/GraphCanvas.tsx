@@ -358,14 +358,28 @@ const GraphCanvasInner = () => {
                 });
               },
             },
-            style: {
-              backgroundColor:
-                nodeData.type === "factual"
-                  ? "#38444D"
-                  : nodeData.type === "value"
-                  ? "#6B715C"
-                  : "#A3A7A9",
-            },
+            style: node.style ||
+              nodeData.style || {
+                backgroundColor:
+                  nodeData.type === "factual"
+                    ? "#4A5663"
+                    : nodeData.type === "value"
+                    ? "#889178"
+                    : "#888C94",
+                color: "#23272A",
+                borderRadius: 0,
+                border: "2px solid #181A1B",
+                padding: "4px 10px",
+                fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+                fontSize: "14px",
+                transition: "all 200ms ease-out",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                minHeight: 28,
+              },
           };
         }
       );
@@ -581,10 +595,11 @@ const GraphCanvasInner = () => {
               ...node.style,
               backgroundColor:
                 updates.data?.type === "factual"
-                  ? "#38444D"
+                  ? "#4A5663"
                   : updates.data?.type === "value"
-                  ? "#6B715C"
-                  : "#A3A7A9",
+                  ? "#889178"
+                  : "#888C94",
+              color: "#23272A",
             },
           };
           if (selectedNode?.id === nodeId) {
@@ -667,6 +682,7 @@ const GraphCanvasInner = () => {
           position: node.position,
           created_on: node.data.created_on || new Date().toISOString(),
           evidenceIds: node.data.evidenceIds || [],
+          style: node.style, // Save the full style object from node, not node.data
         })),
         edges: edges.map((edge) => ({
           id: edge.id,
@@ -803,7 +819,7 @@ const GraphCanvasInner = () => {
               <div className="p-4 border-b-0">
                 <div className="flex justify-end mb-2">
                   <button
-                    className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm"
+                    className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm"
                     onClick={() => setIsAddEvidenceOpen(true)}
                   >
                     + Add Evidence
@@ -1002,7 +1018,7 @@ const GraphCanvasInner = () => {
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 rounded-md bg-[#7283D9] text-white hover:bg-[#6274ca]"
+                          className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330]"
                         >
                           Save
                         </button>
@@ -1024,7 +1040,7 @@ const GraphCanvasInner = () => {
                         Supporting Documents
                       </h3>
                       <button
-                        className="px-3 py-1.5 bg-[#7283D9] text-white rounded-md hover:bg-[#6274ca] transition-colors text-sm cursor-pointer"
+                        className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm cursor-pointer"
                         onClick={() => {
                           console.log("Upload button clicked");
                           setIsUploadModalOpen(true);
@@ -1152,19 +1168,19 @@ const GraphCanvasInner = () => {
                     <div className="absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[140px] z-10">
                       <button
                         onClick={() => addNode("factual")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#38444D] hover:text-[#F3F4F6] text-base transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#4A5663] hover:text-[#23272A] text-base transition-colors"
                       >
                         Factual
                       </button>
                       <button
                         onClick={() => addNode("value")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#6B715C] hover:text-[#F3F4F6] text-base transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#889178] hover:text-[#23272A] text-base transition-colors"
                       >
                         Value
                       </button>
                       <button
                         onClick={() => addNode("policy")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#A3A7A9] hover:text-[#38444D] text-base transition-colors"
+                        className="w-full text-left px-4 py-2 hover:bg-[#888C94] hover:text-[#23272A] text-base transition-colors"
                       >
                         Policy
                       </button>
@@ -1226,7 +1242,7 @@ const GraphCanvasInner = () => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-[#7283D9] hover:bg-[#6274ca] text-white rounded-md transition-colors"
+                  className="px-4 py-2 bg-[#232F3E] hover:bg-[#1A2330] text-[#F3F4F6] rounded-md transition-colors"
                 >
                   <span className="text-base">Save</span>
                 </button>
@@ -1255,7 +1271,7 @@ const GraphCanvasInner = () => {
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               fitView
-              className="bg-white h-full"
+              className="bg-[#F7F8FA] h-full"
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
               defaultEdgeOptions={{
@@ -1273,7 +1289,7 @@ const GraphCanvasInner = () => {
               snapToGrid={true}
               snapGrid={[20, 20]}
             >
-              <Background color="#aaa" variant={BackgroundVariant.Dots} />
+              <Background color="#D1D5DB" variant={BackgroundVariant.Dots} />
               <Controls
                 showZoom={true}
                 showFitView={true}

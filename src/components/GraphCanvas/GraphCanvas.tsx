@@ -24,6 +24,7 @@ import type {
   OnEdgesChange,
   OnConnectStart,
   OnConnectEnd,
+  ReactFlowInstance,
 } from "reactflow";
 import { useState, useCallback, useRef, useEffect } from "react";
 import "reactflow/dist/style.css";
@@ -54,6 +55,30 @@ import type {
   SupportingDocument,
 } from "../../store/slices/graphsSlice";
 import { v4 as uuidv4 } from "uuid";
+import Image from "next/image";
+import {
+  PlusIcon,
+  TrashIcon,
+  ArrowPathIcon,
+  ShareIcon,
+  ArrowDownTrayIcon,
+  CheckIcon,
+  CursorArrowRaysIcon,
+  HandRaisedIcon,
+  MagnifyingGlassPlusIcon,
+  MagnifyingGlassMinusIcon,
+  ChatBubbleLeftIcon,
+  ArrowUturnLeftIcon,
+  ArrowUturnRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EllipsisVerticalIcon,
+  ArrowsPointingInIcon,
+  DocumentTextIcon,
+  DocumentCheckIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
+import { fetchUserData } from "../../store/slices/userSlice";
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -125,17 +150,29 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-4 h-4 bg-gray-400 border-2 border-white"
+        className="w-5 h-5 bg-gray-400 border-2 border-white"
       />
       <div
         onDoubleClick={handleDoubleClick}
         onDragOver={handleEvidenceDragOver}
         onDragLeave={handleEvidenceDragLeave}
         onDrop={handleEvidenceDrop}
-        className={`w-full h-full flex items-center justify-center ${
+        className={`w-full h-full flex items-center justify-center m-0 p-0 ${
           isEditing ? "nodrag" : ""
         } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
-        style={{ minHeight: "40px", minWidth: "100px" }}
+        style={{
+          minHeight: "24px",
+          minWidth: "40px",
+          maxWidth: "200px",
+          padding: 0,
+          margin: 0,
+          lineHeight: 1.2,
+          display: "flex",
+          alignItems: "center",
+          wordWrap: "break-word",
+          whiteSpace: "pre-wrap",
+          overflowWrap: "break-word",
+        }}
       >
         {isEditing ? (
           <input
@@ -145,14 +182,34 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
             onChange={(e) => setLocalText(e.target.value)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="w-full text-center bg-transparent outline-none border-b border-gray-300 px-2"
+            className="w-full text-center bg-transparent outline-none border-b border-gray-300 p-0 m-0 flex items-center justify-center"
+            style={{
+              padding: 0,
+              margin: 0,
+              minHeight: "24px",
+              maxWidth: "200px",
+              lineHeight: 1.2,
+              height: "100%",
+              wordWrap: "break-word",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "break-word",
+            }}
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <div
-            className="w-full text-center break-words min-h-[24px] px-2"
+            className="w-full text-center break-words p-0 m-0 flex items-center justify-center"
             style={{
               color: "#E5E7EB",
+              padding: 0,
+              margin: 0,
+              minHeight: "24px",
+              maxWidth: "200px",
+              lineHeight: 1.2,
+              height: "100%",
+              wordWrap: "break-word",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "break-word",
             }}
           >
             {truncateText(data.text || "Click to edit")}
@@ -162,7 +219,7 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-4 h-4 bg-gray-400 border-2 border-white"
+        className="w-5 h-5 bg-gray-400 border-2 border-white"
       />
     </>
   );
@@ -181,6 +238,10 @@ const GraphCanvasInner = () => {
   const dispatch: any = useDispatch();
   const searchParams = useSearchParams();
   const graphId = searchParams.get("id");
+  const [selectedTool, setTool] = useState<
+    "select" | "pan" | "zoom-in" | "zoom-out"
+  >("select");
+  const [isNavExpanded, setIsNavExpanded] = useState(false);
 
   const currentGraph = useSelector(
     (state: RootState) =>
@@ -206,7 +267,14 @@ const GraphCanvasInner = () => {
   const [selectedNode, setSelectedNode] = useState<ClaimNode | null>(null);
   const [selectedEdgeType, setSelectedEdgeType] =
     useState<EdgeType>("supporting");
-  const { project } = useReactFlow();
+  const { project, undo, redo, canUndo, canRedo } =
+    useReactFlow() as ReactFlowInstance & {
+      undo: () => void;
+      redo: () => void;
+      canUndo: boolean;
+      canRedo: boolean;
+    };
+  const reactFlowInstance = useReactFlow();
   const [connectingNodeId, setConnectingNodeId] = useState<string | null>(null);
   const [connectingHandleType, setConnectingHandleType] = useState<
     "source" | "target" | null
@@ -246,6 +314,11 @@ const GraphCanvasInner = () => {
     null | (typeof evidenceCards)[0]
   >(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
 
   // Use supportingDocuments from Redux
   const supportingDocumentsRedux = useSelector((state: RootState) =>
@@ -358,28 +431,27 @@ const GraphCanvasInner = () => {
                 });
               },
             },
-            style: node.style ||
-              nodeData.style || {
-                backgroundColor:
-                  nodeData.type === "factual"
-                    ? "#4A5663"
-                    : nodeData.type === "value"
-                    ? "#889178"
-                    : "#888C94",
-                color: "#23272A",
-                borderRadius: 0,
-                border: "2px solid #181A1B",
-                padding: "4px 10px",
-                fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-                fontSize: "14px",
-                transition: "all 200ms ease-out",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                minHeight: 28,
-              },
+            style: node.style || {
+              backgroundColor:
+                nodeData.type === "factual"
+                  ? "#4A5663"
+                  : nodeData.type === "value"
+                  ? "#889178"
+                  : "#888C94",
+              color: "#23272A",
+              borderRadius: 0,
+              border: "2px solid #181A1B",
+              padding: "4px 12px",
+              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+              fontSize: "16px",
+              transition: "all 200ms ease-out",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              minHeight: 32,
+            },
           };
         }
       );
@@ -789,6 +861,47 @@ const GraphCanvasInner = () => {
     currentGraphId,
     uploaderEmail: profile?.email,
   });
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as HTMLElement)
+      ) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Load user data when component mounts
+  useEffect(() => {
+    const accessToken = localStorage.getItem("access_token");
+    if (accessToken) {
+      dispatch(fetchUserData(accessToken));
+    }
+  }, [dispatch]);
+
+  // Add click outside handler for menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as HTMLElement)
+      ) {
+        setIsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    router.push("/signin");
+  };
+
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -797,7 +910,7 @@ const GraphCanvasInner = () => {
           <Panel defaultSize={20} minSize={15} maxSize={40}>
             <div className="h-full bg-white border-r border-black flex flex-col">
               {/* Evidence Header */}
-              <div className="p-4 border-b border-black flex justify-between items-center bg-[#FAFAFA] relative">
+              <div className="p-4 border-b border-black flex justify-between items-center bg-white relative">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-medium tracking-wide uppercase">
                     Evidence
@@ -826,14 +939,9 @@ const GraphCanvasInner = () => {
                   </button>
                 </div>
                 {/* Evidence cards */}
-                <div
-                  className="grid gap-3"
-                  style={{
-                    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-                  }}
-                >
+                <div className="space-y-3">
                   {evidenceCards.length === 0 ? (
-                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center text-gray-500 text-sm col-span-full">
+                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center text-gray-500 text-sm">
                       No evidence added yet.
                     </div>
                   ) : (
@@ -843,44 +951,45 @@ const GraphCanvasInner = () => {
                       );
                       const isImage = doc?.type === "image";
                       return (
-                        <button
+                        <div
                           key={card.id}
-                          className="flex flex-col items-stretch justify-between aspect-square min-h-[110px] max-h-[150px] bg-[#FAFAFA] rounded-lg border border-gray-200 shadow-sm overflow-hidden focus:outline-none hover:shadow-md transition-shadow"
+                          className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200 cursor-pointer"
                           onClick={() => setSelectedEvidenceCard(card)}
-                          type="button"
                           draggable
                           onDragStart={(e) =>
                             handleEvidenceDragStart(e, card.id)
                           }
                         >
-                          <div className="flex items-center gap-1 p-2 border-b border-gray-100">
-                            {/* Type Icon/Preview */}
-                            {isImage ? (
-                              <img
-                                src={doc?.url}
-                                alt="preview"
-                                className="w-6 h-6 object-cover rounded"
-                              />
-                            ) : (
-                              <span className="w-6 h-6 flex items-center justify-center bg-[#7283D9] text-white rounded text-xs font-bold">
-                                DOC
-                              </span>
-                            )}
+                          <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-xs truncate">
-                                {card.title}
+                              <div className="flex items-center gap-2">
+                                <span className="text-base font-medium truncate">
+                                  {card.title}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  from: {card.supportingDocName}
+                                </span>
                               </div>
-                              <span className="text-[10px] text-gray-500">
-                                from: {card.supportingDocName}
-                              </span>
+                              <div className="text-xs text-gray-700 mt-1 line-clamp-2 whitespace-pre-line">
+                                {card.excerpt}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-3">
+                              {/* Type Icon/Preview */}
+                              {isImage ? (
+                                <img
+                                  src={doc?.url}
+                                  alt="preview"
+                                  className="w-8 h-8 object-cover rounded"
+                                />
+                              ) : (
+                                <span className="w-8 h-8 flex items-center justify-center bg-[#7283D9] text-white rounded text-xs font-bold">
+                                  DOC
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div className="flex-1 p-2 overflow-hidden">
-                            <div className="text-xs text-gray-700 line-clamp-3 whitespace-pre-line">
-                              {card.excerpt}
-                            </div>
-                          </div>
-                        </button>
+                        </div>
                       );
                     })
                   )}
@@ -1120,22 +1229,25 @@ const GraphCanvasInner = () => {
         <Panel>
           <div className="relative h-full">
             {/* Floating Top Left Navbar */}
-            <div className="absolute top-6 left-6 z-10 bg-white rounded-lg shadow-lg p-3">
-              <div className="flex items-center gap-5">
-                {/* Logo */}
-                <div className="w-10 h-10 bg-[#7283D9] rounded-md flex items-center justify-center text-white font-medium text-lg">
-                  IP
+            <div className="absolute top-6 left-6 z-10 bg-white rounded-lg shadow-lg p-2 pl-3">
+              <div className="flex items-center gap-3">
+                {/* Logo and Text */}
+                <div className="flex items-center gap-2">
+                  <Image
+                    src="/logo.png"
+                    alt="intelliProof Logo"
+                    width={44}
+                    height={44}
+                  />
+                  <span className="text-2xl font-bold tracking-tight text-[#232F3E]">
+                    Intelli<span className="text-[#232F3E]">Proof</span>
+                  </span>
                 </div>
 
-                {/* User Info */}
-                {profile && (
-                  <div className="text-sm text-gray-600">
-                    {profile.first_name} {profile.last_name}
-                  </div>
-                )}
+                <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
 
                 {/* Editable Title */}
-                <div className="min-w-[150px]">
+                <div className="min-w-[100px] flex items-center justify-center">
                   {isEditing ? (
                     <input
                       type="text"
@@ -1143,121 +1255,272 @@ const GraphCanvasInner = () => {
                       onChange={(e) => setTitle(e.target.value)}
                       onKeyDown={handleTitleChange}
                       onBlur={() => setIsEditing(false)}
-                      className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-1 font-medium text-base"
+                      className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 font-medium text-lg text-center w-full"
                       autoFocus
                     />
                   ) : (
                     <span
                       onClick={() => setIsEditing(true)}
-                      className="cursor-pointer hover:bg-gray-100 px-3 py-1.5 rounded text-base"
+                      className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
                     >
                       {title}
                     </span>
                   )}
                 </div>
 
-                {/* Add Node Dropdown */}
-                <div className="relative">
+                <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
+
+                {/* Menu Button */}
+                <div className="relative flex items-center -ml-4" ref={menuRef}>
                   <button
-                    onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                    className="px-3 py-2 hover:bg-gray-100 rounded-md transition-colors"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
+                      isMenuOpen
+                        ? "bg-gray-100"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    title="Menu"
                   >
-                    <span className="text-base">Add Node</span>
+                    <EllipsisVerticalIcon
+                      className="w-9 h-9"
+                      strokeWidth={2.5}
+                    />
                   </button>
-                  {isAddNodeOpen && (
-                    <div className="absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[140px] z-10">
+                  {isMenuOpen && (
+                    <div className="absolute right-0 mt-2 top-full bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-10">
                       <button
-                        onClick={() => addNode("factual")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#4A5663] hover:text-[#23272A] text-base transition-colors"
+                        onClick={() => {
+                          router.push("/graph-manager");
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
                       >
-                        Factual
+                        <ArrowUturnLeftIcon className="w-5 h-5" />
+                        Back to Graph Manager
                       </button>
+                      <div className="w-full h-px bg-gray-200 my-1"></div>
                       <button
-                        onClick={() => addNode("value")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#889178] hover:text-[#23272A] text-base transition-colors"
+                        onClick={() => {
+                          handleLogout();
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
                       >
-                        Value
-                      </button>
-                      <button
-                        onClick={() => addNode("policy")}
-                        className="w-full text-left px-4 py-2 hover:bg-[#888C94] hover:text-[#23272A] text-base transition-colors"
-                      >
-                        Policy
+                        <ArrowUturnRightIcon className="w-5 h-5" />
+                        Log Out
                       </button>
                     </div>
                   )}
-                </div>
-
-                {/* Delete Node Button */}
-                <button
-                  onClick={handleDeleteNode}
-                  disabled={!selectedNode}
-                  className={`px-3 py-2 rounded-md transition-colors ${
-                    selectedNode
-                      ? "bg-red-100 text-red-700 hover:bg-red-200"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  <span className="text-base">Delete Node</span>
-                </button>
-
-                {/* Edge Type Selector */}
-                <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded-md">
-                  <span className="text-sm text-gray-500">Edge:</span>
-                  <button
-                    onClick={() => setSelectedEdgeType("supporting")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      selectedEdgeType === "supporting"
-                        ? "bg-[#166534] text-white"
-                        : "bg-[#166534] bg-opacity-20 text-[#166534] hover:bg-opacity-30"
-                    }`}
-                  >
-                    Supporting
-                  </button>
-                  <button
-                    onClick={() => setSelectedEdgeType("attacking")}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      selectedEdgeType === "attacking"
-                        ? "bg-[#991B1B] text-white"
-                        : "bg-[#991B1B] bg-opacity-20 text-[#991B1B] hover:bg-opacity-30"
-                    }`}
-                  >
-                    Attacking
-                  </button>
                 </div>
               </div>
             </div>
 
             {/* Floating Top Right Navbar */}
-            <div className="absolute top-6 right-6 z-10 bg-white rounded-lg shadow-lg p-3">
-              <div className="flex items-center gap-3">
-                <button className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors">
-                  <span className="text-base text-gray-700">Share</span>
+            <div className="absolute top-6 right-6 z-10 bg-white rounded-lg shadow-lg p-2">
+              <div className="flex items-center gap-4">
+                {/* Undo/Redo Buttons */}
+                <button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canUndo
+                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
+                  title="Undo"
+                >
+                  <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canRedo
+                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
+                  title="Redo"
+                >
+                  <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+
+                <div className="h-12 w-px bg-gray-200"></div>
+
+                {/* Share, Export, and Save Buttons */}
+                <button
+                  onClick={() => {
+                    /* Add share functionality */
+                  }}
+                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  title="Share"
+                >
+                  <ShareIcon className="w-8 h-8" strokeWidth={2} />
                 </button>
                 <button
                   onClick={handleExport}
-                  className="px-4 py-2 hover:bg-gray-100 rounded-md transition-colors"
+                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  title="Export"
                 >
-                  <span className="text-base text-gray-700">Export</span>
+                  <ArrowDownTrayIcon className="w-8 h-8" strokeWidth={2} />
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-[#232F3E] hover:bg-[#1A2330] text-[#F3F4F6] rounded-md transition-colors"
+                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  title="Save"
                 >
-                  <span className="text-base">Save</span>
+                  <DocumentCheckIcon className="w-8 h-8" strokeWidth={2} />
                 </button>
+
+                <div className="h-12 w-px bg-gray-200"></div>
+
+                {/* Profile Icon and Dropdown */}
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="w-12 h-12 rounded-full bg-[#232F3E] text-white flex items-center justify-center text-xl font-semibold hover:bg-[#2d3b4d] transition-colors"
+                  >
+                    <span className="pt-0.5">{profile?.first_name?.[0]}</span>
+                  </button>
+                  {isProfileOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                      <div className="px-4 py-2 text-sm text-gray-700">
+                        <div className="font-medium">
+                          {profile?.first_name} {profile?.last_name}
+                        </div>
+                        <div className="text-gray-500 truncate">
+                          {profile?.email}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Expand Button - Show when panel is closed */}
-            {!isEvidencePanelOpen && (
+            {/* Tools Navbar */}
+            <div className="absolute left-6 top-24 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-4 w-[60px]">
+              {/* Add Node Button */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
+                    isAddNodeOpen
+                      ? "bg-[#232F3E] text-white shadow-inner"
+                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
+                  title="Add Claim"
+                >
+                  <PlusIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+                {isAddNodeOpen && (
+                  <div className="absolute left-full top-0 ml-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1.5 min-w-[180px] z-10">
+                    <button
+                      onClick={() => addNode("factual")}
+                      className="w-full text-left px-5 py-2.5 hover:bg-[#4A5663] hover:text-white text-xl transition-colors"
+                    >
+                      Factual
+                    </button>
+                    <button
+                      onClick={() => addNode("value")}
+                      className="w-full text-left px-5 py-2.5 hover:bg-[#889178] hover:text-white text-xl transition-colors"
+                    >
+                      Value
+                    </button>
+                    <button
+                      onClick={() => addNode("policy")}
+                      className="w-full text-left px-5 py-2.5 hover:bg-[#888C94] hover:text-white text-xl transition-colors"
+                    >
+                      Policy
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Delete Node Button */}
               <button
-                onClick={() => setIsEvidencePanelOpen(true)}
-                className="absolute left-0 top-1/2 -translate-y-1/2 h-24 px-1 bg-white hover:bg-gray-50 flex items-center justify-center shadow-lg rounded-r transition-colors z-10"
+                onClick={handleDeleteNode}
+                disabled={!selectedNode}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  selectedNode
+                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                }`}
+                title="Delete Claim"
               >
-                <span className="text-gray-400 hover:text-gray-600">→</span>
+                <TrashIcon className="w-8 h-8" strokeWidth={2} />
               </button>
-            )}
+
+              <div className="w-full h-px bg-gray-200"></div>
+
+              {/* Edge Type Buttons */}
+              <button
+                onClick={() => setSelectedEdgeType("supporting")}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "supporting"
+                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+                title="Supporting Edge"
+              >
+                <ArrowPathIcon className="w-8 h-8 rotate-90" strokeWidth={2} />
+              </button>
+
+              <button
+                onClick={() => setSelectedEdgeType("attacking")}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "attacking"
+                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+                title="Attacking Edge"
+              >
+                <ArrowPathIcon className="w-8 h-8 -rotate-90" strokeWidth={2} />
+              </button>
+
+              <div className="w-full h-px bg-gray-200"></div>
+
+              {/* Evidence Panel Toggle */}
+              <button
+                onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  isEvidencePanelOpen
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                }`}
+                title={
+                  isEvidencePanelOpen
+                    ? "Hide Evidence Panel"
+                    : "Show Evidence Panel"
+                }
+              >
+                <DocumentTextIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Bottom Left Controls */}
+            <div className="absolute left-6 bottom-6 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-row gap-4 h-[60px]">
+              <button
+                onClick={() => reactFlowInstance.zoomIn()}
+                className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                title="Zoom In"
+              >
+                <MagnifyingGlassPlusIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+              <button
+                onClick={() => reactFlowInstance.zoomOut()}
+                className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                title="Zoom Out"
+              >
+                <MagnifyingGlassMinusIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+              <button
+                onClick={() => reactFlowInstance.fitView()}
+                className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                title="Fit View"
+              >
+                <ArrowsPointingInIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+            </div>
 
             <ReactFlow
               nodes={nodes}
@@ -1271,7 +1534,7 @@ const GraphCanvasInner = () => {
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               fitView
-              className="bg-[#F7F8FA] h-full"
+              className="bg-[#F0F1F3] h-full"
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
               defaultEdgeOptions={{
@@ -1288,13 +1551,10 @@ const GraphCanvasInner = () => {
               fitViewOptions={{ padding: 0.2 }}
               snapToGrid={true}
               snapGrid={[20, 20]}
+              proOptions={{ hideAttribution: true }}
             >
-              <Background color="#D1D5DB" variant={BackgroundVariant.Dots} />
-              <Controls
-                showZoom={true}
-                showFitView={true}
-                showInteractive={true}
-              />
+              <Background color="#6B7280" variant={BackgroundVariant.Dots} />
+              <Controls className="!hidden" />
             </ReactFlow>
 
             {selectedNode && (
@@ -1374,7 +1634,70 @@ const GraphCanvasInner = () => {
             )}
           </div>
         </Panel>
+
+        {/* AI Copilot Panel */}
+        {isAICopilotOpen && (
+          <PanelResizeHandle className="w-1 hover:w-1.5 bg-black/10 hover:bg-black/20 transition-all cursor-col-resize" />
+        )}
+
+        {isAICopilotOpen && (
+          <Panel defaultSize={25} minSize={20} maxSize={40}>
+            <div className="h-full bg-white border-l border-black flex flex-col">
+              {/* AI Copilot Header */}
+              <div className="p-4 border-b border-black flex justify-between items-center bg-white relative">
+                <div className="flex items-center gap-3">
+                  <SparklesIcon className="w-6 h-6 text-purple-500" />
+                  <h2 className="text-lg font-medium tracking-wide uppercase">
+                    AI Copilot
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setIsAICopilotOpen(false)}
+                  className="p-2 hover:bg-white rounded-md transition-colors"
+                  aria-label="Close AI copilot"
+                >
+                  <span className="text-lg">→</span>
+                </button>
+              </div>
+
+              {/* Chat Area */}
+              <div className="flex-1 overflow-auto p-4">
+                <div className="text-center text-gray-500 mt-4">
+                  AI Copilot is ready to assist you with your graph.
+                </div>
+              </div>
+
+              {/* Message Input */}
+              <div className="border-t border-gray-200 p-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Ask anything about your graph..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
+                  />
+                  <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
+                    <SparklesIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Panel>
+        )}
       </PanelGroup>
+
+      {/* AI Copilot Toggle Button */}
+      {!isAICopilotOpen && (
+        <div className="absolute right-6 bottom-6 z-10">
+          <button
+            onClick={() => setIsAICopilotOpen(!isAICopilotOpen)}
+            className={`h-[60px] w-[60px] rounded-lg transition-all duration-200 flex items-center justify-center bg-white shadow-lg text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95`}
+            title="Open AI Copilot"
+          >
+            <SparklesIcon className="w-9 h-9" strokeWidth={2} />
+          </button>
+        </div>
+      )}
+
       <SupportingDocumentUploadModal
         open={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}

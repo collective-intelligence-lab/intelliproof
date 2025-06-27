@@ -20,6 +20,9 @@ const SupportingDocumentUploadModal: React.FC<
 
   if (!open) return null;
 
+  // If required fields are missing, show loading or disable Save
+  const isReady = Boolean(graphId && uploaderEmail);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -81,62 +84,68 @@ const SupportingDocumentUploadModal: React.FC<
         <h2 className="text-lg font-semibold mb-4">
           Upload Supporting Document
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-base font-medium mb-1">Name</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
+        {!isReady ? (
+          <div className="text-center text-gray-500 py-8">
+            Loading required information...
           </div>
-          <div>
-            <label className="block text-base font-medium mb-1">Type</label>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              required
-            >
-              <option value="document">Document</option>
-              <option value="image">Image</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-base font-medium mb-1">File</label>
-            <input
-              type="file"
-              className="w-full"
-              accept={
-                type === "image"
-                  ? "image/*"
-                  : ".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-              }
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              required
-            />
-          </div>
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              type="button"
-              className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330]"
-              disabled={loading}
-            >
-              {loading ? "Uploading..." : "Save"}
-            </button>
-          </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-base font-medium mb-1">Name</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-base font-medium mb-1">Type</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                required
+              >
+                <option value="document">Document</option>
+                <option value="image">Image</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-base font-medium mb-1">File</label>
+              <input
+                type="file"
+                className="w-full"
+                accept={
+                  type === "image"
+                    ? "image/*"
+                    : ".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                }
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                required
+              />
+            </div>
+            {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330]"
+                disabled={loading || !isReady}
+              >
+                {loading ? "Uploading..." : "Save"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

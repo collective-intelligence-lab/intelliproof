@@ -8,6 +8,11 @@ import { getEmailFromSupabaseJWT } from '../../../lib/verifySupabaseToken';
 
 export const config = { api: { bodyParser: false } };
 
+// Sanitize filename to be safe for storage keys
+function sanitizeFilename(filename: string) {
+    return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -75,7 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Reading file data...');
         const fileData = fs.readFileSync(file.filepath);
-        const filePath = `${user_id}/${Date.now()}-${file.originalFilename}`;
+        const safeFilename = sanitizeFilename(file.originalFilename || 'file');
+        const filePath = `${user_id}/${Date.now()}-${safeFilename}`;
 
         console.log('Uploading to Supabase...');
         const { data, error: uploadError } = await supabase.storage

@@ -51,7 +51,8 @@ export const createClaimNode = (
         type,
     },
     style: {
-        padding: '4px 10px',
+        padding: '4px 8px',
+        margin: 0,
         borderRadius: 0,
         border: '2px solid #181A1B',
         backgroundColor: type === 'factual'
@@ -68,7 +69,14 @@ export const createClaimNode = (
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        minHeight: 28
+        minHeight: 24,
+        maxWidth: 200,
+        lineHeight: 1.2,
+        width: 'auto',
+        boxSizing: 'border-box',
+        wordWrap: 'break-word',
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'break-word'
     }
 });
 

@@ -1,0 +1,37 @@
+{
+  "nodes": [
+    { "id": "P1", "text": "Amiri disappeared during a pilgrimage to Mecca in 2009.", "type": "Factual" },
+    { "id": "P2", "text": "He reappeared in the U.S. in 2010, claiming he was kidnapped—later changed his story.", "type": "Factual" },
+    { "id": "P3", "text": "He released contradictory videos—some saying he was abducted, others saying he came freely.", "type": "Factual" },
+    { "id": "P4", "text": "U.S. officials stated he was a voluntary defector and provided useful intel.", "type": "Factual" },
+    { "id": "P5", "text": "He appeared to move freely in the U.S., enrolling in a university and giving interviews.", "type": "Factual" },
+    { "id": "P6", "text": "He was reportedly paid $5 million by the CIA.", "type": "Factual" },
+    { "id": "P7", "text": "He returned to Iran under unclear circumstances.", "type": "Factual" },
+    { "id": "P8", "text": "He was executed in 2016 for revealing secrets to the enemy.", "type": "Factual" },
+    { "id": "C1", "text": "He claimed he had been abducted by the CIA.", "type": "Factual" },
+    { "id": "C2", "text": "Iran claimed he was a loyal citizen lured by false promises.", "type": "Factual" },
+    { "id": "C3", "text": "His return may have been under duress due to threats to his family.", "type": "Factual" },
+    { "id": "C4", "text": "He may have been a double agent attempting to deceive the U.S.", "type": "Factual" },
+    { "id": "A1", "text": "Free movement and multiple videos imply he acted voluntarily.", "type": "Value" },
+    { "id": "A2", "text": "The large payment supports that he provided valuable intel to the U.S.", "type": "Value" },
+    { "id": "A3", "text": "Execution indicates Iranian belief that he committed treason.", "type": "Value" },
+    { "id": "Core", "text": "Amiri defected voluntarily, returned under pressure, and was executed for leaking secrets.", "type": "Policy" }
+  ],
+  "edges": [
+    { "from": "P1", "to": "P2", "type": "support" },
+    { "from": "P2", "to": "P3", "type": "support" },
+    { "from": "P3", "to": "C1", "type": "support" },
+    { "from": "P4", "to": "P6", "type": "support" },
+    { "from": "P5", "to": "A1", "type": "support" },
+    { "from": "P6", "to": "A2", "type": "support" },
+    { "from": "P8", "to": "A3", "type": "support" },
+    { "from": "A1", "to": "Core", "type": "support" },
+    { "from": "A2", "to": "Core", "type": "support" },
+    { "from": "A3", "to": "Core", "type": "support" },
+    { "from": "C1", "to": "Core", "type": "attack" },
+    { "from": "C2", "to": "Core", "type": "attack" },
+    { "from": "C3", "to": "Core", "type": "attack" },
+    { "from": "C4", "to": "Core", "type": "attack" }
+  ]
+}
+

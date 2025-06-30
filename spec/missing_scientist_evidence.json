@@ -1,0 +1,137 @@
+[
+  {
+    "id": "E1",
+    "title": "Initial Disappearance Report",
+    "content": "Shahram Amiri disappeared while on pilgrimage in Saudi Arabia in June 2009.",
+    "source": "BBC",
+    "type": "News Article",
+    "confidence": "High",
+    "linked_claims": [
+      "P1"
+    ],
+    "date": "2009-06-08",
+    "preview": "Amiri's disappearance raises early questions about defection or abduction..."
+  },
+  {
+    "id": "E2",
+    "title": "Wikileaks Cable: Amiri Was Recruited",
+    "content": "Leaked U.S. diplomatic cables suggest Amiri had been recruited by the CIA months before his disappearance.",
+    "source": "Wikileaks",
+    "type": "Document",
+    "confidence": "Medium",
+    "linked_claims": [
+      "P2",
+      "C1"
+    ],
+    "date": "2010-07-01",
+    "preview": "Recruitment discussed in cables dated early 2009..."
+  },
+  {
+    "id": "E3",
+    "title": "State Dept. Press Briefing",
+    "content": "U.S. State Department spokesperson denies involvement in any coercion.",
+    "source": "State Dept.",
+    "type": "Transcript",
+    "confidence": "Medium",
+    "linked_claims": [
+      "A1"
+    ],
+    "date": "2010-07-10",
+    "preview": "Official denial of any wrongdoing in the Amiri case..."
+  },
+  {
+    "id": "E4",
+    "title": "Iranian Video Allegation: Amiri Kidnapped",
+    "content": "A video surfaces allegedly showing Amiri claiming he was kidnapped and tortured by U.S. agents.",
+    "source": "YouTube",
+    "type": "Video",
+    "confidence": "Low",
+    "linked_claims": [
+      "C2"
+    ],
+    "date": "2010-06-30",
+    "preview": "Amiri claims coercion and mistreatment on video..."
+  },
+  {
+    "id": "E5",
+    "title": "Second Video: Voluntary Cooperation",
+    "content": "A different video shows Amiri claiming he traveled to the U.S. freely and was treated well.",
+    "source": "VOA",
+    "type": "Video",
+    "confidence": "Medium",
+    "linked_claims": [
+      "C3"
+    ],
+    "date": "2010-07-01",
+    "preview": "Contradictory testimony raises questions..."
+  },
+  {
+    "id": "E6",
+    "title": "CIA Debrief Summary (Leaked)",
+    "content": "Anonymous sources describe Amiri providing useful but non-critical intel on Iran\u2019s nuclear program.",
+    "source": "Reuters",
+    "type": "Memo",
+    "confidence": "Medium",
+    "linked_claims": [
+      "P3",
+      "C4"
+    ],
+    "date": "2010-07-03",
+    "preview": "Intel from Amiri considered helpful but limited..."
+  },
+  {
+    "id": "E7",
+    "title": "Return to Iran",
+    "content": "Amiri returns to Iran and is welcomed publicly but later disappears again.",
+    "source": "Al Jazeera",
+    "type": "News Article",
+    "confidence": "High",
+    "linked_claims": [
+      "P4",
+      "A2"
+    ],
+    "date": "2010-07-13",
+    "preview": "Public hero\u2019s welcome followed by re-arrest..."
+  },
+  {
+    "id": "E8",
+    "title": "Execution Report",
+    "content": "In August 2016, Iranian officials confirm Amiri was executed for espionage.",
+    "source": "Tehran Times",
+    "type": "News Article",
+    "confidence": "High",
+    "linked_claims": [
+      "Core"
+    ],
+    "date": "2016-08-07",
+    "preview": "Execution of Amiri shocks international community..."
+  },
+  {
+    "id": "E9",
+    "title": "Twitter Archive Leak",
+    "content": "Archive of tweets allegedly from U.S. intel analyst discussing Amiri\u2019s debriefing.",
+    "source": "Twitter",
+    "type": "Document",
+    "confidence": "Low",
+    "linked_claims": [
+      "C3",
+      "C4"
+    ],
+    "date": "2012-05-01",
+    "preview": "Social media post raises speculation about intel handling..."
+  },
+  {
+    "id": "E10",
+    "title": "Iranian Court Leak",
+    "content": "Leak of court summary suggests Amiri was executed for giving minor information but viewed as symbolic punishment.",
+    "source": "Wikileaks",
+    "type": "Document",
+    "confidence": "Medium",
+    "linked_claims": [
+      "C4",
+      "A3"
+    ],
+    "date": "2016-08-10",
+    "preview": "Court motives seem political rather than based on gravity of info..."
+  }
+]

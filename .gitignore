@@ -1,58 +1,69 @@
-# IntelliProof .gitignore
-
-# Node.js
-node_modules/
-.env
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# React/Vite/Next
-/build
-/dist
-/.next
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
 
-# Python
-__pycache__/
-*.py[cod]
-*.egg
-*.egg-info/
-*.pyo
-venv/
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment files
 .env
+.env.local
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!.backend/.env.example
+
+# Python specific
+backend/venv/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
 .DS_Store
+*.pem
 
-# FastAPI
-instance/
-*.db
+# local env files
+.env*.local
 
-# Testing
-coverage/
-htmlcov/
-.pytest_cache/
-.jest/
+# vercel
+.vercel
 
-# IDEs and OS
-.vscode/
-.idea/
-*.swp
-Thumbs.db
-.DS_Store
-
-# Logs and artifacts
-logs/
-*.log
-
-# Jupyter / Experiments
-.ipynb_checkpoints/
-
-# Exports
-*.pdf
-*.md.backup
-export/
-
-# Static Builds
-frontend/static/build/
-frontend/.turbo/
-frontend/.parcel-cache/
-
+# typescript
+*.tsbuildinfo
+next-env.d.ts

@@ -77,8 +77,11 @@ import {
   DocumentTextIcon,
   DocumentCheckIcon,
   SparklesIcon,
+  DocumentIcon,
 } from "@heroicons/react/24/outline";
 import { fetchUserData } from "../../store/slices/userSlice";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -468,7 +471,7 @@ const GraphCanvasInner = () => {
             data: {
               edgeType: edgeData.edgeType || "supporting",
             },
-            markerEnd: {
+            markerStart: {
               type: MarkerType.ArrowClosed,
               color: edgeData.edgeType === "supporting" ? "#166534" : "#991B1B",
             },
@@ -544,6 +547,10 @@ const GraphCanvasInner = () => {
         type: "custom",
         data: {
           edgeType: selectedEdgeType,
+        },
+        markerStart: {
+          type: MarkerType.ArrowClosed,
+          color: selectedEdgeType === "supporting" ? "#166534" : "#991B1B",
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
@@ -629,6 +636,10 @@ const GraphCanvasInner = () => {
           data: {
             edgeType: selectedEdgeType,
           },
+          markerStart: {
+            type: MarkerType.ArrowClosed,
+            color: selectedEdgeType === "supporting" ? "#166534" : "#991B1B",
+          },
         };
 
         setNodes((nds) => [...nds, newNode]);
@@ -699,7 +710,7 @@ const GraphCanvasInner = () => {
               ...e.data,
               edgeType: newEdgeType,
             },
-            markerEnd: {
+            markerStart: {
               type: MarkerType.ArrowClosed,
               color: newEdgeType === "supporting" ? "#166534" : "#991B1B",
             },
@@ -853,6 +864,38 @@ const GraphCanvasInner = () => {
     // Clean up
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      // Get the ReactFlow canvas element
+      const element = document.querySelector(".react-flow") as HTMLElement;
+      if (!element) {
+        throw new Error("Could not find ReactFlow canvas");
+      }
+
+      // Create a canvas from the ReactFlow element
+      const canvas = await html2canvas(element, {
+        backgroundColor: "#ffffff",
+      });
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+
+      // Add the canvas image to the PDF
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+
+      // Save the PDF
+      pdf.save(`${title || "graph"}-report.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF report. Please try again.");
+    }
   };
 
   // Add debug log before return
@@ -1346,7 +1389,7 @@ const GraphCanvasInner = () => {
 
                 <div className="h-12 w-px bg-gray-200"></div>
 
-                {/* Share, Export, and Save Buttons */}
+                {/* Share, Export, Save, and Generate Report Buttons */}
                 <button
                   onClick={() => {
                     /* Add share functionality */
@@ -1369,6 +1412,13 @@ const GraphCanvasInner = () => {
                   title="Save"
                 >
                   <DocumentCheckIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+                <button
+                  onClick={handleGenerateReport}
+                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  title="Generate Report"
+                >
+                  <DocumentIcon className="w-8 h-8" strokeWidth={2} />
                 </button>
 
                 <div className="h-12 w-px bg-gray-200"></div>
@@ -1416,19 +1466,19 @@ const GraphCanvasInner = () => {
                   <div className="absolute left-full top-0 ml-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1.5 min-w-[180px] z-10">
                     <button
                       onClick={() => addNode("factual")}
-                      className="w-full text-left px-5 py-2.5 hover:bg-[#4A5663] hover:text-white text-xl transition-colors"
+                      className="w-full text-left px-5 py-2.5 text-[#4A5663] hover:bg-[#4A5663] hover:text-white text-xl transition-colors"
                     >
                       Factual
                     </button>
                     <button
                       onClick={() => addNode("value")}
-                      className="w-full text-left px-5 py-2.5 hover:bg-[#889178] hover:text-white text-xl transition-colors"
+                      className="w-full text-left px-5 py-2.5 text-[#889178] hover:bg-[#889178] hover:text-white text-xl transition-colors"
                     >
                       Value
                     </button>
                     <button
                       onClick={() => addNode("policy")}
-                      className="w-full text-left px-5 py-2.5 hover:bg-[#888C94] hover:text-white text-xl transition-colors"
+                      className="w-full text-left px-5 py-2.5 text-[#888C94] hover:bg-[#888C94] hover:text-white text-xl transition-colors"
                     >
                       Policy
                     </button>
@@ -1541,7 +1591,7 @@ const GraphCanvasInner = () => {
                 type: "custom",
                 animated: true,
                 style: { cursor: "pointer" },
-                markerEnd: {
+                markerStart: {
                   type: MarkerType.ArrowClosed,
                   color: "#166534",
                 },

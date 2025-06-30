@@ -122,8 +122,8 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
               onClick={() => handleTypeChange("factual")}
               className={`px-4 py-2 rounded-md text-base transition-colors ${
                 node.data.type === "factual"
-                  ? "bg-[#4A5663] text-[#23272A]"
-                  : "bg-[#4A5663] bg-opacity-60 text-[#23272A] hover:bg-opacity-80"
+                  ? "bg-[#4A5663] text-white"
+                  : "bg-[#4A5663] bg-opacity-60 text-[#4A5663] hover:bg-opacity-80 hover:text-white"
               }`}
             >
               Factual
@@ -132,8 +132,8 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
               onClick={() => handleTypeChange("value")}
               className={`px-4 py-2 rounded-md text-base transition-colors ${
                 node.data.type === "value"
-                  ? "bg-[#889178] text-[#23272A]"
-                  : "bg-[#889178] bg-opacity-60 text-[#23272A] hover:bg-opacity-80"
+                  ? "bg-[#889178] text-white"
+                  : "bg-[#889178] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-white"
               }`}
             >
               Value
@@ -142,8 +142,8 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
               onClick={() => handleTypeChange("policy")}
               className={`px-4 py-2 rounded-md text-base transition-colors ${
                 node.data.type === "policy"
-                  ? "bg-[#888C94] text-[#23272A]"
-                  : "bg-[#888C94] bg-opacity-60 text-[#23272A] hover:bg-opacity-80"
+                  ? "bg-[#888C94] text-white"
+                  : "bg-[#888C94] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-white"
               }`}
             >
               Policy

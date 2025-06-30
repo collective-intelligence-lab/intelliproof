@@ -10,7 +10,7 @@ export interface ClaimEdge {
   data: {
     edgeType: EdgeType;
   };
-  markerEnd?: {
+  markerStart?: {
     type: MarkerType;
     color?: string;
   };

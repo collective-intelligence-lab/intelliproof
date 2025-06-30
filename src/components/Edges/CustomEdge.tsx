@@ -81,6 +81,8 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   targetPosition,
   data,
   style,
+  markerStart,
+  markerEnd,
 }) => {
   const color = EDGE_COLORS[data?.edgeType || "supporting"];
 
@@ -95,19 +97,18 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   });
 
   return (
-    <>
-      {/* The main edge path */}
-      <BaseEdge
-        path={edgePath}
-        style={{
-          ...style,
-          stroke: color,
-          strokeWidth: 2,
-          strokeDasharray: "none",
-          transition: "stroke 0.3s",
-        }}
-      />
-    </>
+    <BaseEdge
+      path={edgePath}
+      style={{
+        ...style,
+        stroke: color,
+        strokeWidth: 2,
+        strokeDasharray: "none",
+        transition: "stroke 0.3s",
+      }}
+      markerStart={markerStart}
+      markerEnd={markerEnd}
+    />
   );
 };
 

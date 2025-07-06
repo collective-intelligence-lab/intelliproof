@@ -54,12 +54,12 @@ export const createClaimNode = (
         padding: '4px 8px',
         margin: 0,
         borderRadius: 0,
-        border: '2px solid #181A1B',
+        border: '1px solid #181A1B',
         backgroundColor: type === 'factual'
-            ? '#4A5663'
+            ? '#4A5663cc'
             : type === 'value'
-                ? '#889178'
-                : '#888C94',
+                ? '#889178cc'
+                : '#888C94cc',
         color: '#23272A',
         fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
         fontSize: '14px',

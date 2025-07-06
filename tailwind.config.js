@@ -12,6 +12,9 @@ export default {
       fontFamily: {
         josefin: ["Josefin Sans", "sans-serif"],
       },
+      fontWeight: {
+        DEFAULT: 100,
+      },
     },
   },
   plugins: [],

@@ -437,13 +437,13 @@ const GraphCanvasInner = () => {
             style: node.style || {
               backgroundColor:
                 nodeData.type === "factual"
-                  ? "#4A5663"
+                  ? "#4A5663cc"
                   : nodeData.type === "value"
-                  ? "#889178"
-                  : "#888C94",
+                  ? "#889178cc"
+                  : "#888C94cc",
               color: "#23272A",
               borderRadius: 0,
-              border: "2px solid #181A1B",
+              border: "1px solid #181A1B",
               padding: "4px 12px",
               fontFamily: "Josefin Sans, Century Gothic, sans-serif",
               fontSize: "16px",
@@ -678,10 +678,10 @@ const GraphCanvasInner = () => {
               ...node.style,
               backgroundColor:
                 updates.data?.type === "factual"
-                  ? "#4A5663"
+                  ? "#4A5663cc"
                   : updates.data?.type === "value"
-                  ? "#889178"
-                  : "#888C94",
+                  ? "#889178cc"
+                  : "#888C94cc",
               color: "#23272A",
             },
           };

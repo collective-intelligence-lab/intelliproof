@@ -17,6 +17,7 @@ const SupportingDocumentUploadModal: React.FC<
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confidence, setConfidence] = useState(0.5);
 
   if (!open) return null;
 
@@ -59,6 +60,7 @@ const SupportingDocumentUploadModal: React.FC<
           type,
           url,
           uploader_email: uploaderEmail,
+          confidence,
         },
         {
           headers: {
@@ -125,6 +127,21 @@ const SupportingDocumentUploadModal: React.FC<
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 required
               />
+            </div>
+            <div>
+              <label className="block text-base font-medium mb-1">Confidence</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={confidence}
+                  onChange={e => setConfidence(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
+                />
+                <span className="text-sm text-gray-500 w-12 text-right">{Math.round(confidence * 100)}%</span>
+              </div>
             </div>
             {error && <div className="text-red-500 text-sm">{error}</div>}
             <div className="flex justify-end gap-2 mt-4">

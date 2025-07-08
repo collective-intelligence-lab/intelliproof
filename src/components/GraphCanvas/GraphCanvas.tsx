@@ -312,6 +312,7 @@ const GraphCanvasInner = () => {
       supportingDocId: string;
       supportingDocName: string;
       excerpt: string;
+      confidence: number;
     }>
   >([]);
   const [selectedEvidenceCard, setSelectedEvidenceCard] = useState<
@@ -502,7 +503,10 @@ const GraphCanvasInner = () => {
   // Load evidence from graph_data when currentGraph changes
   useEffect(() => {
     if (currentGraph?.graph_data?.evidence) {
-      setEvidenceCards(currentGraph.graph_data.evidence);
+      setEvidenceCards(currentGraph.graph_data.evidence.map(ev => ({
+        ...ev,
+        confidence: typeof ev.confidence === 'number' ? ev.confidence : 0.5,
+      })));
     } else {
       setEvidenceCards([]);
     }
@@ -959,6 +963,62 @@ const GraphCanvasInner = () => {
     router.push("/signin");
   };
 
+  // Add state for AI Copilot chat messages and loading
+  const [copilotMessages, setCopilotMessages] = useState<{ role: string; content: string }[]>([]);
+  const [copilotLoading, setCopilotLoading] = useState(false);
+
+  // Handler for Claim icon click
+  const handleClaimCredibility = async () => {
+    if (!selectedNode) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        { role: 'system', content: 'Please select a claim node to analyze its credibility.' },
+      ]);
+      return;
+    }
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      { role: 'user', content: 'Analyze claim credibility for selected node.' },
+    ]);
+    try {
+      // Gather evidence scores from the selected node
+      const evidence = Array.isArray(selectedNode.data.evidenceIds)
+        ? selectedNode.data.evidenceIds.map(() => 0) // fallback: 0 for each evidence
+        : [];
+      // Fallback: if no evidenceScores, just use an empty array
+      const response = await fetch('/api/ai/get-claim-credibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidence }),
+      });
+      if (!response.ok) throw new Error('Failed to fetch credibility.');
+      const data = await response.json();
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: 'assistant',
+          content: `Initial evidence aggregation (Eᵢ): ${data.E_i.toFixed(3)} (from Nᵢ = ${data.N_i} evidence items).`,
+        },
+      ]);
+    } catch (err) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        { role: 'system', content: 'Error: Could not compute claim credibility.' },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
+  const handleUpdateEvidenceConfidence = (evidenceId: string, confidence: number) => {
+    setEvidenceCards((prev) =>
+      prev.map((ev) =>
+        ev.id === evidenceId ? { ...ev, confidence } : ev
+      )
+    );
+  };
+
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -1073,6 +1133,7 @@ const GraphCanvasInner = () => {
                             supportingDocId: doc.id,
                             supportingDocName: doc.name,
                             excerpt: newEvidence.excerpt,
+                            confidence: 0.5,
                           },
                         ]);
                         closeEvidenceModal();
@@ -1624,6 +1685,7 @@ const GraphCanvasInner = () => {
                 onUpdate={handleNodeUpdate}
                 evidenceCards={evidenceCards}
                 supportingDocuments={supportingDocuments}
+                onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
               />
             )}
 
@@ -1733,11 +1795,17 @@ const GraphCanvasInner = () => {
                 <div className="text-center text-gray-500 mt-4">
                   AI Copilot is ready to assist you with your graph.
                 </div>
+                <div className="mt-4 space-y-2">
+                  {copilotMessages.map((msg, idx) => (
+                    <div key={idx} className={`text-left text-sm ${msg.role === 'assistant' ? 'text-blue-700' : msg.role === 'system' ? 'text-gray-500' : 'text-black'}`}>{msg.content}</div>
+                  ))}
+                  {copilotLoading && <div className="text-purple-500 text-sm">Analyzing claim credibility...</div>}
+                </div>
               </div>
 
               {/* Message Input */}
               <div className="border-t border-gray-200 p-4">
-                <div className="relative">
+                <div className="relative mb-6">
                   <input
                     type="text"
                     placeholder="Ask anything about your graph..."
@@ -1746,6 +1814,35 @@ const GraphCanvasInner = () => {
                   <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
                     <SparklesIcon className="w-5 h-5" />
                   </button>
+                </div>
+                {/* AI Functionality Section */}
+                <div className="flex flex-row justify-between gap-4 mt-4">
+                  {/* Claim Section */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-semibold mb-1">Claim</span>
+                    <button
+                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                      title="Compute claim credibility: Aggregates evidence for the selected claim and returns the initial credibility score (Eᵢ)."
+                      onClick={handleClaimCredibility}
+                      disabled={copilotLoading}
+                    >
+                      <HandRaisedIcon className="w-6 h-6 text-gray-700" />
+                    </button>
+                  </div>
+                  {/* Edge Section */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-semibold mb-1">Edge</span>
+                    <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+                      <ArrowPathIcon className="w-6 h-6 text-gray-700" />
+                    </button>
+                  </div>
+                  {/* Graph Section */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-semibold mb-1">Graph</span>
+                    <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+                      <SparklesIcon className="w-6 h-6 text-gray-700" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

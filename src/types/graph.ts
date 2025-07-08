@@ -9,6 +9,7 @@ export type Evidence = {
     supportingDocId: string;
     supportingDocName: string;
     excerpt: string;
+    confidence: number; // [0,1], user-specified, default 0.5
 };
 
 export interface ClaimData {

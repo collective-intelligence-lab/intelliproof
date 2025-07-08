@@ -84,6 +84,34 @@ import { fetchUserData } from "../../store/slices/userSlice";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
+const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
+  const common: React.CSSProperties = {
+    color: "#000000",
+    border: "1px solid #181A1B",
+    borderRadius: 0,
+    padding: "4px 12px",
+    fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+    fontSize: "16px",
+    transition: "all 200ms ease-out",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    minHeight: 32,
+  };
+  switch (type) {
+    case "factual":
+      return { ...common, backgroundColor: "#05142766" };
+    case "value":
+      return { ...common, backgroundColor: "#530f1e66" };
+    case "policy":
+      return { ...common, backgroundColor: "#00000066" };
+    default:
+      return { ...common, backgroundColor: "#05142766" };
+  }
+};
+
 const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localText, setLocalText] = useState(data.text);
@@ -405,10 +433,83 @@ const GraphCanvasInner = () => {
         console.error("No graph ID in currentGraph:", currentGraph);
       }
 
+      // Helper for node style
+      const getNodeStyle = (type: string) => {
+        switch (type) {
+          case "factual":
+            return {
+              backgroundColor: "#05142766",
+              color: "#000000",
+              border: "1px solid #181A1B",
+              borderRadius: 0,
+              padding: "4px 12px",
+              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+              fontSize: "16px",
+              transition: "all 200ms ease-out",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              minHeight: 32,
+            };
+          case "value":
+            return {
+              backgroundColor: "#530f1e66",
+              color: "#000000",
+              border: "1px solid #181A1B",
+              borderRadius: 0,
+              padding: "4px 12px",
+              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+              fontSize: "16px",
+              transition: "all 200ms ease-out",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              minHeight: 32,
+            };
+          case "policy":
+            return {
+              backgroundColor: "#00000066",
+              color: "#000000",
+              border: "1px solid #181A1B",
+              borderRadius: 0,
+              padding: "4px 12px",
+              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+              fontSize: "16px",
+              transition: "all 200ms ease-out",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              minHeight: 32,
+            };
+          default:
+            return {
+              backgroundColor: "#05142766",
+              color: "#000000",
+              border: "1px solid #181A1B",
+              borderRadius: 0,
+              padding: "4px 12px",
+              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
+              fontSize: "16px",
+              transition: "all 200ms ease-out",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              minHeight: 32,
+            };
+        }
+      };
+
       // Transform nodes to include required ReactFlow properties
       const formattedNodes = (currentGraph.graph_data?.nodes || []).map(
         (node) => {
-          // If node.data is undefined, fallback to node itself (for legacy data)
           const nodeData = node.data || node;
           return {
             id: node.id,
@@ -427,7 +528,6 @@ const GraphCanvasInner = () => {
               },
               evidenceIds: nodeData.evidenceIds || [],
               onEvidenceDrop: (evidenceId: string) => {
-                // Add evidenceId to this node
                 handleNodeUpdate(node.id, {
                   data: {
                     ...nodeData,
@@ -436,27 +536,7 @@ const GraphCanvasInner = () => {
                 });
               },
             },
-            style: node.style || {
-              backgroundColor:
-                nodeData.type === "factual"
-                  ? "#05142766"
-                  : nodeData.type === "value"
-                    ? "#530f1e66"
-                    : "#00000066",
-              color: "#000000",
-              borderRadius: 0,
-              border: "1px solid #181A1B",
-              padding: "4px 12px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "16px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-              minHeight: 32,
-            },
+            style: getNodeStyle(nodeData.type || node.type),
           };
         }
       );
@@ -681,6 +761,7 @@ const GraphCanvasInner = () => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
+          const newType = updates.data?.type || node.data.type;
           const updatedNode = {
             ...node,
             ...updates,
@@ -693,16 +774,7 @@ const GraphCanvasInner = () => {
                 });
               },
             },
-            style: {
-              ...node.style,
-              backgroundColor:
-                updates.data?.type === "factual"
-                  ? "#556B2F66" // olive green with 40% opacity
-                  : updates.data?.type === "value"
-                    ? "#1B365D66" // navy blue with 40% opacity
-                    : "#4B505566", // grey with 40% opacity
-              color: "#000000",
-            },
+            style: getNodeStyle(newType),
           };
           if (selectedNode?.id === nodeId) {
             setSelectedNode(updatedNode);
@@ -783,7 +855,6 @@ const GraphCanvasInner = () => {
           position: node.position,
           created_on: node.data.created_on || new Date().toISOString(),
           evidenceIds: node.data.evidenceIds || [],
-          style: node.style,
         })),
         edges: edges.map((edge) => ({
           id: edge.id,

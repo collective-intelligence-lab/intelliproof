@@ -69,7 +69,7 @@ export const createClaimNode = (
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        textAlign: 'center',
+        textAlign: 'center' as 'center',
         minHeight: 24,
         maxWidth: 200,
         lineHeight: 1.2,

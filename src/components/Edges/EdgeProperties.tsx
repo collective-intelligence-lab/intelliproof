@@ -14,40 +14,38 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   onClose,
   onUpdate,
 }) => {
-  const [confidence, setConfidence] = useState(0.5);
-  const [edgeType, setEdgeType] = useState<EdgeType>("supporting");
+  const [confidence, setConfidence] = useState(0);
 
   useEffect(() => {
     if (edge) {
-      setConfidence(edge.data.confidence || 0.5);
-      setEdgeType(edge.data.edgeType);
+      setConfidence(edge.data.confidence ?? 0);
     }
   }, [edge]);
 
   if (!edge) return null;
 
-  const handleTypeChange = (newType: EdgeType) => {
-    setEdgeType(newType);
-    onUpdate(edge.id, {
-      data: {
-        ...edge.data,
-        edgeType: newType,
-      },
-      markerStart: {
-        type: MarkerType.ArrowClosed,
-        color: EDGE_COLORS[newType],
-      },
-    });
-  };
-
   const handleConfidenceChange = (newConfidence: number) => {
     setConfidence(newConfidence);
+    // Determine edge type based on confidence sign
+    const newEdgeType: EdgeType = newConfidence >= 0 ? "supporting" : "attacking";
     onUpdate(edge.id, {
       data: {
         ...edge.data,
         confidence: newConfidence,
+        edgeType: newEdgeType,
+      },
+      markerStart: {
+        type: MarkerType.ArrowClosed,
+        color: EDGE_COLORS[newEdgeType],
       },
     });
+  };
+
+  // Helper function to get confidence display value
+  const getConfidenceDisplay = (conf: number) => {
+    const absValue = Math.abs(conf);
+    const sign = conf >= 0 ? "+" : "-";
+    return `${sign}${Math.round(absValue * 100)}%`;
   };
 
   return (
@@ -66,33 +64,6 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 
       {/* Content */}
       <div className="space-y-6">
-        {/* Edge Type */}
-        <div>
-          <label className="block text-base font-medium mb-2">Edge Type</label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleTypeChange("supporting")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                edge.data.edgeType === "supporting"
-                  ? "bg-[#166534] text-white"
-                  : "bg-[#166534] bg-opacity-60 text-[#166534] hover:bg-opacity-80 hover:text-white"
-              }`}
-            >
-              Supporting
-            </button>
-            <button
-              onClick={() => handleTypeChange("attacking")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                edge.data.edgeType === "attacking"
-                  ? "bg-[#991B1B] text-white"
-                  : "bg-[#991B1B] bg-opacity-60 text-[#991B1B] hover:bg-opacity-80 hover:text-white"
-              }`}
-            >
-              Attacking
-            </button>
-          </div>
-        </div>
-
         {/* Confidence Slider */}
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -100,12 +71,12 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               Confidence Level
             </label>
             <span className="text-sm text-gray-500">
-              {Math.round(confidence * 100)}%
+              {getConfidenceDisplay(confidence)}
             </span>
           </div>
           <input
             type="range"
-            min="0"
+            min="-1"
             max="1"
             step="0.01"
             value={confidence}
@@ -113,8 +84,9 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
           />
           <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>Low</span>
-            <span>High</span>
+            <span>Strong Attack (-100%)</span>
+            <span>Neutral (0%)</span>
+            <span>Strong Support (+100%)</span>
           </div>
         </div>
       </div>

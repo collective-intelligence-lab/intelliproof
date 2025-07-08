@@ -8,8 +8,12 @@ export interface ClaimEdge {
   target: string;
   type: 'custom';  // we'll create a custom edge type
   data: {
+    /**
+     * Confidence level from -1 to 1. Negative = attack, positive = support.
+     * The edge type is determined by the sign of confidence.
+     */
     edgeType: EdgeType;
-    confidence: number;  // confidence level from 0 to 1
+    confidence: number;
   };
   markerStart?: {
     type: MarkerType;

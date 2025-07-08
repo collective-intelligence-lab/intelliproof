@@ -161,9 +161,8 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
         onDragOver={handleEvidenceDragOver}
         onDragLeave={handleEvidenceDragLeave}
         onDrop={handleEvidenceDrop}
-        className={`w-full h-full flex items-center justify-center m-0 p-0 ${
-          isEditing ? "nodrag" : ""
-        } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
+        className={`w-full h-full flex items-center justify-center m-0 p-0 ${isEditing ? "nodrag" : ""
+          } ${isDragOver ? "ring-2 ring-[#7283D9] bg-[#F0F4FF]" : ""}`}
         style={{
           minHeight: "24px",
           minWidth: "40px",
@@ -441,8 +440,8 @@ const GraphCanvasInner = () => {
                 nodeData.type === "factual"
                   ? "#05142766"
                   : nodeData.type === "value"
-                  ? "#530f1e66"
-                  : "#00000066",
+                    ? "#530f1e66"
+                    : "#00000066",
               color: "#000000",
               borderRadius: 0,
               border: "1px solid #181A1B",
@@ -464,19 +463,29 @@ const GraphCanvasInner = () => {
       // Transform edges to include required ReactFlow properties
       const formattedEdges = (currentGraph.graph_data?.edges || []).map(
         (edge) => {
-          const edgeData = edge.data || edge;
+          let edgeType: EdgeType = "supporting";
+          let confidence: number = 0;
+          // If edge is a ClaimEdge (has 'data'), use its data
+          if ('data' in edge && edge.data) {
+            edgeType = edge.data.edgeType || "supporting";
+            confidence = edge.data.confidence ?? 0;
+          } else if ('weight' in edge && typeof edge.weight === 'number') {
+            // Legacy or exported edge
+            confidence = edge.weight;
+            edgeType = edge.weight >= 0 ? "supporting" : "attacking";
+          }
           return {
             id: edge.id,
             source: edge.source,
             target: edge.target,
             type: "custom" as const,
             data: {
-              edgeType: edgeData.edgeType || "supporting",
-              confidence: edgeData.confidence || 0.5,
+              edgeType,
+              confidence,
             },
             markerStart: {
               type: MarkerType.ArrowClosed,
-              color: edgeData.edgeType === "supporting" ? "#166534" : "#991B1B",
+              color: edgeType === "supporting" ? "#166534" : "#991B1B",
             },
           };
         }
@@ -549,17 +558,17 @@ const GraphCanvasInner = () => {
         target: params.target!,
         type: "custom" as const,
         data: {
-          edgeType: selectedEdgeType,
-          confidence: 0.5,
+          edgeType: "supporting", // default, will be updated by user
+          confidence: 0,
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
-          color: selectedEdgeType === "supporting" ? "#166534" : "#991B1B",
+          color: "#166534",
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
     },
-    [selectedEdgeType, edges]
+    [edges]
   );
 
   const onConnectStart: OnConnectStart = useCallback(
@@ -638,12 +647,12 @@ const GraphCanvasInner = () => {
             connectingHandleType === "source" ? newNode.id : connectingNodeId,
           type: "custom" as const,
           data: {
-            edgeType: selectedEdgeType,
-            confidence: 0.5,
+            edgeType: "supporting", // default, will be updated by user
+            confidence: 0,
           },
           markerStart: {
             type: MarkerType.ArrowClosed,
-            color: selectedEdgeType === "supporting" ? "#166534" : "#991B1B",
+            color: "#166534",
           },
         };
 
@@ -651,7 +660,7 @@ const GraphCanvasInner = () => {
         setEdges((eds) => [...eds, newEdge]);
       }, 0);
     },
-    [connectingNodeId, connectingHandleType, project, selectedEdgeType]
+    [connectingNodeId, connectingHandleType, project]
   );
 
   const handleNodeClick = (event: React.MouseEvent, node: Node) => {
@@ -686,8 +695,8 @@ const GraphCanvasInner = () => {
                 updates.data?.type === "factual"
                   ? "#556B2F66" // olive green with 40% opacity
                   : updates.data?.type === "value"
-                  ? "#1B365D66" // navy blue with 40% opacity
-                  : "#4B505566", // grey with 40% opacity
+                    ? "#1B365D66" // navy blue with 40% opacity
+                    : "#4B505566", // grey with 40% opacity
               color: "#000000",
             },
           };
@@ -739,6 +748,8 @@ const GraphCanvasInner = () => {
     }
   }, [selectedNode]);
 
+  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+
   const handleSave = async () => {
     try {
       // Add debug logging
@@ -764,7 +775,7 @@ const GraphCanvasInner = () => {
           text: node.data.text,
           type: node.data.type,
           author: node.data.author,
-          belief: node.data.belief || 0.5,
+          belief: clamp(node.data.belief ?? 0.5, 0, 1),
           position: node.position,
           created_on: node.data.created_on || new Date().toISOString(),
           evidenceIds: node.data.evidenceIds || [],
@@ -774,9 +785,7 @@ const GraphCanvasInner = () => {
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          weight:
-            edge.data.confidence *
-            (edge.data.edgeType === "supporting" ? 1 : -1),
+          weight: clamp(edge.data.confidence, -1, 1),
         })),
       };
 
@@ -840,7 +849,7 @@ const GraphCanvasInner = () => {
         text: node.data.text,
         type: node.data.type,
         author: node.data.author,
-        belief: node.data.belief || 0.5,
+        belief: clamp(node.data.belief ?? 0.5, 0, 1),
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
         evidenceIds: node.data.evidenceIds || [],
@@ -849,8 +858,7 @@ const GraphCanvasInner = () => {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        weight:
-          edge.data.confidence * (edge.data.edgeType === "supporting" ? 1 : -1),
+        weight: clamp(edge.data.confidence, -1, 1),
       })),
     };
 
@@ -1323,11 +1331,10 @@ const GraphCanvasInner = () => {
                 <div className="relative flex items-center -ml-4" ref={menuRef}>
                   <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
-                      isMenuOpen
-                        ? "bg-gray-100"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
+                    className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
+                      ? "bg-gray-100"
+                      : "text-gray-700 hover:bg-gray-100"
+                      }`}
                     title="Menu"
                   >
                     <EllipsisVerticalIcon
@@ -1371,11 +1378,10 @@ const GraphCanvasInner = () => {
                 <button
                   onClick={undo}
                   disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    canUndo
-                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
+                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                    }`}
                   title="Undo"
                 >
                   <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
@@ -1383,11 +1389,10 @@ const GraphCanvasInner = () => {
                 <button
                   onClick={redo}
                   disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    canRedo
-                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
+                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                    }`}
                   title="Redo"
                 >
                   <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
@@ -1459,11 +1464,10 @@ const GraphCanvasInner = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
-                    isAddNodeOpen
-                      ? "bg-[#232F3E] text-white shadow-inner"
-                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    }`}
                   title="Add Claim"
                 >
                   <PlusIcon className="w-8 h-8" strokeWidth={2} />
@@ -1496,11 +1500,10 @@ const GraphCanvasInner = () => {
               <button
                 onClick={handleDeleteNode}
                 disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  selectedNode
-                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
+                  ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                  : "text-gray-300 cursor-not-allowed"
+                  }`}
                 title="Delete Claim"
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
@@ -1511,11 +1514,10 @@ const GraphCanvasInner = () => {
               {/* Edge Type Buttons */}
               <button
                 onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "supporting"
-                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "supporting"
+                  ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="Supporting Edge"
               >
                 <ArrowPathIcon className="w-8 h-8 rotate-90" strokeWidth={2} />
@@ -1523,11 +1525,10 @@ const GraphCanvasInner = () => {
 
               <button
                 onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "attacking"
-                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "attacking"
+                  ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="Attacking Edge"
               >
                 <ArrowPathIcon className="w-8 h-8 -rotate-90" strokeWidth={2} />
@@ -1538,11 +1539,10 @@ const GraphCanvasInner = () => {
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  isEvidencePanelOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
+                  ? "bg-[#232F3E] text-white shadow-inner"
+                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
                 title={
                   isEvidencePanelOpen
                     ? "Hide Evidence Panel"

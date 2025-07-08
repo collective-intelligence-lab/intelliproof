@@ -9,6 +9,7 @@ export interface ClaimEdge {
   type: 'custom';  // we'll create a custom edge type
   data: {
     edgeType: EdgeType;
+    confidence: number;  // confidence level from 0 to 1
   };
   markerStart?: {
     type: MarkerType;

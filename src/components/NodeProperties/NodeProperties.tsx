@@ -36,10 +36,12 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
 }) => {
   const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
+  const [confidence, setConfidence] = useState(0.5);
 
   useEffect(() => {
     if (node) {
       setText(node.data.text);
+      setConfidence(node.data.belief || 0.5);
     }
   }, [node]);
 
@@ -60,6 +62,16 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
       data: {
         ...node.data,
         text: newText,
+      },
+    });
+  };
+
+  const handleConfidenceChange = (newConfidence: number) => {
+    setConfidence(newConfidence);
+    onUpdate(node.id, {
+      data: {
+        ...node.data,
+        belief: newConfidence,
       },
     });
   };
@@ -161,6 +173,31 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
             className="w-full px-4 py-2.5 bg-[#FAFAFA] rounded-md text-base outline-none focus:ring-1 focus:ring-black min-h-[100px] resize-y"
             placeholder="Enter node text..."
           />
+        </div>
+
+        {/* Confidence Slider */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-base font-medium">
+              Confidence Level
+            </label>
+            <span className="text-sm text-gray-500">
+              {Math.round(confidence * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={confidence}
+            onChange={(e) => handleConfidenceChange(parseFloat(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>Low</span>
+            <span>High</span>
+          </div>
         </div>
 
         {/* Evidence Section */}

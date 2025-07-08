@@ -39,6 +39,7 @@ import {
 } from "../../types/graph";
 import type { ClaimEdge, EdgeType } from "../../types/edges";
 import NodeProperties from "../NodeProperties/NodeProperties";
+import EdgeProperties from "../Edges/EdgeProperties";
 import CustomEdge from "../Edges/CustomEdge";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../store";
@@ -268,6 +269,7 @@ const GraphCanvasInner = () => {
   const [edges, setEdges] = useState<ClaimEdge[]>([]);
   const [isAddNodeOpen, setIsAddNodeOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<ClaimNode | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<ClaimEdge | null>(null);
   const [selectedEdgeType, setSelectedEdgeType] =
     useState<EdgeType>("supporting");
   const { project, undo, redo, canUndo, canRedo } =
@@ -437,11 +439,11 @@ const GraphCanvasInner = () => {
             style: node.style || {
               backgroundColor:
                 nodeData.type === "factual"
-                  ? "#4A5663cc"
+                  ? "#05142766"
                   : nodeData.type === "value"
-                  ? "#889178cc"
-                  : "#888C94cc",
-              color: "#23272A",
+                  ? "#530f1e66"
+                  : "#00000066",
+              color: "#000000",
               borderRadius: 0,
               border: "1px solid #181A1B",
               padding: "4px 12px",
@@ -470,6 +472,7 @@ const GraphCanvasInner = () => {
             type: "custom" as const,
             data: {
               edgeType: edgeData.edgeType || "supporting",
+              confidence: edgeData.confidence || 0.5,
             },
             markerStart: {
               type: MarkerType.ArrowClosed,
@@ -544,9 +547,10 @@ const GraphCanvasInner = () => {
         id: `e${params.source}-${params.target}`,
         source: params.source!,
         target: params.target!,
-        type: "custom",
+        type: "custom" as const,
         data: {
           edgeType: selectedEdgeType,
+          confidence: 0.5,
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
@@ -632,9 +636,10 @@ const GraphCanvasInner = () => {
             connectingHandleType === "source" ? connectingNodeId : newNode.id,
           target:
             connectingHandleType === "source" ? newNode.id : connectingNodeId,
-          type: "custom",
+          type: "custom" as const,
           data: {
             edgeType: selectedEdgeType,
+            confidence: 0.5,
           },
           markerStart: {
             type: MarkerType.ArrowClosed,
@@ -656,6 +661,7 @@ const GraphCanvasInner = () => {
 
   const handlePaneClick = () => {
     setSelectedNode(null);
+    setSelectedEdge(null);
   };
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<ClaimNode>) => {
@@ -678,11 +684,11 @@ const GraphCanvasInner = () => {
               ...node.style,
               backgroundColor:
                 updates.data?.type === "factual"
-                  ? "#4A5663cc"
+                  ? "#556B2F66" // olive green with 40% opacity
                   : updates.data?.type === "value"
-                  ? "#889178cc"
-                  : "#888C94cc",
-              color: "#23272A",
+                  ? "#1B365D66" // navy blue with 40% opacity
+                  : "#4B505566", // grey with 40% opacity
+              color: "#000000",
             },
           };
           if (selectedNode?.id === nodeId) {
@@ -697,22 +703,19 @@ const GraphCanvasInner = () => {
 
   const onEdgeClick = (event: React.MouseEvent, edge: Edge) => {
     event.stopPropagation();
-    const claimEdge = edge as ClaimEdge;
-    const newEdgeType: EdgeType =
-      claimEdge.data.edgeType === "supporting" ? "attacking" : "supporting";
+    setSelectedEdge(edge as ClaimEdge);
+  };
 
+  const handleEdgeUpdate = (edgeId: string, updates: Partial<ClaimEdge>) => {
     setEdges((eds) =>
       eds.map((e) => {
-        if (e.id === edge.id) {
+        if (e.id === edgeId) {
           return {
             ...e,
+            ...updates,
             data: {
               ...e.data,
-              edgeType: newEdgeType,
-            },
-            markerStart: {
-              type: MarkerType.ArrowClosed,
-              color: newEdgeType === "supporting" ? "#166534" : "#991B1B",
+              ...updates.data,
             },
           };
         }
@@ -765,13 +768,15 @@ const GraphCanvasInner = () => {
           position: node.position,
           created_on: node.data.created_on || new Date().toISOString(),
           evidenceIds: node.data.evidenceIds || [],
-          style: node.style, // Save the full style object from node, not node.data
+          style: node.style,
         })),
         edges: edges.map((edge) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          weight: edge.data.edgeType === "supporting" ? 0.5 : -0.5,
+          weight:
+            edge.data.confidence *
+            (edge.data.edgeType === "supporting" ? 1 : -1),
         })),
       };
 
@@ -844,7 +849,8 @@ const GraphCanvasInner = () => {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        weight: edge.data.edgeType === "supporting" ? 0.5 : -0.5,
+        weight:
+          edge.data.confidence * (edge.data.edgeType === "supporting" ? 1 : -1),
       })),
     };
 
@@ -1595,6 +1601,10 @@ const GraphCanvasInner = () => {
                   type: MarkerType.ArrowClosed,
                   color: "#166534",
                 },
+                data: {
+                  edgeType: "supporting",
+                  confidence: 0.5,
+                },
               }}
               connectionMode={ConnectionMode.Loose}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
@@ -1614,6 +1624,14 @@ const GraphCanvasInner = () => {
                 onUpdate={handleNodeUpdate}
                 evidenceCards={evidenceCards}
                 supportingDocuments={supportingDocuments}
+              />
+            )}
+
+            {selectedEdge && (
+              <EdgeProperties
+                edge={selectedEdge}
+                onClose={() => setSelectedEdge(null)}
+                onUpdate={handleEdgeUpdate}
               />
             )}
 

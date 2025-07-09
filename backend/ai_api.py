@@ -1,7 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Body
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import math
+import openai
+import os
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 router = APIRouter()
 
@@ -17,19 +23,62 @@ class EdgeModel(BaseModel):
     target: str
     weight: float
 
+
+
+
 class CredibilityPropagationRequest(BaseModel):
     nodes: List[NodeModel]
     edges: List[EdgeModel]
-    lambda_: Optional[float] = Field(0.7, alias="lambda")
-    epsilon: Optional[float] = 0.01
-    max_iterations: Optional[int] = 20
-    evidence_min: Optional[float] = -1.0
-    evidence_max: Optional[float] = 1.0
+    lambda_: float = Field(default=0.5, description="Weight parameter for evidence vs. neighbor influence")
+    max_iterations: int = Field(default=100, description="Maximum number of iterations")
+    epsilon: float = Field(default=1e-6, description="Convergence threshold")
+    evidence_min: Optional[float] = Field(default=0.0, description="Global minimum evidence value")
+    evidence_max: Optional[float] = Field(default=1.0, description="Global maximum evidence value")
 
 class CredibilityPropagationResponse(BaseModel):
     initial_evidence: Dict[str, float]
     iterations: List[Dict[str, float]]
     final_scores: Dict[str, float]
+
+class EvidenceModel(BaseModel):
+    id: str
+    title: str
+    supportingDocId: str
+    supportingDocName: str
+    excerpt: str
+    confidence: float
+
+class SupportingDocumentModel(BaseModel):
+    id: str
+    name: str
+    type: str
+    url: str
+    size: Optional[float] = None
+    uploadDate: Optional[str] = None
+    uploader: Optional[str] = None
+    metadata: Optional[dict] = None
+
+class NodeWithEvidenceModel(BaseModel):
+    id: str
+    text: str
+    type: str
+    evidenceIds: Optional[List[str]] = []
+
+class CheckEvidenceRequest(BaseModel):
+    nodes: List[NodeWithEvidenceModel]
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+class EvidenceEvaluation(BaseModel):
+    node_id: str
+    evidence_id: str
+    evaluation: str  # yes, no, unsure, unrelated
+    reasoning: str
+    confidence: float
+
+class CheckEvidenceResponse(BaseModel):
+    results: List[EvidenceEvaluation]
+
 
 # --- Endpoints ---
 @router.post("/api/ai/get-claim-credibility", response_model=CredibilityPropagationResponse)
@@ -88,10 +137,66 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
         final_scores=final_scores
     )
 
-# --- Placeholders for other endpoints ---
-@router.post("/api/ai/check-evidence")
-def check_evidence():
-    pass
+def map_evaluation_to_confidence(evaluation: str) -> float:
+    mapping = {
+        "yes": 1.0,
+        "no": 0.0,
+        "unsure": 0.5,
+        "unrelated": 0.1,
+    }
+    return mapping.get(evaluation.lower(), 0.5)
+
+@router.post("/api/ai/check-evidence", response_model=CheckEvidenceResponse)
+def check_evidence(data: CheckEvidenceRequest = Body(...)):
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
+    openai.api_key = OPENAI_API_KEY
+    results = []
+    for node in data.nodes:
+        for eid in node.evidenceIds or []:
+            evidence = next((e for e in data.evidence if e.id == eid), None)
+            if not evidence:
+                continue
+            doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
+            prompt = f"""
+Claim: {node.text}
+Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc.name if doc else ''}\n
+Question: Does the above evidence support the claim?\nRespond with one of: yes, no, unsure, or unrelated.\nThen explain your reasoning in 1-2 sentences.\nFormat:\nEvaluation: <yes|no|unsure|unrelated>\nReasoning: <your explanation>
+"""
+            try:
+                response = openai.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are an expert fact-checker and argument analyst."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=256
+                )
+                content = response.choices[0].message.content.strip()
+                eval_val = "unsure"
+                reasoning = content
+                for line in content.splitlines():
+                    if line.lower().startswith("evaluation:"):
+                        eval_val = line.split(":", 1)[1].strip().lower()
+                    if line.lower().startswith("reasoning:"):
+                        reasoning = line.split(":", 1)[1].strip()
+                confidence = map_evaluation_to_confidence(eval_val)
+                results.append(EvidenceEvaluation(
+                    node_id=node.id,
+                    evidence_id=evidence.id,
+                    evaluation=eval_val,
+                    reasoning=reasoning,
+                    confidence=confidence
+                ))
+            except Exception as e:
+                results.append(EvidenceEvaluation(
+                    node_id=node.id,
+                    evidence_id=evidence.id,
+                    evaluation="unsure",
+                    reasoning=f"Error: {str(e)}",
+                    confidence=0.5
+                ))
+    return CheckEvidenceResponse(results=results)
 
 @router.post("/api/ai/classify-claim-type")
 def classify_claim_type():
@@ -120,3 +225,35 @@ def critique_graph():
 @router.post("/api/ai/export-report")
 def export_report():
     pass 
+
+@router.post("/api/ai/extract-text-from-image")
+async def extract_text_from_image(
+    file: UploadFile = File(...),
+    summarize: bool = False
+):
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
+    try:
+        # Read image bytes
+        image_bytes = await file.read()
+        # Use OpenAI Vision API (GPT-4-vision-preview)
+        openai.api_key = OPENAI_API_KEY
+        prompt = "Extract all readable text from this image." if not summarize else "Summarize the content of this image."
+        response = openai.chat.completions.create(
+            model="gpt-4-vision-preview",
+            messages=[
+                {"role": "system", "content": "You are an expert OCR and summarizer."},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"data": image_bytes}}
+                    ]
+                }
+            ],
+            max_tokens=512
+        )
+        result = response.choices[0].message.content
+        return {"text": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 

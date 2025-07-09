@@ -81,11 +81,13 @@ import {
   DocumentIcon,
   LockClosedIcon,
   LockOpenIcon,
+  DocumentMagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { fetchUserData } from "../../store/slices/userSlice";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import ChatBox from "../ChatBox";
+import { extractTextFromImage } from '../../lib/extractImageText';
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const common: React.CSSProperties = {
@@ -356,6 +358,9 @@ const GraphCanvasInner = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
   const [isAICopilotFrozen, setIsAICopilotFrozen] = useState(false);
+  // Add state for loading OCR
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   // Use supportingDocuments from Redux
   const supportingDocumentsRedux = useSelector((state: RootState) =>
@@ -1134,6 +1139,82 @@ const GraphCanvasInner = () => {
     }
   };
 
+  // Handler for Check Evidence icon click
+  const handleCheckEvidence = async () => {
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      { role: 'user', content: 'Check evidence for each claim.' },
+    ]);
+    try {
+      // Prepare request body
+      const requestBody = {
+        nodes: nodes.map((node) => ({
+          id: node.id,
+          text: node.data.text,
+          type: node.data.type,
+          evidenceIds: node.data.evidenceIds || [],
+        })),
+        evidence: evidenceCards,
+        supportingDocuments: supportingDocumentsRedux,
+      };
+      const response = await fetch('/api/ai/check-evidence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        let errorMsg = "Failed to check evidence.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch { }
+        throw new Error(errorMsg);
+      }
+      const data = await response.json();
+      // Display each result as a message in the copilot
+      data.results.forEach((result: any) => {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: 'ai',
+            content: `Claim Node: ${result.node_id}\nEvidence: ${result.evidence_id}\nEvaluation: ${result.evaluation}\nReasoning: ${result.reasoning}\nConfidence: ${result.confidence}`,
+          },
+        ]);
+      });
+      // Aggregate confidence for each node and update node belief
+      const nodeConfidenceMap: { [nodeId: string]: number[] } = {};
+      data.results.forEach((result: any) => {
+        if (!nodeConfidenceMap[result.node_id]) nodeConfidenceMap[result.node_id] = [];
+        nodeConfidenceMap[result.node_id].push(result.confidence);
+      });
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          if (nodeConfidenceMap[node.id]) {
+            const avgConfidence =
+              nodeConfidenceMap[node.id].reduce((a, b) => a + b, 0) /
+              nodeConfidenceMap[node.id].length;
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                belief: avgConfidence,
+              },
+            };
+          }
+          return node;
+        })
+      );
+    } catch (err: any) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        { role: 'ai', content: `Error: ${err.message}` },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
   const handleUpdateEvidenceConfidence = (evidenceId: string, confidence: number) => {
     setEvidenceCards((prev) =>
       prev.map((ev) =>
@@ -1335,6 +1416,9 @@ const GraphCanvasInner = () => {
                           );
                         }
                         if (doc && doc.type === "image") {
+                          // NOTE: To enable OCR, you must track the File object for each uploaded image in state and associate it with the supporting document entry.
+                          // If the File object is not available, disable the button and show a message.
+                          const fileObj = undefined; // <-- You must implement logic to track the File object for each image
                           return (
                             <div>
                               <label className="block text-base font-medium mb-1">
@@ -1352,6 +1436,28 @@ const GraphCanvasInner = () => {
                                   }))
                                 }
                               />
+                              <button
+                                type="button"
+                                className="mt-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                disabled={ocrLoading || !fileObj}
+                                onClick={async () => {
+                                  setOcrError(null);
+                                  setOcrLoading(true);
+                                  try {
+                                    if (!fileObj) throw new Error('Image file not found. Please upload a new image or ensure the file is available.');
+                                    const text = await extractTextFromImage(fileObj, false);
+                                    setNewEvidence(ev => ({ ...ev, excerpt: text }));
+                                  } catch (err: any) {
+                                    setOcrError(err.message);
+                                  } finally {
+                                    setOcrLoading(false);
+                                  }
+                                }}
+                              >
+                                {ocrLoading ? 'Extracting...' : 'Extract Text from Image'}
+                              </button>
+                              {!fileObj && <div className="text-yellow-600 text-xs mt-1">Image file not available for OCR. Please upload a new image to enable this feature.</div>}
+                              {ocrError && <div className="text-red-500 text-xs mt-1">{ocrError}</div>}
                             </div>
                           );
                         }
@@ -1992,6 +2098,18 @@ const GraphCanvasInner = () => {
                       disabled={copilotLoading}
                     >
                       <HandRaisedIcon className="w-6 h-6 text-gray-700" />
+                    </button>
+                  </div>
+                  {/* Check Evidence Section */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-semibold mb-1">Check Evidence</span>
+                    <button
+                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                      title="Check evidence for each claim: Evaluates whether each piece of evidence supports its linked claim."
+                      onClick={handleCheckEvidence}
+                      disabled={copilotLoading}
+                    >
+                      <DocumentMagnifyingGlassIcon className="w-6 h-6 text-gray-700" />
                     </button>
                   </div>
                   {/* Edge Section */}

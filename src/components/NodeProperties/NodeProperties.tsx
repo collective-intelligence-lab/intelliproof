@@ -126,7 +126,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   };
 
   return (
-    <div className="fixed right-6 top-24 w-[400px] bg-white rounded-lg shadow-lg p-6 z-50">
+    <div className="fixed right-6 top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-medium">Claim Properties</h2>

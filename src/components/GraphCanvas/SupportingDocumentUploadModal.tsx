@@ -82,7 +82,7 @@ const SupportingDocumentUploadModal: React.FC<
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-[18rem] p-6 relative">
         <h2 className="text-lg font-semibold mb-4">
           Upload Supporting Document
         </h2>

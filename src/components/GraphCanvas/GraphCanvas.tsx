@@ -751,9 +751,17 @@ const GraphCanvasInner = () => {
     [connectingNodeId, connectingHandleType, project]
   );
 
+  // --- Selection logic: only one selection at a time ---
   const handleNodeClick = (event: React.MouseEvent, node: Node) => {
     event.stopPropagation();
     setSelectedNode(node as ClaimNode);
+    setSelectedEdge(null); // Deselect edge
+  };
+
+  const handleEdgeClick = (event: React.MouseEvent, edge: Edge) => {
+    event.stopPropagation();
+    setSelectedEdge(edge as ClaimEdge);
+    setSelectedNode(null); // Deselect node
   };
 
   const handlePaneClick = () => {
@@ -1044,28 +1052,18 @@ const GraphCanvasInner = () => {
 
   // Handler for Claim icon click
   const handleClaimCredibility = async () => {
-    if (!selectedNode) {
-      setCopilotMessages((msgs) => [
-        ...msgs,
-        { role: 'system', content: 'Please select a claim node to analyze its credibility.' },
-      ]);
-      return;
-    }
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
-      { role: 'user', content: 'Analyze claim credibility for selected node.' },
+      { role: 'user', content: 'Analyze claim credibility for the graph.' },
     ]);
     try {
-      // Gather evidence scores from the selected node
-      const evidence = Array.isArray(selectedNode.data.evidenceIds)
-        ? selectedNode.data.evidenceIds.map(() => 0.5) // Use 0.5 as default confidence
-        : [0.5]; // If no evidence, use a default value
-
-      // Construct nodes array from all nodes in the graph
+      // Gather evidence scores for all nodes
       const requestNodes = nodes.map(node => ({
         id: node.id,
-        evidence: node.id === selectedNode.id ? evidence : [0.3], // Other nodes get default evidence
+        evidence: Array.isArray(node.data.evidenceIds)
+          ? node.data.evidenceIds.map(() => 0.5) // Use 0.5 as default confidence
+          : [0.5], // If no evidence, use a default value
         evidence_min: -1.0,
         evidence_max: 1.0
       }));
@@ -1113,11 +1111,17 @@ const GraphCanvasInner = () => {
       }
 
       const data = await response.json();
+      // Map node IDs to their text for display
+      const nodeIdToText = Object.fromEntries(nodes.map(node => [node.id, node.data.text]));
+      // Build a readable string for the scores, tabbed and rounded to 5 decimal places, with node text in quotes
+      const scoresList = Object.entries(data.final_scores)
+        .map(([id, score]) => `"${nodeIdToText[id] ? nodeIdToText[id] : id}"\t${(score as number).toFixed(5)}`)
+        .join('<br />');
       setCopilotMessages((msgs) => [
         ...msgs,
         {
           role: 'assistant',
-          content: `Claim credibility computed successfully. Final scores: ${JSON.stringify(data.final_scores, null, 2)}`,
+          content: `Claim credibility computed successfully.<br />${scoresList}`,
         },
       ]);
     } catch (err: any) {
@@ -1766,7 +1770,7 @@ const GraphCanvasInner = () => {
               onConnect={onConnect}
               onConnectStart={onConnectStart}
               onConnectEnd={onConnectEnd}
-              onEdgeClick={onEdgeClick}
+              onEdgeClick={handleEdgeClick} // <-- update this
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               fitView
@@ -1797,23 +1801,42 @@ const GraphCanvasInner = () => {
               <Controls className="!hidden" />
             </ReactFlow>
 
-            {selectedNode && (
-              <NodeProperties
-                node={selectedNode}
-                onClose={() => setSelectedNode(null)}
-                onUpdate={handleNodeUpdate}
-                evidenceCards={evidenceCards}
-                supportingDocuments={supportingDocuments}
-                onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
-              />
-            )}
-
-            {selectedEdge && (
-              <EdgeProperties
-                edge={selectedEdge}
-                onClose={() => setSelectedEdge(null)}
-                onUpdate={handleEdgeUpdate}
-              />
+            {/* Properties Modal beside AI Copilot */}
+            {(selectedNode || selectedEdge) && (
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 80, // adjust as needed
+                  right: isAICopilotOpen ? '27vw' : 0, // leave space for Copilot if open
+                  zIndex: 50,
+                  width: 270,
+                  maxWidth: '67.5vw',
+                  background: 'white',
+                  boxShadow: '0 2px 16px rgba(0,0,0,0.08)',
+                  borderRadius: 16,
+                  border: '1px solid #eee',
+                  padding: 0,
+                  transition: 'right 0.3s',
+                }}
+              >
+                {selectedNode && !selectedEdge && (
+                  <NodeProperties
+                    node={selectedNode}
+                    onClose={() => setSelectedNode(null)}
+                    onUpdate={handleNodeUpdate}
+                    evidenceCards={evidenceCards}
+                    supportingDocuments={supportingDocuments}
+                    onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
+                  />
+                )}
+                {selectedEdge && !selectedNode && (
+                  <EdgeProperties
+                    edge={selectedEdge}
+                    onClose={() => setSelectedEdge(null)}
+                    onUpdate={handleEdgeUpdate}
+                  />
+                )}
+              </div>
             )}
 
             {/* Evidence Card Preview Modal */}
@@ -1931,7 +1954,14 @@ const GraphCanvasInner = () => {
                 <div className="mt-4 space-y-2">
                   {copilotMessages.map((msg, idx) => (
                     <ChatBox key={idx}>
-                      <span className={`text-left text-sm ${msg.role === 'assistant' ? 'text-blue-700' : msg.role === 'system' ? 'text-gray-500' : 'text-black'}`}>{msg.content}</span>
+                      {msg.role === 'assistant' ? (
+                        <span
+                          className={`text-left text-sm text-blue-700`}
+                          dangerouslySetInnerHTML={{ __html: msg.content }}
+                        />
+                      ) : (
+                        <span className={`text-left text-sm ${msg.role === 'system' ? 'text-gray-500' : 'text-black'}`}>{msg.content}</span>
+                      )}
                     </ChatBox>
                   ))}
                   {copilotLoading && <ChatBox><span className="text-purple-500 text-sm">Analyzing claim credibility...</span></ChatBox>}

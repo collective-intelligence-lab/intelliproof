@@ -79,10 +79,13 @@ import {
   DocumentCheckIcon,
   SparklesIcon,
   DocumentIcon,
+  LockClosedIcon,
+  LockOpenIcon,
 } from "@heroicons/react/24/outline";
 import { fetchUserData } from "../../store/slices/userSlice";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import ChatBox from "../ChatBox";
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const common: React.CSSProperties = {
@@ -352,6 +355,7 @@ const GraphCanvasInner = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
+  const [isAICopilotFrozen, setIsAICopilotFrozen] = useState(false);
 
   // Use supportingDocuments from Redux
   const supportingDocumentsRedux = useSelector((state: RootState) =>
@@ -1055,27 +1059,71 @@ const GraphCanvasInner = () => {
     try {
       // Gather evidence scores from the selected node
       const evidence = Array.isArray(selectedNode.data.evidenceIds)
-        ? selectedNode.data.evidenceIds.map(() => 0) // fallback: 0 for each evidence
-        : [];
-      // Fallback: if no evidenceScores, just use an empty array
+        ? selectedNode.data.evidenceIds.map(() => 0.5) // Use 0.5 as default confidence
+        : [0.5]; // If no evidence, use a default value
+
+      // Construct nodes array from all nodes in the graph
+      const requestNodes = nodes.map(node => ({
+        id: node.id,
+        evidence: node.id === selectedNode.id ? evidence : [0.3], // Other nodes get default evidence
+        evidence_min: -1.0,
+        evidence_max: 1.0
+      }));
+
+      // Construct edges array from all edges in the graph
+      const requestEdges = edges.map(edge => ({
+        source: edge.source,
+        target: edge.target,
+        weight: edge.data.confidence || 0.5
+      }));
+
+      const requestBody = {
+        nodes: requestNodes,
+        edges: requestEdges,
+        lambda: 0.7,
+        epsilon: 0.01,
+        max_iterations: 20,
+        evidence_min: -1.0,
+        evidence_max: 1.0
+      };
+
+      console.log('Sending request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch('/api/ai/get-claim-credibility', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ evidence }),
+        body: JSON.stringify(requestBody),
       });
-      if (!response.ok) throw new Error('Failed to fetch credibility.');
+
+      if (!response.ok) {
+        let errorMsg = "Failed to fetch credibility.";
+        try {
+          const errorData = await response.json();
+          if (response.status === 422 && errorData.detail) {
+            errorMsg = "Invalid request format. Please ensure nodes and edges are provided.";
+          } else if (errorData.detail) {
+            errorMsg = typeof errorData.detail === "string"
+              ? errorData.detail
+              : JSON.stringify(errorData.detail);
+          }
+        } catch {
+          errorMsg = "Failed to fetch credibility.";
+        }
+        throw new Error(errorMsg);
+      }
+
       const data = await response.json();
       setCopilotMessages((msgs) => [
         ...msgs,
         {
           role: 'assistant',
-          content: `Initial evidence aggregation (Eᵢ): ${data.E_i.toFixed(3)} (from Nᵢ = ${data.N_i} evidence items).`,
+          content: `Claim credibility computed successfully. Final scores: ${JSON.stringify(data.final_scores, null, 2)}`,
         },
       ]);
-    } catch (err) {
+    } catch (err: any) {
       setCopilotMessages((msgs) => [
         ...msgs,
-        { role: 'system', content: 'Error: Could not compute claim credibility.' },
+        { role: 'system', content: `Error: ${err.message}` },
       ]);
     } finally {
       setCopilotLoading(false);
@@ -1852,13 +1900,27 @@ const GraphCanvasInner = () => {
                     AI Copilot
                   </h2>
                 </div>
-                <button
-                  onClick={() => setIsAICopilotOpen(false)}
-                  className="p-2 hover:bg-white rounded-md transition-colors"
-                  aria-label="Close AI copilot"
-                >
-                  <span className="text-lg">→</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsAICopilotFrozen(f => !f)}
+                    className={`p-2 rounded-full transition-colors ${isAICopilotFrozen ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+                    title={isAICopilotFrozen ? 'Unfreeze Copilot Panel' : 'Freeze Copilot Panel'}
+                  >
+                    {isAICopilotFrozen ? (
+                      <LockClosedIcon className="w-5 h-5 text-blue-600" />
+                    ) : (
+                      <LockOpenIcon className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => !isAICopilotFrozen && setIsAICopilotOpen(false)}
+                    className={`p-2 hover:bg-white rounded-md transition-colors ${isAICopilotFrozen ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    aria-label="Close AI copilot"
+                    disabled={isAICopilotFrozen}
+                  >
+                    <span className="text-lg">→</span>
+                  </button>
+                </div>
               </div>
 
               {/* Chat Area */}
@@ -1868,9 +1930,11 @@ const GraphCanvasInner = () => {
                 </div>
                 <div className="mt-4 space-y-2">
                   {copilotMessages.map((msg, idx) => (
-                    <div key={idx} className={`text-left text-sm ${msg.role === 'assistant' ? 'text-blue-700' : msg.role === 'system' ? 'text-gray-500' : 'text-black'}`}>{msg.content}</div>
+                    <ChatBox key={idx}>
+                      <span className={`text-left text-sm ${msg.role === 'assistant' ? 'text-blue-700' : msg.role === 'system' ? 'text-gray-500' : 'text-black'}`}>{msg.content}</span>
+                    </ChatBox>
                   ))}
-                  {copilotLoading && <div className="text-purple-500 text-sm">Analyzing claim credibility...</div>}
+                  {copilotLoading && <ChatBox><span className="text-purple-500 text-sm">Analyzing claim credibility...</span></ChatBox>}
                 </div>
               </div>
 

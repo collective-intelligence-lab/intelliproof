@@ -6,6 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 from supabase import create_client, Client
+from . import ai_api
 
 # Load environment variables
 load_dotenv()
@@ -21,6 +22,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include AI API router
+app.include_router(ai_api.router)
 
 # Supabase configuration
 supabase: Client = create_client(

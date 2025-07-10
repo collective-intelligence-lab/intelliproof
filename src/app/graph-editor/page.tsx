@@ -16,7 +16,7 @@ export default function GraphEditorPage() {
   const dispatch = useDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const graphId = searchParams.get('id');
+  const graphId = searchParams?.get('id');
   const graphs = useSelector((state: RootState) => state.graphs.items);
   const currentGraph = useSelector((state: RootState) => state.graphs.currentGraph);
   const { profile } = useSelector((state: RootState) => state.user);

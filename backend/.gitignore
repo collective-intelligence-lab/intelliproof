@@ -17,3 +17,4 @@ __pycache__/
 .idea/
 *.swp
 *.swo" > backend/.gitignore
+.vercel

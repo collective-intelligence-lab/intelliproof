@@ -2,7 +2,7 @@
 export const API_CONFIG = {
     // Base URL for API calls
     BASE_URL: process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production'
-        ? 'https://your-production-api.com'
+        ? 'https://intelliproofbackend.vercel.app'
         : 'http://localhost:8000'),
 
     // API Endpoints

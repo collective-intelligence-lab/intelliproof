@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
+import type { RootState } from '../../store';
 import { fetchUserData } from '../../store/slices/userSlice';
 import Header from '../../components/Header';
 import Navbar from '../../components/Navbar';
@@ -28,7 +28,7 @@ export default function ProfilePage() {
 
         if (accessToken) {
             console.log('Dispatching fetchUserData');
-            dispatch(fetchUserData(accessToken));
+            dispatch(fetchUserData(accessToken) as any);
         }
     }, [dispatch]);
 

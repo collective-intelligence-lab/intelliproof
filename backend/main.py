@@ -6,7 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 from supabase import create_client, Client
-from . import ai_api
+import ai_api
 
 # Load environment variables
 load_dotenv()
@@ -14,11 +14,11 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS middleware configuration
+# CORS middleware configuration - Open access for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your Next.js frontend URL
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for now
+    allow_credentials=False,  # Set to False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )

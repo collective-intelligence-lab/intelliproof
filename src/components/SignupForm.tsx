@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import PasswordToggleButton from "./PasswordToggleButton";
 import { useDispatch } from "react-redux";
 import { fetchUserData } from "../store/slices/userSlice";
+import { API_URLS } from "../lib/config";
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,7 +44,7 @@ export default function SignupForm() {
             }
 
             // Call our FastAPI backend
-            const response = await fetch('http://localhost:8000/api/signup', {
+            const response = await fetch(API_URLS.SIGNUP, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

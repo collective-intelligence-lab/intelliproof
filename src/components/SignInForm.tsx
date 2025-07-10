@@ -6,6 +6,7 @@ import PasswordToggleButton from "./PasswordToggleButton";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { fetchUserData } from "../store/slices/userSlice";
+import { API_URLS } from "../lib/config";
 
 export default function SignInForm() {
     const [form, setForm] = useState({ email: "", password: "" });
@@ -28,7 +29,7 @@ export default function SignInForm() {
                 throw new Error("Both fields are required");
             }
             // Call FastAPI backend for sign in
-            const response = await fetch("http://localhost:8000/api/signin", {
+            const response = await fetch(API_URLS.SIGNIN, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

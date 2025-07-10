@@ -79,7 +79,95 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'DELETE') {
         try {
-            // Delete graph
+            // Get the user's user_id from the profiles table
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('email', email)
+                .single();
+
+            if (profileError || !profile) {
+                console.error('Error fetching user profile:', profileError);
+                return res.status(404).json({ error: 'User profile not found' });
+            }
+
+            const user_id = profile.user_id;
+
+            // First, get all supporting documents for this graph to delete from storage
+            const { data: supportingDocs, error: fetchError } = await supabase
+                .from('supporting_documents')
+                .select('url, name')
+                .eq('graph_id', id);
+
+            if (fetchError) {
+                console.error('Error fetching supporting documents:', fetchError);
+                return res.status(500).json({ error: 'Failed to fetch supporting documents' });
+            }
+
+            // Delete files from storage bucket
+            if (supportingDocs && supportingDocs.length > 0) {
+                const filePaths = supportingDocs.map(doc => {
+                    // Extract file path from the URL
+                    // URL format: https://bucket.supabase.co/storage/v1/object/public/supporting-document-storage/user_id/timestamp-filename
+                    const url = doc.url;
+                    const pathMatch = url.match(/supporting-document-storage\/(.+)$/);
+                    if (pathMatch) {
+                        return pathMatch[1];
+                    }
+
+                    // Fallback: construct path using user_id and document name
+                    // This handles cases where URL parsing might fail
+                    return `${user_id}/${doc.name}`;
+                }).filter(Boolean);
+
+                if (filePaths.length > 0) {
+                    console.log('Deleting files from storage:', filePaths);
+                    console.log('User ID:', user_id);
+
+                    const { error: storageError } = await supabase.storage
+                        .from('supporting-document-storage')
+                        .remove(filePaths);
+
+                    if (storageError) {
+                        console.error('Error deleting files from storage:', storageError);
+                        console.error('Storage error details:', JSON.stringify(storageError, null, 2));
+
+                        // Try alternative approach: list and delete files in user's folder
+                        try {
+                            console.log('Attempting alternative deletion method...');
+                            const { data: files, error: listError } = await supabase.storage
+                                .from('supporting-document-storage')
+                                .list(user_id);
+
+                            if (!listError && files && files.length > 0) {
+                                // Filter files that might belong to this graph's documents
+                                const filesToDelete = files
+                                    .filter(file => supportingDocs.some(doc => doc.url.includes(file.name)))
+                                    .map(file => `${user_id}/${file.name}`);
+
+                                if (filesToDelete.length > 0) {
+                                    console.log('Attempting to delete specific files:', filesToDelete);
+                                    const { error: altDeleteError } = await supabase.storage
+                                        .from('supporting-document-storage')
+                                        .remove(filesToDelete);
+
+                                    if (altDeleteError) {
+                                        console.error('Alternative deletion also failed:', altDeleteError);
+                                    } else {
+                                        console.log('Alternative deletion succeeded');
+                                    }
+                                }
+                            }
+                        } catch (altError) {
+                            console.error('Alternative deletion method failed:', altError);
+                        }
+                    } else {
+                        console.log('Successfully deleted files from storage');
+                    }
+                }
+            }
+
+            // Delete graph (this will cascade delete supporting_documents records)
             const { error } = await supabase
                 .from('graphs')
                 .delete()
@@ -91,7 +179,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(500).json({ error: 'Failed to delete graph' });
             }
 
-            return res.status(200).json({ message: 'Graph deleted successfully' });
+            return res.status(200).json({ message: 'Graph and associated files deleted successfully' });
         } catch (error) {
             console.error('Error in DELETE /api/graphs/[id]:', error);
             return res.status(500).json({ error: 'Internal server error' });

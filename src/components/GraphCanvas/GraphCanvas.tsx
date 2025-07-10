@@ -919,8 +919,38 @@ const GraphCanvasInner = () => {
     setTimeout(() => setToast(null), 2000);
   };
 
-  const handleDeleteDocument = (id: string) => {
-    setSupportingDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  const handleDeleteDocument = async (id: string) => {
+    try {
+      const accessToken = localStorage.getItem("access_token");
+      if (!accessToken) {
+        throw new Error("No access token found");
+      }
+
+      const response = await fetch(`/api/supporting-documents?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete document');
+      }
+
+      // Refresh supporting documents list
+      if (currentGraphId) {
+        dispatch(fetchSupportingDocuments(currentGraphId));
+      }
+
+      setToast("Document deleted successfully!");
+      setTimeout(() => setToast(null), 2000);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      setToast("Failed to delete document. Please try again.");
+      setTimeout(() => setToast(null), 3000);
+    }
   };
 
   const closeEvidenceModal = () => {

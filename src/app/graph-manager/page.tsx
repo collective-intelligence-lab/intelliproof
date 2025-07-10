@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { loadGraphs, setSelectedGraph, createGraph, setCurrentGraph } from "../../store/slices/graphsSlice";
+import { loadGraphs, setSelectedGraph, createGraph, setCurrentGraph, deleteGraph } from "../../store/slices/graphsSlice";
 import type { RootState } from "../../store";
 import Image from 'next/image';
 import { useRouter } from "next/navigation";
@@ -55,6 +55,7 @@ export default function GraphManagerPage() {
     const [isNavbarOpen, setNavbarOpen] = useState(false);
     const currentGraph = useSelector((state: RootState) => state.graphs.currentGraph as Graph | null);
     const [supportingDocCount, setSupportingDocCount] = useState<number | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
     useEffect(() => {
         const accessToken = localStorage.getItem('access_token');
@@ -238,21 +239,29 @@ export default function GraphManagerPage() {
                                     <div className="text-gray-600 text-xs mb-1">Last Modified</div>
                                     <div className="text-black">{currentGraph.updated_at ? new Date(currentGraph.updated_at).toLocaleString() : 'N/A'}</div>
                                 </div>
-                                <div className="flex justify-end gap-4">
+                                <div className="flex justify-between items-center">
                                     <button
-                                        onClick={() => dispatch(setSelectedGraph(null))}
-                                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        onClick={() => setIsDeleteConfirmOpen(true)}
+                                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                                     >
-                                        Close
+                                        Delete Graph
                                     </button>
-                                    <button
-                                        onClick={() => {
-                                            router.push(`/graph-editor?id=${currentGraph.id}`);
-                                        }}
-                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                    >
-                                        Edit Graph
-                                    </button>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => dispatch(setSelectedGraph(null))}
+                                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                router.push(`/graph-editor?id=${currentGraph.id}`);
+                                            }}
+                                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                        >
+                                            Edit Graph
+                                        </button>
+                                    </div>
                                 </div>
                             </>
                         ) : (
@@ -318,6 +327,59 @@ export default function GraphManagerPage() {
                             >
                                 Create
                             </ContinueButton>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {isDeleteConfirmOpen && currentGraph && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h2 className="text-2xl font-bold mb-4 text-black">Delete Graph</h2>
+                        <p className="text-gray-600 mb-6">
+                            Are you sure you want to delete "<span className="font-semibold">{currentGraph.graph_name}</span>"?
+                            This action cannot be undone and will permanently delete:
+                        </p>
+                        <ul className="text-gray-600 mb-6 ml-4 list-disc list-inside space-y-1">
+                            <li>The graph and all its nodes and connections</li>
+                            <li>All supporting document records</li>
+                            <li>All uploaded files from storage</li>
+                        </ul>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        console.log('[GraphManagerPage] Deleting graph:', currentGraph.id);
+                                        const result = await dispatch(deleteGraph(currentGraph.id) as any);
+
+                                        if (result.error) {
+                                            throw new Error(result.error.message || 'Failed to delete graph');
+                                        }
+
+                                        console.log('[GraphManagerPage] Graph deleted successfully');
+
+                                        // Close both modals
+                                        setIsDeleteConfirmOpen(false);
+                                        dispatch(setSelectedGraph(null));
+
+                                        // Optionally show a success message
+                                        alert('Graph deleted successfully');
+                                    } catch (error) {
+                                        console.error('[GraphManagerPage] Error deleting graph:', error);
+                                        alert('Failed to delete graph. Please try again.');
+                                    }
+                                }}
+                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                            >
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>

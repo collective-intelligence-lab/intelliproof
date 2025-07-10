@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useDispatch } from 'react-redux';
 import { fetchUserData } from '../../store/slices/userSlice';
+import { API_URLS } from '../../lib/config';
 
 const SignupForm: React.FC = () => {
     const router = useRouter();
@@ -39,7 +40,7 @@ const SignupForm: React.FC = () => {
             }
 
             console.log('[SignupForm] Making API call to /api/signup...');
-            const response = await fetch('http://localhost:8000/api/signup', {
+            const response = await fetch(API_URLS.SIGNUP, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

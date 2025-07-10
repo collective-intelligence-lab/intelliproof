@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useUserName } from "../hooks/useUserName";
 import Image from "next/image";
 import Link from "next/link";
+import { API_URLS } from "../lib/config";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -21,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         throw new Error("No active session found");
       }
 
-      const response = await fetch("http://localhost:8000/api/signout", {
+      const response = await fetch(API_URLS.SIGNOUT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

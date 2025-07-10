@@ -28,9 +28,14 @@ Follow these steps to run the project locally:
 
 3. Create a .env.local file in the root directory and add the following to it: 
 
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 
-NEXT_PUBLIC_SUPABASE_URL = your_key_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY = key_here
+# API Configuration (optional - defaults to localhost:8000 for development)
+# NEXT_PUBLIC_API_URL=http://localhost:8000
+```
             
 
 4. Start the development server:
@@ -71,6 +76,30 @@ intelliproof/
 - TypeScript
 - Vite
 - Tailwind CSS
+
+## API Configuration
+
+The application uses a centralized configuration for API endpoints located in `src/lib/config.ts`. This allows for easy switching between development and production environments.
+
+### Environment Variables
+
+- `NEXT_PUBLIC_API_URL`: Set this to your production API URL when deploying. If not set, it defaults to `http://localhost:8000` for development.
+
+### Usage
+
+All API calls now use the centralized configuration:
+
+```typescript
+import { API_URLS } from '../lib/config';
+
+// Instead of hardcoded URLs like:
+// fetch('http://localhost:8000/api/signup')
+
+// Use the centralized configuration:
+fetch(API_URLS.SIGNUP)
+```
+
+This makes it easy to switch between environments without modifying individual files.
 
 
 

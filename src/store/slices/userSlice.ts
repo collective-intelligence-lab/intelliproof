@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { API_URLS } from '../../lib/config';
 
 interface UserState {
     profile: {
@@ -35,7 +36,7 @@ export const fetchUserData = createAsyncThunk(
     async (accessToken: string) => {
         console.log('Fetching user data with token:', accessToken);
         try {
-            const response = await axios.get('http://localhost:8000/api/user/data', {
+            const response = await axios.get(API_URLS.USER_DATA, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },

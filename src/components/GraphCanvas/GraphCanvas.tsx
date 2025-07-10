@@ -26,7 +26,7 @@ import type {
   OnConnectEnd,
   ReactFlowInstance,
 } from "reactflow";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import "reactflow/dist/style.css";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {

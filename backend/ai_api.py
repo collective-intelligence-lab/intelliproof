@@ -158,10 +158,12 @@ def check_evidence(data: CheckEvidenceRequest = Body(...)):
             if not evidence:
                 continue
             doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
+            doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
             prompt = f"""
 Claim: {node.text}
-Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc.name if doc else ''}\n
-Question: Does the above evidence support the claim?\nRespond with one of: yes, no, unsure, or unrelated.\nThen explain your reasoning in 1-2 sentences.\nFormat:\nEvaluation: <yes|no|unsure|unrelated>\nReasoning: <your explanation>
+Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc_info}
+
+Question: Does the above evidence support the claim?\nRespond in this format:\nEvaluation: <yes|no|unsure|unrelated>\nReasoning: <your explanation>\nConfidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
 """
             try:
                 response = openai.chat.completions.create(
@@ -175,18 +177,24 @@ Question: Does the above evidence support the claim?\nRespond with one of: yes, 
                 content = response.choices[0].message.content.strip()
                 eval_val = "unsure"
                 reasoning = content
+                confidence_val = 0.5
                 for line in content.splitlines():
                     if line.lower().startswith("evaluation:"):
                         eval_val = line.split(":", 1)[1].strip().lower()
                     if line.lower().startswith("reasoning:"):
                         reasoning = line.split(":", 1)[1].strip()
-                confidence = map_evaluation_to_confidence(eval_val)
+                    if line.lower().startswith("confidence:"):
+                        try:
+                            confidence_val = float(line.split(":", 1)[1].strip())
+                            confidence_val = min(max(confidence_val, 0.0), 1.0)
+                        except Exception:
+                            confidence_val = 0.5
                 results.append(EvidenceEvaluation(
                     node_id=node.id,
                     evidence_id=evidence.id,
                     evaluation=eval_val,
                     reasoning=reasoning,
-                    confidence=confidence
+                    confidence=confidence_val
                 ))
             except Exception as e:
                 results.append(EvidenceEvaluation(

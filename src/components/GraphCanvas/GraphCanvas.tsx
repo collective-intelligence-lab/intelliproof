@@ -88,6 +88,8 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import ChatBox from "../ChatBox";
 import { extractTextFromImage } from '../../lib/extractImageText';
+import React from 'react';
+import MessageBox from './MessageBox';
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const common: React.CSSProperties = {
@@ -1052,7 +1054,7 @@ const GraphCanvasInner = () => {
   };
 
   // Add state for AI Copilot chat messages and loading
-  const [copilotMessages, setCopilotMessages] = useState<{ role: string; content: string }[]>([]);
+  const [copilotMessages, setCopilotMessages] = useState<{ role: string; content: any }[]>([]);
   const [copilotLoading, setCopilotLoading] = useState(false);
 
   // Handler for Claim icon click
@@ -1060,7 +1062,7 @@ const GraphCanvasInner = () => {
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
-      { role: 'user', content: 'Analyze claim credibility for the graph.' },
+      { role: 'user', content: 'Analyze claim credibility for the graph. Compute credibility using evidence confidence scores and returns final credibility score from propagation algorithm.' },
     ]);
     try {
       // Gather evidence scores for all nodes
@@ -1122,12 +1124,18 @@ const GraphCanvasInner = () => {
       const scoresList = Object.entries(data.final_scores)
         .map(([id, score]) => `"${nodeIdToText[id] ? nodeIdToText[id] : id}"\t${(score as number).toFixed(5)}`)
         .join('<br />');
+      const credibilityMessages = Object.entries(data.final_scores).map(([id, score]) => ({
+        role: 'ai',
+        content: {
+          "Claim Node ID": id,
+          "Claim Text": nodeIdToText[id] ? nodeIdToText[id] : id,
+          "Final Credibility Score": (score as number).toFixed(5),
+        },
+        isStructured: true,
+      }));
       setCopilotMessages((msgs) => [
         ...msgs,
-        {
-          role: 'assistant',
-          content: `Claim credibility computed successfully.<br />${scoresList}`,
-        },
+        ...credibilityMessages,
       ]);
     } catch (err: any) {
       setCopilotMessages((msgs) => [
@@ -1144,7 +1152,7 @@ const GraphCanvasInner = () => {
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
-      { role: 'user', content: 'Check evidence for each claim.' },
+      { role: 'user', content: 'Check evidence for each claim and evaluate whether it supports the claim.' },
     ]);
     try {
       // Prepare request body
@@ -1174,14 +1182,37 @@ const GraphCanvasInner = () => {
       const data = await response.json();
       // Display each result as a message in the copilot
       data.results.forEach((result: any) => {
+        const claimNode = nodes.find((n) => n.id === result.node_id);
+        const claimText = claimNode ? claimNode.data.text : '';
+        const evidenceObj = evidenceCards.find((ev) => ev.id === result.evidence_id);
+        const evidenceTitle = evidenceObj ? evidenceObj.title : '';
         setCopilotMessages((msgs) => [
           ...msgs,
           {
             role: 'ai',
-            content: `Claim Node: ${result.node_id}\nEvidence: ${result.evidence_id}\nEvaluation: ${result.evaluation}\nReasoning: ${result.reasoning}\nConfidence: ${result.confidence}`,
+            content: {
+              "Claim Node ID": result.node_id,
+              "Claim": claimText,
+              "Evidence ID": result.evidence_id,
+              "Evidence Title": evidenceTitle,
+              "Evaluation": result.evaluation,
+              "Reasoning": result.reasoning,
+              "Confidence": `${Math.round(result.confidence * 100)}%`,
+            },
+            isStructured: true,
           },
         ]);
       });
+      // Update evidence confidences
+      setEvidenceCards((prevEvidence) =>
+        prevEvidence.map((ev) => {
+          const found = data.results.find((r: any) => r.evidence_id === ev.id);
+          if (found) {
+            return { ...ev, confidence: found.confidence };
+          }
+          return ev;
+        })
+      );
       // Aggregate confidence for each node and update node belief
       const nodeConfidenceMap: { [nodeId: string]: number[] } = {};
       data.results.forEach((result: any) => {
@@ -2060,7 +2091,9 @@ const GraphCanvasInner = () => {
                 <div className="mt-4 space-y-2">
                   {copilotMessages.map((msg, idx) => (
                     <ChatBox key={idx}>
-                      {msg.role === 'assistant' ? (
+                      {msg.isStructured ? (
+                        <MessageBox message={msg.content} />
+                      ) : msg.role === 'assistant' ? (
                         <span
                           className={`text-left text-sm text-blue-700`}
                           dangerouslySetInnerHTML={{ __html: msg.content }}

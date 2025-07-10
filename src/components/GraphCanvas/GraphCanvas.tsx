@@ -275,7 +275,7 @@ const GraphCanvasInner = () => {
   const router = useRouter();
   const dispatch: any = useDispatch();
   const searchParams = useSearchParams();
-  const graphId = searchParams.get("id");
+  const graphId = searchParams?.get("id");
   const [selectedTool, setTool] = useState<
     "select" | "pan" | "zoom-in" | "zoom-out"
   >("select");
@@ -2223,7 +2223,13 @@ const GraphCanvasInner = () => {
 const GraphCanvas = () => {
   return (
     <ReactFlowProvider>
-      <GraphCanvasInner />
+      <Suspense fallback={
+        <div className="h-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+        </div>
+      }>
+        <GraphCanvasInner />
+      </Suspense>
     </ReactFlowProvider>
   );
 };

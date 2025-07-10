@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "../../components/Header";
@@ -9,7 +9,7 @@ import { setCurrentGraph } from "../../store/slices/graphsSlice";
 import { fetchUserData } from "../../store/slices/userSlice";
 import type { RootState } from "../../store";
 
-export default function GraphEditorPage() {
+function GraphEditorContent() {
   const [isNavbarOpen, setNavbarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,5 +137,19 @@ export default function GraphEditorPage() {
         <MainLayout />
       </div>
     </div>
+  );
+}
+
+export default function GraphEditorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+        </div>
+      </div>
+    }>
+      <GraphEditorContent />
+    </Suspense>
   );
 }

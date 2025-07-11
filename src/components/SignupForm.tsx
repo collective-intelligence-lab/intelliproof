@@ -81,7 +81,7 @@ export default function SignupForm() {
                 }
 
                 setSuccess(data.message);
-                router.push("/home");
+                router.push("/graph-manager");
             } else {
                 console.error('[SignupForm] No access token in response');
                 throw new Error('No access token received from server');

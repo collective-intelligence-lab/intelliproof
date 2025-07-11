@@ -8,9 +8,8 @@ interface NavbarProps {
 }
 
 const navOptions = [
-  { label: "Home", href: "/home" },
-  { label: "Profile", href: "/profile" },
   { label: "Graph Manager", href: "/graph-manager" },
+  { label: "Profile", href: "/profile" },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ isOpen, onClose }) => {
@@ -18,11 +17,10 @@ const Navbar: React.FC<NavbarProps> = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className={`fixed inset-0 z-50 bg-[#232F3E] flex flex-col items-center justify-center transition-opacity duration-300 ${
-        isOpen
+      className={`fixed inset-0 z-50 bg-[#232F3E] flex flex-col items-center justify-center transition-opacity duration-300 ${isOpen
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none"
-      }`}
+        }`}
       style={{ fontFamily: "Josefin Sans, sans-serif" }}
     >
       <button

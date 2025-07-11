@@ -59,7 +59,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       style={{ fontFamily: "Josefin Sans, sans-serif" }}
     >
       <div className="flex items-center gap-4">
-        <Link href="/home" className="cursor-pointer">
+        <Link href="/graph-manager" className="cursor-pointer">
           <Image
             src="/logo.png"
             alt="Intelliproof Logo"
@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           />
         </Link>
         <Link
-          href="/home"
+          href="/graph-manager"
           className="font-bold text-lg hover:text-gray-300 transition-colors duration-200"
         >
           Intelliproof

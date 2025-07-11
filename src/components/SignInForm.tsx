@@ -54,8 +54,8 @@ export default function SignInForm() {
             // Fetch full user profile from backend
             await dispatch(fetchUserData(data.access_token) as any);
 
-            // On success, redirect to home
-            router.push("/home");
+            // On success, redirect to graph manager
+            router.push("/graph-manager");
         } catch (err: any) {
             console.error('Signin error:', err);
             setError(err.message || "An error occurred during sign in");

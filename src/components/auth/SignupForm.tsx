@@ -81,8 +81,8 @@ const SignupForm: React.FC = () => {
                 }
 
                 setSuccess(data.message);
-                console.log('[SignupForm] Navigating to home...');
-                router.push("/home");
+                console.log('[SignupForm] Navigating to graph manager...');
+                router.push("/graph-manager");
             } else {
                 console.error('[SignupForm] No access token in response');
                 throw new Error('No access token received from server');

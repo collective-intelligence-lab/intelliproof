@@ -131,10 +131,10 @@ function GraphEditorContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Header onMenuClick={() => setNavbarOpen(true)} />
+
       <Navbar isOpen={isNavbarOpen} onClose={() => setNavbarOpen(false)} />
       <div className="flex-1">
-        <MainLayout />
+        <MainLayout hideNavbar={true} />
       </div>
     </div>
   );

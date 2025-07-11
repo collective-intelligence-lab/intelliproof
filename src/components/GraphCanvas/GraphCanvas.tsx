@@ -82,6 +82,10 @@ import {
   LockClosedIcon,
   LockOpenIcon,
   DocumentMagnifyingGlassIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  ArrowPathRoundedSquareIcon,
+  ArrowsPointingOutIcon,
 } from "@heroicons/react/24/outline";
 import { fetchUserData } from "../../store/slices/userSlice";
 import html2canvas from "html2canvas";
@@ -90,6 +94,8 @@ import ChatBox from "../ChatBox";
 import { extractTextFromImage } from '../../lib/extractImageText';
 import React from 'react';
 import MessageBox from './MessageBox';
+import { useLayoutManager } from './LayoutManager';
+import CommandMessageBox from './CommandMessageBox';
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const common: React.CSSProperties = {
@@ -104,7 +110,7 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    textAlign: "center",
+    textAlign: 'center' as const,
     minHeight: 32,
   };
   switch (type) {
@@ -271,7 +277,12 @@ const edgeTypes = {
   custom: CustomEdge,
 };
 
-const GraphCanvasInner = () => {
+// Add prop type for GraphCanvas
+interface GraphCanvasProps {
+  hideNavbar?: boolean;
+}
+
+const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const router = useRouter();
   const dispatch: any = useDispatch();
   const searchParams = useSearchParams();
@@ -360,9 +371,17 @@ const GraphCanvasInner = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
   const [isAICopilotFrozen, setIsAICopilotFrozen] = useState(false);
+
   // Add state for loading OCR
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+
+  // Layout Manager
+  const { applyCircularLayout, applyAutoLayout, applyForceLayout } = useLayoutManager({
+    nodes,
+    edges,
+    setNodes,
+  });
 
   // Use supportingDocuments from Redux
   const supportingDocumentsRedux = useSelector((state: RootState) =>
@@ -461,7 +480,7 @@ const GraphCanvasInner = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              textAlign: "center",
+              textAlign: 'center' as const,
               minHeight: 32,
             };
           case "value":
@@ -478,7 +497,7 @@ const GraphCanvasInner = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              textAlign: "center",
+              textAlign: 'center' as const,
               minHeight: 32,
             };
           case "policy":
@@ -495,7 +514,7 @@ const GraphCanvasInner = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              textAlign: "center",
+              textAlign: 'center' as const,
               minHeight: 32,
             };
           default:
@@ -512,7 +531,7 @@ const GraphCanvasInner = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              textAlign: "center",
+              textAlign: 'center' as const,
               minHeight: 32,
             };
         }
@@ -1084,7 +1103,7 @@ const GraphCanvasInner = () => {
   };
 
   // Add state for AI Copilot chat messages and loading
-  const [copilotMessages, setCopilotMessages] = useState<{ role: string; content: any }[]>([]);
+  const [copilotMessages, setCopilotMessages] = useState<{ role: string; content: any; isStructured?: boolean }[]>([]);
   const [copilotLoading, setCopilotLoading] = useState(false);
 
   // Handler for Claim icon click
@@ -1092,7 +1111,7 @@ const GraphCanvasInner = () => {
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
-      { role: 'user', content: 'Analyze claim credibility for the graph. Compute credibility using evidence confidence scores and returns final credibility score from propagation algorithm.' },
+      { role: 'user', content: 'Compute credibility using evidence confidence scores and return credibility score.' },
     ]);
     try {
       // Gather evidence scores for all nodes
@@ -1182,7 +1201,7 @@ const GraphCanvasInner = () => {
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
-      { role: 'user', content: 'Check evidence for each claim and evaluate whether it supports the claim.' },
+      { role: 'user', content: 'Check evidence for each claim and evaluate relationship.' },
     ]);
     try {
       // Prepare request body
@@ -1637,90 +1656,92 @@ const GraphCanvasInner = () => {
         <Panel>
           <div className="relative h-full">
             {/* Floating Top Left Navbar */}
-            <div className="absolute top-6 left-6 z-10 bg-white rounded-lg shadow-lg p-2 pl-3">
-              <div className="flex items-center gap-3">
-                {/* Logo and Text */}
-                <div className="flex items-center gap-2">
-                  <Image
-                    src="/logo.png"
-                    alt="intelliProof Logo"
-                    width={44}
-                    height={44}
-                  />
-                  <span className="text-2xl font-bold tracking-tight text-[#232F3E]">
-                    Intelli<span className="text-[#232F3E]">Proof</span>
-                  </span>
-                </div>
-
-                <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
-
-                {/* Editable Title */}
-                <div className="min-w-[100px] flex items-center justify-center">
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      onKeyDown={handleTitleChange}
-                      onBlur={() => setIsEditing(false)}
-                      className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 font-medium text-lg text-center w-full"
-                      autoFocus
+            {!hideNavbar && (
+              <div className="absolute top-6 left-6 z-10 bg-white rounded-lg shadow-lg p-2 pl-3">
+                <div className="flex items-center gap-3">
+                  {/* Logo and Text */}
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src="/logo.png"
+                      alt="intelliProof Logo"
+                      width={44}
+                      height={44}
                     />
-                  ) : (
-                    <span
-                      onClick={() => setIsEditing(true)}
-                      className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
-                    >
-                      {title}
+                    <span className="text-2xl font-bold tracking-tight text-[#232F3E]">
+                      Intelli<span className="text-[#232F3E]">Proof</span>
                     </span>
-                  )}
-                </div>
+                  </div>
 
-                <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
+                  <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
 
-                {/* Menu Button */}
-                <div className="relative flex items-center -ml-4" ref={menuRef}>
-                  <button
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
-                      ? "bg-gray-100"
-                      : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    title="Menu"
-                  >
-                    <EllipsisVerticalIcon
-                      className="w-9 h-9"
-                      strokeWidth={2.5}
-                    />
-                  </button>
-                  {isMenuOpen && (
-                    <div className="absolute right-0 mt-2 top-full bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-10">
-                      <button
-                        onClick={() => {
-                          router.push("/graph-manager");
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                  {/* Editable Title */}
+                  <div className="min-w-[100px] flex items-center justify-center">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onKeyDown={handleTitleChange}
+                        onBlur={() => setIsEditing(false)}
+                        className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 font-medium text-lg text-center w-full"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        onClick={() => setIsEditing(true)}
+                        className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
                       >
-                        <ArrowUturnLeftIcon className="w-5 h-5" />
-                        Back to Graph Manager
-                      </button>
-                      <div className="w-full h-px bg-gray-200 my-1"></div>
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-                      >
-                        <ArrowUturnRightIcon className="w-5 h-5" />
-                        Log Out
-                      </button>
-                    </div>
-                  )}
+                        {title}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
+
+                  {/* Menu Button */}
+                  <div className="relative flex items-center -ml-4" ref={menuRef}>
+                    <button
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
+                        ? "bg-gray-100"
+                        : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      title="Menu"
+                    >
+                      <EllipsisVerticalIcon
+                        className="w-9 h-9"
+                        strokeWidth={2.5}
+                      />
+                    </button>
+                    {isMenuOpen && (
+                      <div className="absolute right-0 mt-2 top-full bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-10">
+                        <button
+                          onClick={() => {
+                            router.push("/graph-manager");
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                        >
+                          <ArrowUturnLeftIcon className="w-5 h-5" />
+                          Back to Graph Manager
+                        </button>
+                        <div className="w-full h-px bg-gray-200 my-1"></div>
+                        <button
+                          onClick={() => {
+                            handleLogout();
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                        >
+                          <ArrowUturnRightIcon className="w-5 h-5" />
+                          Log Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Floating Top Right Navbar */}
             <div className="absolute top-6 right-6 z-10 bg-white rounded-lg shadow-lg p-2">
@@ -1871,7 +1892,7 @@ const GraphCanvasInner = () => {
                   }`}
                 title="Supporting Edge"
               >
-                <ArrowPathIcon className="w-8 h-8 rotate-90" strokeWidth={2} />
+                <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
               </button>
 
               <button
@@ -1882,7 +1903,34 @@ const GraphCanvasInner = () => {
                   }`}
                 title="Attacking Edge"
               >
-                <ArrowPathIcon className="w-8 h-8 -rotate-90" strokeWidth={2} />
+                <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+
+              <div className="w-full h-px bg-gray-200"></div>
+
+              {/* Layout Buttons */}
+              <button
+                onClick={applyCircularLayout}
+                className="p-2.5 rounded-lg transition-colors flex items-center justify-center text-gray-700 hover:bg-gray-100"
+                title="Circular Layout"
+              >
+                <ArrowPathRoundedSquareIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+
+              <button
+                onClick={applyAutoLayout}
+                className="p-2.5 rounded-lg transition-colors flex items-center justify-center text-gray-700 hover:bg-gray-100"
+                title="Auto Layout"
+              >
+                <ArrowsPointingOutIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+
+              <button
+                onClick={applyForceLayout}
+                className="p-2.5 rounded-lg transition-colors flex items-center justify-center text-gray-700 hover:bg-gray-100"
+                title="Force Layout"
+              >
+                <ArrowsPointingInIcon className="w-8 h-8" strokeWidth={2} />
               </button>
 
               <div className="w-full h-px bg-gray-200"></div>
@@ -2115,9 +2163,23 @@ const GraphCanvasInner = () => {
 
               {/* Chat Area */}
               <div className="flex-1 overflow-auto p-4">
-                <div className="text-center text-gray-500 mt-4">
-                  AI Copilot is ready to assist you with your graph.
+                <div className="text-center text-gray-500 mt-2 mb-2" >
+                  AI Copilot is ready to assist with your graph.
                 </div>
+                <CommandMessageBox
+                  title="Check Claim Evidence"
+                  content="Check evidence for each claim and evaluate relationship"
+                  icon={<DocumentMagnifyingGlassIcon className="w-6 h-6" />}
+                  onClick={handleCheckEvidence}
+                  disabled={copilotLoading}
+                />
+                <CommandMessageBox
+                  title="Get Claim Credibility"
+                  content="Compute credibility scores for each node using internal evidence scores, and apply propagation algorithm."
+                  icon={<DocumentCheckIcon className="w-6 h-6" />}
+                  onClick={handleClaimCredibility}
+                  disabled={copilotLoading}
+                />
                 <div className="mt-4 space-y-2">
                   {copilotMessages.map((msg, idx) => (
                     <ChatBox key={idx}>
@@ -2150,8 +2212,8 @@ const GraphCanvasInner = () => {
                   </button>
                 </div>
                 {/* AI Functionality Section */}
+                {/*
                 <div className="flex flex-row justify-between gap-4 mt-4">
-                  {/* Claim Section */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs font-semibold mb-1">Claim</span>
                     <button
@@ -2163,7 +2225,6 @@ const GraphCanvasInner = () => {
                       <HandRaisedIcon className="w-6 h-6 text-gray-700" />
                     </button>
                   </div>
-                  {/* Check Evidence Section */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs font-semibold mb-1">Check Evidence</span>
                     <button
@@ -2175,14 +2236,12 @@ const GraphCanvasInner = () => {
                       <DocumentMagnifyingGlassIcon className="w-6 h-6 text-gray-700" />
                     </button>
                   </div>
-                  {/* Edge Section */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs font-semibold mb-1">Edge</span>
                     <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
                       <ArrowPathIcon className="w-6 h-6 text-gray-700" />
                     </button>
                   </div>
-                  {/* Graph Section */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs font-semibold mb-1">Graph</span>
                     <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
@@ -2190,6 +2249,7 @@ const GraphCanvasInner = () => {
                     </button>
                   </div>
                 </div>
+                */}
               </div>
             </div>
           </Panel>
@@ -2197,17 +2257,19 @@ const GraphCanvasInner = () => {
       </PanelGroup>
 
       {/* AI Copilot Toggle Button */}
-      {!isAICopilotOpen && (
-        <div className="absolute right-6 bottom-6 z-10">
-          <button
-            onClick={() => setIsAICopilotOpen(!isAICopilotOpen)}
-            className={`h-[60px] w-[60px] rounded-lg transition-all duration-200 flex items-center justify-center bg-white shadow-lg text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95`}
-            title="Open AI Copilot"
-          >
-            <SparklesIcon className="w-9 h-9" strokeWidth={2} />
-          </button>
-        </div>
-      )}
+      {
+        !isAICopilotOpen && (
+          <div className="absolute right-6 bottom-6 z-10">
+            <button
+              onClick={() => setIsAICopilotOpen(!isAICopilotOpen)}
+              className={`h-[60px] w-[60px] rounded-lg transition-all duration-200 flex items-center justify-center bg-white shadow-lg text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95`}
+              title="Open AI Copilot"
+            >
+              <SparklesIcon className="w-9 h-9" strokeWidth={2} />
+            </button>
+          </div>
+        )
+      }
 
       <SupportingDocumentUploadModal
         open={isUploadModalOpen}
@@ -2220,7 +2282,7 @@ const GraphCanvasInner = () => {
   );
 };
 
-const GraphCanvas = () => {
+const GraphCanvas = ({ hideNavbar = false }: GraphCanvasProps) => {
   return (
     <ReactFlowProvider>
       <Suspense fallback={
@@ -2228,7 +2290,7 @@ const GraphCanvas = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
         </div>
       }>
-        <GraphCanvasInner />
+        <GraphCanvasInner hideNavbar={hideNavbar} />
       </Suspense>
     </ReactFlowProvider>
   );

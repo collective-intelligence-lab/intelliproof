@@ -1,10 +1,10 @@
 import React from "react";
 import GraphCanvas from "../GraphCanvas/GraphCanvas";
 
-const MainLayout = () => {
+const MainLayout = ({ hideNavbar = false }: { hideNavbar?: boolean }) => {
   return (
     <div className="h-screen">
-      <GraphCanvas />
+      <GraphCanvas hideNavbar={hideNavbar} />
     </div>
   );
 };

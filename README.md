@@ -195,3 +195,98 @@ TODO
 
 npm install @supabase/supabase-js formidable
 npm install --save-dev @types/formidable
+
+## Deployment
+
+### Live Applications
+
+- **Frontend**: [https://intelliproof.vercel.app](https://intelliproof.vercel.app)
+- **Backend**: [https://intelliproofbackend.vercel.app](https://intelliproofbackend.vercel.app)
+
+### Frontend Deployment (Vercel)
+
+#### Prerequisites
+- Vercel CLI installed: `npm install -g vercel`
+- Vercel account connected
+
+#### Environment Variables Required
+Set these in your Vercel dashboard or via CLI:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_API_URL=https://intelliproofbackend.vercel.app
+```
+
+#### Deploy Commands
+```bash
+# Login to Vercel (if not already logged in)
+vercel login
+
+# Deploy to production
+vercel --prod
+
+# Or deploy with environment variables inline
+vercel --prod -e NEXT_PUBLIC_SUPABASE_URL=your_url -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key -e NEXT_PUBLIC_API_URL=https://intelliproofbackend.vercel.app
+```
+
+### Backend Deployment (Vercel)
+
+#### Prerequisites
+- Vercel CLI installed
+- Navigate to the `backend/` directory
+
+#### Environment Variables Required
+Set these in your Vercel dashboard for the backend project:
+
+```bash
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_anon_key
+JWT_SECRET_KEY=your_jwt_secret_for_token_signing
+```
+
+#### Deploy Commands
+```bash
+# Navigate to backend directory
+cd backend
+
+# Login to Vercel (if not already logged in)
+vercel login
+
+# Deploy to production
+vercel --prod
+
+# Or deploy with environment variables inline
+vercel --prod -e SUPABASE_URL=your_url -e SUPABASE_KEY=your_key -e JWT_SECRET_KEY=your_secret
+```
+
+#### Backend Configuration
+Ensure your `backend/vercel.json` is properly configured:
+
+```json
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "main.py"
+    }
+  ]
+}
+```
+
+### Important Notes
+
+1. **Environment Variables**: Always set environment variables in the Vercel dashboard for production deployments rather than committing them to your repository.
+
+2. **CORS Configuration**: The backend is configured to accept requests from the frontend domain. If you change deployment URLs, update the CORS settings in the backend.
+
+3. **Database**: Both frontend and backend connect to the same Supabase instance. Ensure your Supabase project is properly configured with the required tables and RLS policies.
+
+4. **Redeploy**: Any changes to the codebase will require redeployment. Use `vercel --prod` in the respective directories to redeploy.

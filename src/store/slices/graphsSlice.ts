@@ -210,6 +210,9 @@ const graphsSlice = createSlice({
                     state.currentGraph = action.payload;
                 }
             })
+            .addCase(saveGraph.rejected, (state, action) => {
+                state.error = action.error.message || 'Failed to save graph';
+            })
             .addCase(createGraph.fulfilled, (state, action) => {
                 state.items.push(action.payload);
             })

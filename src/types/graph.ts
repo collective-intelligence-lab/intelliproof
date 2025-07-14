@@ -57,10 +57,10 @@ export const createClaimNode = (
         borderRadius: 0,
         border: '1px solid #181A1B',
         backgroundColor: type === 'factual'
-            ? '#556B2F66' // olive green with 40% opacity
+            ? '#3A455333' // darker navy blue with 20% opacity
             : type === 'value'
-                ? '#1B365D66' // navy blue with 40% opacity
-                : '#4B505566', // grey with 40% opacity
+                ? '#88917833' // olive green with 20% opacity
+                : '#888C9433', // light grey with 20% opacity
         color: '#000000',
         fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
         fontSize: '14px',
@@ -70,7 +70,8 @@ export const createClaimNode = (
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center' as 'center',
-        minHeight: 24,
+        minHeight: 32,
+        minWidth: 80,
         maxWidth: 200,
         lineHeight: 1.2,
         width: 'auto',

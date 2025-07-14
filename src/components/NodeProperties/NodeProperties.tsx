@@ -40,7 +40,9 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [confidence, setConfidence] = useState(0.5);
-  const [editingEvidenceId, setEditingEvidenceId] = useState<string | null>(null);
+  const [editingEvidenceId, setEditingEvidenceId] = useState<string | null>(
+    null
+  );
   const [editingConfidence, setEditingConfidence] = useState<number>(0.5);
 
   useEffect(() => {
@@ -147,28 +149,31 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
-                ? "bg-[#4A5663] text-white"
-                : "bg-[#4A5663] bg-opacity-60 text-[#4A5663] hover:bg-opacity-80 hover:text-white"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "factual"
+                  ? "bg-[#3A4553] text-white"
+                  : "bg-[#3A4553] bg-opacity-60 text-[#3A4553] hover:bg-opacity-80 hover:text-white"
+              }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
-                ? "bg-[#889178] text-white"
-                : "bg-[#889178] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-white"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "value"
+                  ? "bg-[#889178] text-white"
+                  : "bg-[#889178] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-white"
+              }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
-                ? "bg-[#888C94] text-white"
-                : "bg-[#888C94] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-white"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "policy"
+                  ? "bg-[#888C94] text-white"
+                  : "bg-[#888C94] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-white"
+              }`}
             >
               Policy
             </button>
@@ -235,7 +240,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0 ? (
+            node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;
@@ -277,17 +282,23 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs">Confidence:</span>
-                      <span className="text-xs font-semibold">{Math.round((card.confidence ?? 0.5) * 100)}%</span>
+                      <span className="text-xs font-semibold">
+                        {Math.round((card.confidence ?? 0.5) * 100)}%
+                      </span>
                       <button
                         className="ml-2 px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300"
-                        onClick={() => handleEditConfidence(eid, card.confidence ?? 0.5)}
+                        onClick={() =>
+                          handleEditConfidence(eid, card.confidence ?? 0.5)
+                        }
                       >
                         Edit
                       </button>
                     </div>
                     {editingEvidenceId === eid && (
                       <div className="mt-2 p-2 bg-white border rounded shadow">
-                        <label className="block text-xs font-medium mb-1">Edit Confidence</label>
+                        <label className="block text-xs font-medium mb-1">
+                          Edit Confidence
+                        </label>
                         <div className="flex items-center gap-2">
                           <input
                             type="range"
@@ -295,10 +306,14 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
                             max="1"
                             step="0.01"
                             value={editingConfidence}
-                            onChange={e => setEditingConfidence(parseFloat(e.target.value))}
+                            onChange={(e) =>
+                              setEditingConfidence(parseFloat(e.target.value))
+                            }
                             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
                           />
-                          <span className="text-xs w-10 text-right">{Math.round(editingConfidence * 100)}%</span>
+                          <span className="text-xs w-10 text-right">
+                            {Math.round(editingConfidence * 100)}%
+                          </span>
                         </div>
                         <div className="flex gap-2 mt-2">
                           <button

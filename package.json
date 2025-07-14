@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.mjs public/pdf.worker.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -25,9 +26,11 @@
     "jspdf": "^3.0.1",
     "jwt-decode": "^4.0.0",
     "next": "14.1.0",
+    "pdfjs-dist": "5.3.93",
     "postcss": "^8.4.35",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-pdf": "^10.0.1",
     "react-redux": "^9.2.0",
     "react-resizable-panels": "^3.0.2",
     "reactflow": "^11.11.4",
@@ -42,5 +45,8 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "14.1.0",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "pdfjs-dist": "5.3.93"
   }
 }

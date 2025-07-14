@@ -121,10 +121,23 @@ const SupportingDocumentUploadModal: React.FC<
                 className="w-full"
                 accept={
                   type === "image"
-                    ? "image/*"
-                    : ".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                    ? ".jpg,.jpeg,.png,.gif,.bmp,.webp,.tiff,.svg,image/*"
+                    : ".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.webp,.tiff,.svg"
                 }
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const selectedFile = e.target.files?.[0] || null;
+                  setFile(selectedFile);
+                  if (selectedFile) {
+                    // Auto-detect type based on file extension/mimetype
+                    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+                    const imageExts = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "svg"];
+                    if (selectedFile.type.startsWith("image/") || (ext && imageExts.includes(ext))) {
+                      setType("image");
+                    } else {
+                      setType("document");
+                    }
+                  }
+                }}
                 required
               />
             </div>

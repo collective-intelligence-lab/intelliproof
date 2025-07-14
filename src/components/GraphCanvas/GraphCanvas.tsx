@@ -1358,6 +1358,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const pdfPreviewerRef = useRef<PDFPreviewerHandle>(null);
 
+  // Place these at the top level of GraphCanvasInner (with other hooks):
+  const [parseLoading, setParseLoading] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -1592,13 +1596,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           return (
                             <div className="flex flex-row gap-4 items-stretch">
                               {/* Image Previewer on the left */}
-                              <div className="flex flex-col" style={{ width: 350, minWidth: 350, maxWidth: 350 }}>
+                              <div className="flex flex-col" style={{ width: 400, minWidth: 400, maxWidth: 400 }}>
                                 <label className="block text-sm font-medium mb-0.5">
                                   Image Preview
                                 </label>
                                 <ImagePreviewer
                                   url={doc.url}
-                                  fixedWidth={350}
+                                  fixedWidth={400}
                                 />
                               </div>
                               {/* Centered Parse Text button */}
@@ -1606,10 +1610,56 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 <button
                                   type="button"
                                   className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330] text-base font-medium whitespace-pre-line text-center"
-                                  onClick={() => { /* No-op for now */ }}
+                                  disabled={parseLoading}
+                                  onClick={async () => {
+                                    setParseError(null);
+                                    setParseLoading(true);
+                                    try {
+                                      console.log('[Parse Text] Starting OCR for image URL:', doc.url);
+                                      let text = '';
+                                      let response = await fetch('/api/ai/extract-text-from-image', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ url: doc.url })
+                                      });
+                                      console.log('[Parse Text] OCR response:', response);
+                                      if (!response.ok) {
+                                        const errText = await response.text();
+                                        console.error('[Parse Text] OCR failed:', errText);
+                                        throw new Error('Failed to extract text from image');
+                                      }
+                                      const data = await response.json();
+                                      text = data.text?.trim() || '';
+                                      // If no text detected, ask for a description
+                                      if (!text || text.length < 3) {
+                                        console.log('[Parse Text] No text detected, requesting image description for URL:', doc.url);
+                                        response = await fetch('/api/ai/extract-text-from-image?summarize=true', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ url: doc.url })
+                                        });
+                                        console.log('[Parse Text] Description response:', response);
+                                        if (!response.ok) {
+                                          const errText = await response.text();
+                                          console.error('[Parse Text] Description failed:', errText);
+                                          throw new Error('Failed to get image description');
+                                        }
+                                        const descData = await response.json();
+                                        text = descData.text?.trim() || 'No text or description could be extracted.';
+                                      }
+                                      setNewEvidence((ev) => ({ ...ev, excerpt: text }));
+                                      console.log('[Parse Text] Final extracted text/description:', text);
+                                    } catch (err: any) {
+                                      setParseError(err.message || 'Failed to parse image.');
+                                      console.error('[Parse Text] Error:', err);
+                                    } finally {
+                                      setParseLoading(false);
+                                    }
+                                  }}
                                 >
-                                  {`Parse\nText`}
+                                  {parseLoading ? 'Parsing...' : `Parse\nText`}
                                 </button>
+                                {parseError && <div className="text-red-500 text-xs mt-2">{parseError}</div>}
                               </div>
                               {/* Excerpt/Lines on the right */}
                               <div className="w-1/2">

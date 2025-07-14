@@ -13,13 +13,14 @@ Dependencies:
 - Pydantic for data validation
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Body
+from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import math
 import openai
 import os
 from dotenv import load_dotenv
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -398,53 +399,44 @@ def export_report():
 
 @router.post("/api/ai/extract-text-from-image")
 async def extract_text_from_image(
-    file: UploadFile = File(...),
-    summarize: bool = False
+    url: str = Body(..., embed=True),
+    summarize: bool = Query(False)
 ):
     """
-    Extract text from uploaded images using GPT-4 Vision API.
-    
-    This endpoint allows users to upload images containing text (documents,
-    screenshots, handwritten notes, etc.) and get the text content extracted.
-    
+    Extract text from a public image URL using GPT-4 Vision API.
     Args:
-        file: Uploaded image file
-        summarize: If True, summarize content instead of raw OCR
-        
+        url: Publicly accessible image URL
     Returns:
         Dictionary with extracted/summarized text
     """
+    print(f"[extract_text_from_image] Received request. url={url}, summarize={summarize}")
     if not OPENAI_API_KEY:
+        print("[extract_text_from_image] No OpenAI API key configured.")
         raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
-    
     try:
-        # Read image file as bytes
-        image_bytes = await file.read()
-        
-        # Configure OpenAI client
         openai.api_key = OPENAI_API_KEY
-        
-        # Choose prompt based on operation mode
-        prompt = "Extract all readable text from this image." if not summarize else "Summarize the content of this image."
-        
-        # Call GPT-4 Vision API
+        prompt = "Extract all readable text from this image. If no text is present, describe the image in detail in 3-6 sentences."
+        print(f"[extract_text_from_image] Sending request to OpenAI. prompt={prompt}")
+        start_time = time.time()
         response = openai.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert OCR and summarizer."},
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"data": image_bytes}}
+                        {"type": "image_url", "image_url": {"url": url}}
                     ]
                 }
             ],
             max_tokens=512
         )
-        
+        elapsed = time.time() - start_time
+        print(f"[extract_text_from_image] OpenAI API call completed in {elapsed:.2f} seconds.")
         result = response.choices[0].message.content
+        print(f"[extract_text_from_image] Result: {result[:200]}{'...' if len(result) > 200 else ''}")
         return {"text": result}
-        
     except Exception as e:
+        print(f"[extract_text_from_image] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 

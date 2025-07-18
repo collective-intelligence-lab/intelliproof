@@ -40,23 +40,23 @@ export const createClaimNode = (
         switch (nodeType) {
             case "factual":
                 return {
-                    background: "#F5FBF5",
-                    header: "#D1E7D1"
+                    background: "#E6EAF3",
+                    header: "#6B8BC5"
                 };
             case "value":
                 return {
-                    background: "#F5F8FF",
-                    header: "#D1DBF7"
+                    background: "#E6EEE8",
+                    header: "#7DAF8C"
                 };
             case "policy":
                 return {
-                    background: "#FFF5F5",
-                    header: "#F7D1D1"
+                    background: "#F2E6E7",
+                    header: "#BD7E8B"
                 };
             default:
                 return {
-                    background: "#F5FBF5",
-                    header: "#D1E7D1"
+                    background: "#E6EAF3",
+                    header: "#6B8BC5"
                 };
         }
     };
@@ -86,17 +86,21 @@ export const createClaimNode = (
                 0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.13),
                 0px 0.51px 1.01px 0px rgba(0, 0, 0, 0.2)
             `,
-            border: `1px solid ${colors.header}`,
-            borderRadius: "8px",
+            // border: `0.5px solid ${colors.header}`,
+            border: "none",
+            borderRadius: "3px",
             padding: "0",
-            fontFamily: "DM Sans, sans-serif",
-            fontSize: "14px",
+            margin: 0,
+            fontFamily: "Arial, sans-serif",
+            fontSize: "8px",
             cursor: "pointer",
-            minWidth: "160px",
+            minWidth: "85px",
+            width: "fit-content",
+            maxWidth: "190px",
             overflow: "hidden",
             display: "flex",
             justifyContent: "center",
-            alignItems: "center",
+            alignItems: "flex-start",
             textAlign: "center" as const,
             transition: "all 200ms ease"
         }

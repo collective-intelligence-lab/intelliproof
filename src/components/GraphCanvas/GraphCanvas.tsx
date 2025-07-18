@@ -104,23 +104,23 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
     switch (type) {
       case "factual":
         return {
-          background: "#F5FBF5",
-          header: "#D1E7D1",
+          background: "#E6EAF3",
+          header: "#6B8BC5",
         };
       case "value":
         return {
-          background: "#F5F8FF",
-          header: "#D1DBF7",
+          background: "#E6EEE8",
+          header: "#7DAF8C",
         };
       case "policy":
         return {
-          background: "#FFF5F5",
-          header: "#F7D1D1",
+          background: "#F2E6E7",
+          header: "#BD7E8B",
         };
       default:
         return {
-          background: "#F5FBF5",
-          header: "#D1E7D1",
+          background: "#E6EAF3",
+          header: "#6B8BC5",
         };
     }
   };
@@ -134,13 +134,16 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
       0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.13),
       0px 0.51px 1.01px 0px rgba(0, 0, 0, 0.2)
     `,
-    border: `1px solid ${colors.header}`,
-    borderRadius: "8px",
+    // border: `0.5px solid ${colors.header}`,
+    border: "none",
+    borderRadius: "3px",
     padding: "0",
-    fontFamily: "DM Sans, sans-serif",
-    fontSize: "14px",
+    fontFamily: "Arial, sans-serif",
+    fontSize: "8px",
     cursor: "pointer",
-    minWidth: "160px",
+    minWidth: "85px",
+    width: "fit-content",
+    maxWidth: "190px",
     overflow: "hidden",
     display: "flex",
     justifyContent: "center",
@@ -150,7 +153,7 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   };
 };
 
-const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
+const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localText, setLocalText] = useState(data.text);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -160,23 +163,23 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
     switch (data.type) {
       case "factual":
         return {
-          background: "#F5FBF5",
-          header: "#D1E7D1",
+          background: "#E6EAF3",
+          header: "#6B8BC5",
         };
       case "value":
         return {
-          background: "#F5F8FF",
-          header: "#D1DBF7",
+          background: "#E6EEE8",
+          header: "#7DAF8C",
         };
       case "policy":
         return {
-          background: "#FFF5F5",
-          header: "#F7D1D1",
+          background: "#F2E6E7",
+          header: "#BD7E8B",
         };
       default:
         return {
-          background: "#F5FBF5",
-          header: "#D1E7D1",
+          background: "#E6EAF3",
+          header: "#6B8BC5",
         };
     }
   })();
@@ -226,18 +229,23 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2 h-2 bg-gray-400 border-2 border-white"
+        className="w-6 h-6 !bg-gray-600 !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
       />
-      <div className="flex flex-col w-full overflow-hidden rounded-lg">
+      <div className="flex flex-col w-full overflow-hidden p-0 m-0 group">
         {/* Type label - now part of the natural flow */}
         <div
           style={{
             backgroundColor: colors.header,
-            fontSize: "10px",
-            lineHeight: "14px",
+            fontSize: "7px",
+            lineHeight: "10px",
             width: "fit-content",
+            minWidth: "32px",
+            position: "relative",
+            padding: "1px 4px",
+            textAlign: "center",
+            borderBottomRightRadius: "4px",
           }}
-          className="font-medium capitalize px-1"
+          className="font-medium capitalize"
         >
           {data.type}
         </div>
@@ -268,7 +276,7 @@ const CustomNode = ({ data, id }: NodeProps<ClaimData>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2 h-2 bg-gray-400 border-2 border-white"
+        className="w-6 h-6 !bg-gray-600 !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
       />
     </>
   );
@@ -470,9 +478,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               color: "#000000",
               border: "1px solid #181A1B",
               borderRadius: 0,
-              padding: "4px 12px",
+              padding: "4px ",
               fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "16px",
+              fontSize: "12px",
               transition: "all 200ms ease-out",
               cursor: "pointer",
               display: "flex",
@@ -489,7 +497,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               borderRadius: 0,
               padding: "4px 12px",
               fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "16px",
+              fontSize: "12px",
               transition: "all 200ms ease-out",
               cursor: "pointer",
               display: "flex",
@@ -506,7 +514,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               borderRadius: 0,
               padding: "4px 12px",
               fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "16px",
+              fontSize: "12px",
               transition: "all 200ms ease-out",
               cursor: "pointer",
               display: "flex",
@@ -521,9 +529,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               color: "#000000",
               border: "1px solid #181A1B",
               borderRadius: 0,
-              padding: "4px 12px",
+              padding: "4px",
               fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "16px",
+              fontSize: "12px",
               transition: "all 200ms ease-out",
               cursor: "pointer",
               display: "flex",
@@ -2182,6 +2190,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               fitView
+              minZoom={0.25}
+              maxZoom={2.5}
               className="bg-white h-full [--xy-theme-selected:#f57dbd] [--xy-theme-hover:#c5c5c5] [--xy-theme-color-focus:#e8e8e8]"
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}

@@ -41,7 +41,7 @@ export const createClaimNode = (
             case "factual":
                 return {
                     background: "#E6EAF3",
-                    header: "#6B8BC5"
+                    header: "#8BA2D3"
                 };
             case "value":
                 return {

@@ -105,7 +105,7 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
       case "factual":
         return {
           background: "#E6EAF3",
-          header: "#6B8BC5",
+          header: "#8BA2D3",
         };
       case "value":
         return {
@@ -164,7 +164,7 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
       case "factual":
         return {
           background: "#E6EAF3",
-          header: "#6B8BC5",
+          header: "#8BA2D3",
         };
       case "value":
         return {
@@ -229,21 +229,27 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-6 h-6 !bg-gray-600 !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
+        className="!absolute w-8 h-8 !bg-black !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
+        style={{ left: -16, top: "50%", transform: "translateY(-50%)" }}
       />
-      <div className="flex flex-col w-full overflow-hidden p-0 m-0 group">
+      <div className="flex flex-col w-full p-0 m-0 group">
         {/* Type label - now part of the natural flow */}
         <div
           style={{
             backgroundColor: colors.header,
-            fontSize: "7px",
-            lineHeight: "10px",
+            fontSize: "8px",
+            lineHeight: "11px",
             width: "fit-content",
             minWidth: "32px",
             position: "relative",
-            padding: "1px 4px",
+            padding: "0px 4px",
             textAlign: "center",
-            borderBottomRightRadius: "4px",
+            borderBottomRightRadius: "2px",
+            margin: "-1px -1px 0 -1px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "12px",
           }}
           className="font-medium capitalize"
         >
@@ -276,7 +282,8 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-6 h-6 !bg-gray-600 !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
+        className="!absolute w-8 h-8 !bg-black !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
+        style={{ right: -16, top: "50%", transform: "translateY(-50%)" }}
       />
     </>
   );

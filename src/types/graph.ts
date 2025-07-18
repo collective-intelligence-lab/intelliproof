@@ -35,52 +35,73 @@ export const createClaimNode = (
     text: string = "New Claim",
     type: ClaimType = 'factual',
     mousePosition?: { x: number; y: number }
-): ClaimNode => ({
-    id: uuidv4(),
-    type: 'default',
-    position: mousePosition
-        ? {
-            x: mousePosition.x + 200,
-            y: mousePosition.y + (Math.random() - 0.5) * 50
+): ClaimNode => {
+    const getColors = (nodeType: string) => {
+        switch (nodeType) {
+            case "factual":
+                return {
+                    background: "#F5FBF5",
+                    header: "#D1E7D1"
+                };
+            case "value":
+                return {
+                    background: "#F5F8FF",
+                    header: "#D1DBF7"
+                };
+            case "policy":
+                return {
+                    background: "#FFF5F5",
+                    header: "#F7D1D1"
+                };
+            default:
+                return {
+                    background: "#F5FBF5",
+                    header: "#D1E7D1"
+                };
         }
-        : {
-            x: window.innerWidth / 3,
-            y: window.innerHeight / 2 + (Math.random() - 0.5) * 50
+    };
+
+    const colors = getColors(type);
+
+    return {
+        id: uuidv4(),
+        type: 'default',
+        position: mousePosition
+            ? {
+                x: mousePosition.x + 200,
+                y: mousePosition.y + (Math.random() - 0.5) * 50
+            }
+            : {
+                x: window.innerWidth / 3,
+                y: window.innerHeight / 2 + (Math.random() - 0.5) * 50
+            },
+        data: {
+            text,
+            type,
         },
-    data: {
-        text,
-        type,
-    },
-    style: {
-        padding: '4px 8px',
-        margin: 0,
-        borderRadius: 0,
-        border: '1px solid #181A1B',
-        backgroundColor: type === 'factual'
-            ? '#3A455333' // darker navy blue with 20% opacity
-            : type === 'value'
-                ? '#88917833' // olive green with 20% opacity
-                : '#888C9433', // light grey with 20% opacity
-        color: '#000000',
-        fontFamily: 'Josefin Sans, Century Gothic, sans-serif',
-        fontSize: '14px',
-        transition: 'all 200ms ease-out',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center' as 'center',
-        minHeight: 32,
-        minWidth: 80,
-        maxWidth: 200,
-        lineHeight: 1.2,
-        width: 'auto',
-        boxSizing: 'border-box',
-        wordWrap: 'break-word',
-        whiteSpace: 'pre-wrap',
-        overflowWrap: 'break-word'
-    }
-});
+        style: {
+            backgroundColor: colors.background,
+            boxShadow: `
+                0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.05),
+                0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.13),
+                0px 0.51px 1.01px 0px rgba(0, 0, 0, 0.2)
+            `,
+            border: `1px solid ${colors.header}`,
+            borderRadius: "8px",
+            padding: "0",
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: "14px",
+            cursor: "pointer",
+            minWidth: "160px",
+            overflow: "hidden",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "center" as const,
+            transition: "all 200ms ease"
+        }
+    };
+};
 
 export type ExportedGraphData = {
     evidence: Evidence[];

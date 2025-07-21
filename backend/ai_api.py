@@ -31,7 +31,9 @@ from ai_models import (
     NodeWithEvidenceModel,
     CheckEvidenceRequest,
     EvidenceEvaluation,
-    CheckEvidenceResponse
+    CheckEvidenceResponse,
+    ValidateEdgeRequest,  # NEW
+    ValidateEdgeResponse  # NEW
 )
 from llm_manager import run_llm, DEFAULT_MCP
 
@@ -217,13 +219,77 @@ def classify_claim_type():
     """
     pass
 
-@router.post("/api/ai/validate-edge")
-def validate_edge():
+@router.post("/api/ai/validate-edge", response_model=ValidateEdgeResponse)
+def validate_edge(data: ValidateEdgeRequest = Body(...)):
     """
-    TODO: Validate logical relationships between claims.
-    Check if proposed edges represent valid logical connections.
+    Validate logical relationship between two nodes via an edge.
+    Determines if the edge represents an attack or support, provides reasoning, and a confidence value in [-1, 1].
     """
-    pass
+    def format_evidence(evidence_list):
+        if not evidence_list:
+            return "None"
+        return "\n".join([
+            f"- Title: {ev.title}\n  Excerpt: {ev.excerpt}" for ev in evidence_list
+        ])
+
+    prompt = f"""
+You are an expert in argument analysis. Given the following two nodes and their connecting edge, determine whether the source node ATTACKS, SUPPORTS, or is NEUTRAL to the target node. 
+
+- If you choose 'attack', it means the source claim attacks, contradicts, or undermines the target claim.
+- If you choose 'support', it means the source claim supports, strengthens, or provides evidence for the target claim.
+- If you choose 'neutral', it means there is no clear relation between the source and target claims.
+
+The output confidence value should match the evaluation:
+- -1 means strong attack
+- +1 means strong support
+- 0 means neutral or no relation
+
+Respond in this format:
+Evaluation: <attack|support|neutral>
+Reasoning: <3-5 sentences explaining your reasoning>
+Confidence: <float between -1 and 1, matching the evaluation>
+
+Source Node:
+ID: {data.source_node.id}
+Text: {getattr(data.source_node, 'text', '')}
+Evidence:
+{format_evidence(getattr(data.source_node, 'evidence', None))}
+
+Target Node:
+ID: {data.target_node.id}
+Text: {getattr(data.target_node, 'text', '')}
+Evidence:
+{format_evidence(getattr(data.target_node, 'evidence', None))}
+
+Edge:
+Source: {data.edge.source}
+Target: {data.edge.target}
+"""
+    try:
+        content = run_llm([
+            {"role": "user", "content": prompt}
+        ], DEFAULT_MCP)
+        evaluation = "unsure"
+        reasoning = content
+        confidence = 0.0
+        for line in content.splitlines():
+            if line.lower().startswith("evaluation:"):
+                evaluation = line.split(":", 1)[1].strip().lower()
+            if line.lower().startswith("reasoning:"):
+                reasoning = line.split(":", 1)[1].strip()
+            if line.lower().startswith("confidence:"):
+                try:
+                    confidence = float(line.split(":", 1)[1].strip())
+                    confidence = min(max(confidence, -1.0), 1.0)
+                except Exception:
+                    confidence = 0.0
+        return ValidateEdgeResponse(
+            evaluation=evaluation,
+            reasoning=reasoning,
+            confidence=confidence
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/ai/generate-assumptions")
 def generate_assumptions():

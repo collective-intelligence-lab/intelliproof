@@ -290,3 +290,52 @@ Ensure your `backend/vercel.json` is properly configured:
 3. **Database**: Both frontend and backend connect to the same Supabase instance. Ensure your Supabase project is properly configured with the required tables and RLS policies.
 
 4. **Redeploy**: Any changes to the codebase will require redeployment. Use `vercel --prod` in the respective directories to redeploy.
+
+
+
+PUSH MONDAY 21 JULY 2025 BUG FIXES TO REMEMMBER
+
+- automated check evidence and validate edge working reasonably well
+
+    * need to test with actual arguments and see if output matches expected
+
+* evidence scores after check_node_evidence and check_evidence are updating evidence scores
+  appear amongst multiple nodes
+
+* AI copilot buttons need to be parsed, remove redundant
+    - remove "Validate Edge" as it is being run automatically after edge modification
+    - Generate Assumptions not working 
+    - Validate All Edges valid 🤗
+
+* messages need to be sot
+
+
+TO WORK ON: 
+
+  * Edge clarification with Kabir: EDGE MUST BE CHANGEABLE FROM SUPPORT TO ATTACK BY AI SO ...
+
+  * critique graph (G) --> argument_patterns_bank.yaml but wait for Kaveh confirmation that VALID 
+
+
+  * propagation function not updating confidence intervals
+  * report graph (G) -->
+
+  * generate assumptions() -->
+
+  * evaluate assumptions() -->
+
+
+  ? classify claim type --> ???? (maybe user doesnt know what their claim acutally is)
+
+
+
+  QUESTIONS: 
+
+
+  -- storage of messages neccessary?
+  -- purpose and domain of chatbox (AI custom messages)
+  -- broken record but ASSUMMPTIONS
+  -- edge clarification with Kabir
+  -- extra LLM keys to test with?
+  -- WAITING ON ARGUMENT YAML CONFIMATION FROM KAVEH FOR critique_graph(G)
+  -- WAITING ON propagation function      FROM KAVEH  

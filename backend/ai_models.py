@@ -15,20 +15,32 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 
+class EvidenceModel(BaseModel):
+    """
+    Represents a piece of evidence supporting or refuting a claim.
+    """
+    id: str
+    title: str
+    supportingDocId: str
+    supportingDocName: str
+    excerpt: str
+    confidence: float
+
+
 class NodeModel(BaseModel):
     """
     Represents a node in the argument graph for credibility analysis.
     
     Attributes:
         id: Unique identifier for the node
-        evidence: List of evidence scores (0.0 to 1.0) supporting this node
-        evidence_min: Minimum evidence value for this node (optional)
-        evidence_max: Maximum evidence value for this node (optional)
+        text: The claim or statement of the node
+        type: The type of claim (factual, value, policy, etc.)
+        evidence: List of evidence objects supporting this node (optional)
     """
     id: str
-    evidence: Optional[List[float]] = None
-    evidence_min: Optional[float] = None
-    evidence_max: Optional[float] = None
+    text: Optional[str] = None
+    type: Optional[str] = None
+    evidence: Optional[List[EvidenceModel]] = None
 
 
 class EdgeModel(BaseModel):
@@ -37,12 +49,10 @@ class EdgeModel(BaseModel):
     
     Attributes:
         source: ID of the source node
-        target: ID of the target node  
-        weight: Influence weight of the edge (-1.0 to 1.0)
+        target: ID of the target node
     """
     source: str
     target: str
-    weight: float
 
 
 class CredibilityPropagationRequest(BaseModel):
@@ -76,18 +86,6 @@ class CredibilityPropagationResponse(BaseModel):
     initial_evidence: Dict[str, float]
     iterations: List[Dict[str, float]]
     final_scores: Dict[str, float]
-
-
-class EvidenceModel(BaseModel):
-    """
-    Represents a piece of evidence supporting or refuting a claim.
-    """
-    id: str
-    title: str
-    supportingDocId: str
-    supportingDocName: str
-    excerpt: str
-    confidence: float
 
 
 class SupportingDocumentModel(BaseModel):
@@ -139,3 +137,24 @@ class CheckEvidenceResponse(BaseModel):
     Response containing AI evaluations of evidence-claim relationships.
     """
     results: List[EvidenceEvaluation] 
+
+
+class ValidateEdgeRequest(BaseModel):
+    """
+    Request model for validating an edge between two nodes.
+    Includes the edge, and the full contents of the source and target nodes.
+    """
+    edge: EdgeModel
+    source_node: NodeModel
+    target_node: NodeModel
+
+class ValidateEdgeResponse(BaseModel):
+    """
+    Response model for edge validation.
+    evaluation: 'attack' or 'support'
+    reasoning: 3-5 sentence explanation
+    confidence: float in [-1, 1] (negative = attack, positive = support)
+    """
+    evaluation: str
+    reasoning: str
+    confidence: float 

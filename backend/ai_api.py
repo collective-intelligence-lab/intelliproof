@@ -33,6 +33,7 @@ from ai_models import (
     EvidenceEvaluation,
     CheckEvidenceResponse
 )
+from llm_manager import run_llm, DEFAULT_MCP
 
 # Load environment variables from .env file
 load_dotenv()
@@ -148,59 +149,33 @@ def map_evaluation_to_confidence(evaluation: str) -> float:
 
 @router.post("/api/ai/check-evidence", response_model=CheckEvidenceResponse)
 def check_evidence(data: CheckEvidenceRequest = Body(...)):
-    """
-    Use GPT-4 to evaluate how well pieces of evidence support claims.
-    
-    For each claim-evidence pair:
-    1. Format a structured prompt with claim text and evidence
-    2. Send to GPT-4 for analysis
-    3. Parse response for evaluation, reasoning, and confidence
-    4. Return structured results for frontend processing
-    """
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
-    
-    openai.api_key = OPENAI_API_KEY
+    print("[ai_api] check_evidence: Function started.")
     results = []
-    
-    # Process each node and its associated evidence
     for node in data.nodes:
         for eid in node.evidenceIds or []:
-            # Find the evidence object by ID
             evidence = next((e for e in data.evidence if e.id == eid), None)
             if not evidence:
                 continue
-            
-            # Find supporting document info
             doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
             doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
-            
-            # Construct prompt for GPT-4 analysis
             prompt = f"""
 Claim: {node.text}
 Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc_info}
 
-Question: Does the above evidence support the claim?\nRespond in this format:\nEvaluation: <yes|no|unsure|unrelated>\nReasoning: <your explanation>\nConfidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
+Question: Does the above evidence support the claim?
+Respond in this format:
+Evaluation: <yes|no|unsure|unrelated>
+Reasoning: <your explanation>
+Confidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
 """
-            
             try:
-                # Call OpenAI GPT-4 for evidence evaluation
-                response = openai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are an expert fact-checker and argument analyst."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=256
+                content = run_llm(
+                    [{"role": "user", "content": prompt}],
+                    DEFAULT_MCP
                 )
-                
-                # Parse GPT-4 response
-                content = response.choices[0].message.content.strip()
                 eval_val = "unsure"
                 reasoning = content
                 confidence_val = 0.5
-                
-                # Extract structured information from response
                 for line in content.splitlines():
                     if line.lower().startswith("evaluation:"):
                         eval_val = line.split(":", 1)[1].strip().lower()
@@ -209,10 +184,9 @@ Question: Does the above evidence support the claim?\nRespond in this format:\nE
                     if line.lower().startswith("confidence:"):
                         try:
                             confidence_val = float(line.split(":", 1)[1].strip())
-                            confidence_val = min(max(confidence_val, 0.0), 1.0)  # Clamp to [0,1]
+                            confidence_val = min(max(confidence_val, 0.0), 1.0)
                         except Exception:
                             confidence_val = 0.5
-                
                 results.append(EvidenceEvaluation(
                     node_id=node.id,
                     evidence_id=evidence.id,
@@ -220,9 +194,7 @@ Question: Does the above evidence support the claim?\nRespond in this format:\nE
                     reasoning=reasoning,
                     confidence=confidence_val
                 ))
-                
             except Exception as e:
-                # Handle API errors gracefully
                 results.append(EvidenceEvaluation(
                     node_id=node.id,
                     evidence_id=evidence.id,
@@ -230,7 +202,7 @@ Question: Does the above evidence support the claim?\nRespond in this format:\nE
                     reasoning=f"Error: {str(e)}",
                     confidence=0.5
                 ))
-    
+    print("[ai_api] check_evidence: Function finished.")
     return CheckEvidenceResponse(results=results)
 
 # =============================================================================
@@ -298,22 +270,13 @@ async def extract_text_from_image(
     url: str = Body(..., embed=True),
     summarize: bool = Query(False)
 ):
-    """
-    Extract text from a public image URL using GPT-4 Vision API.
-    Args:
-        url: Publicly accessible image URL
-    Returns:
-        Dictionary with extracted/summarized text
-    """
-    print(f"[extract_text_from_image] Received request. url={url}, summarize={summarize}")
+    print(f"[ai_api] extract_text_from_image: Function started. url={url}, summarize={summarize}")
     if not OPENAI_API_KEY:
-        print("[extract_text_from_image] No OpenAI API key configured.")
+        print("[ai_api] extract_text_from_image: No OpenAI API key configured.")
         raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
     try:
         openai.api_key = OPENAI_API_KEY
         prompt = "Extract all readable text from this image. If no text is present, describe the image in detail in 3-6 sentences."
-        print(f"[extract_text_from_image] Sending request to OpenAI. prompt={prompt}")
-        start_time = time.time()
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -328,11 +291,9 @@ async def extract_text_from_image(
             ],
             max_tokens=512
         )
-        elapsed = time.time() - start_time
-        print(f"[extract_text_from_image] OpenAI API call completed in {elapsed:.2f} seconds.")
         result = response.choices[0].message.content
-        print(f"[extract_text_from_image] Result: {result[:200]}{'...' if len(result) > 200 else ''}")
+        print(f"[ai_api] extract_text_from_image: Function finished.")
         return {"text": result}
     except Exception as e:
-        print(f"[extract_text_from_image] Error: {e}")
+        print(f"[ai_api] extract_text_from_image: Error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 

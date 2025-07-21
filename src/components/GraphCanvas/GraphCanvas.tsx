@@ -104,23 +104,23 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
     switch (type) {
       case "factual":
         return {
-          background: "#E6EAF3",
-          header: "#8BA2D3",
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
       case "value":
         return {
-          background: "#E6EEE8",
-          header: "#7DAF8C",
+          background: "#ecf4e4",
+          header: "#94bc84",
         };
       case "policy":
         return {
-          background: "#F2E6E7",
-          header: "#BD7E8B",
+          background: "#EAF0F7",
+          header: "#91A4C2",
         };
       default:
         return {
-          background: "#E6EAF3",
-          header: "#6B8BC5",
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
     }
   };
@@ -129,22 +129,23 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
 
   return {
     backgroundColor: colors.background,
-    boxShadow: "0 3px 10px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.25)",
-    border: "1px solid rgba(0, 0, 0, 0.8)",
-    borderRadius: "3px",
-    padding: "0",
+    color: "#000000",
+    padding: "0 8px 4px 8px",
     fontFamily: "Arial, sans-serif",
-    fontSize: "8px",
+    fontSize: "7px",
     cursor: "pointer",
-    minWidth: "70px",
+    minWidth: "90px",
+    maxWidth: "140px",
     width: "fit-content",
-    maxWidth: "160px",
-    overflow: "hidden",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     textAlign: "center" as const,
     transition: "all 200ms ease",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+    // border: "none",
+    border: `1.2px solid ${colors.header}`,
+    borderRadius: "3px",
   };
 };
 
@@ -158,23 +159,23 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
     switch (data.type) {
       case "factual":
         return {
-          background: "#eeeeee", // Light gray
-          header: "#aeaeae", // Medium gray
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
       case "value":
         return {
-          background: "#F2F4E8", // Very light olive green
-          header: "#B2B4A8", // Darker olive green
+          background: "#ecf4e4",
+          header: "#94bc84",
         };
       case "policy":
         return {
-          background: "#F0F3F9", // Very light navy blue
-          header: "#B0B3B9", // Darker navy blue
+          background: "#EAF0F7",
+          header: "#91A4C2",
         };
       default:
         return {
-          background: "#eeeeee", // Light gray
-          header: "#aeaeae", // Medium gray
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
     }
   })();
@@ -239,35 +240,38 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         <div
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
+            top: "-0.35px", // Align with border
+            left: "-0.35px", // Align with border
             width: "fit-content",
-            minWidth: "28px",
+            minWidth: "10px",
             maxWidth: "40px",
-            height: "10px", // Reduced from 12px to 10px
+            height: "8px",
             backgroundColor: colors.header,
             borderBottomRightRadius: "3px",
+            borderTopLeftRadius: "3px",
             zIndex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#000000",
-            fontSize: "8px",
-            fontWeight: "300",
+            fontSize: "7px",
+            fontWeight: "200",
             letterSpacing: "0.03em",
-            fontFamily: "DM Sans, sans-serif",
-            padding: "7px 7px 7px 7px", // Added minimal padding
+            fontFamily: "Arial, sans-serif",
+            padding: "5px",
           }}
         >
-          {data.type === "factual" ? "Factual" : data.type}
+          {data.type === "factual"
+            ? "Factual"
+            : data.type.charAt(0).toUpperCase() + data.type.slice(1)}
         </div>
         {/* Content section */}
         <div
           onDoubleClick={handleDoubleClick}
           className={`w-full px-1.5 ${isEditing ? "nodrag" : ""}`}
           style={{
-            fontFamily: "DM Sans, sans-serif",
-            fontSize: "8px",
+            fontFamily: "Arial, sans-serif",
+            fontSize: "7px",
             paddingTop: "10px",
             paddingBottom: "0px",
           }}
@@ -496,80 +500,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         console.error("No graph ID in currentGraph:", currentGraph);
       }
 
-      // Helper for node style
-      const getNodeStyle = (type: string) => {
-        switch (type) {
-          case "factual":
-            return {
-              backgroundColor: "#3A455333",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px ",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-          case "value":
-            return {
-              backgroundColor: "#88917833",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px 12px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-          case "policy":
-            return {
-              backgroundColor: "#888C9433",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px 12px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-          default:
-            return {
-              backgroundColor: "#3A455333",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-        }
-      };
-
       // Transform nodes to include required ReactFlow properties
       const formattedNodes = (currentGraph.graph_data?.nodes || []).map(
         (node) => {
@@ -599,7 +529,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 });
               },
             },
-            style: getNodeStyle(nodeData.type || node.type),
+            style: getNodeStyle(nodeData.type || node.type), // Always use getNodeStyle
           };
         }
       );
@@ -665,10 +595,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const addNode = (type: ClaimType) => {
     const newNode = {
-      ...createClaimNode("new node", type), // Changed from "New Claim" to "new node"
+      ...createClaimNode("new node", type),
       data: {
-        ...createClaimNode("new node", type).data, // Changed from "New Claim" to "new node"
-        text: "new node", // Changed from "New Claim" to "new node"
+        ...createClaimNode("new node", type).data,
+        text: "new node",
         author: profile?.email || "Anonymous",
         onChange: (newText: string) => {
           handleNodeUpdate(newNode.id, {
@@ -676,6 +606,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           });
         },
       },
+      style: getNodeStyle(type), // Explicitly set the style
     };
     setNodes((nds) => [...nds, newNode]);
     setIsAddNodeOpen(false);
@@ -787,6 +718,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               });
             },
           },
+          style: getNodeStyle("factual"), // Explicitly set the style
         };
 
         // Create the edge between the nodes
@@ -836,21 +768,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
-          const newType = updates.data?.type || node.data.type;
-          const currentStyle = node.style || {};
-
-          // Only update style if the type has changed
-          const style =
-            newType !== node.data.type
-              ? {
-                  ...currentStyle,
-                  ...getNodeStyle(newType),
-                  // Keep existing width/height if they exist
-                  ...(currentStyle.width && { width: currentStyle.width }),
-                  ...(currentStyle.height && { height: currentStyle.height }),
-                }
-              : currentStyle;
-
           const updatedNode = {
             ...node,
             ...updates,
@@ -863,7 +780,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 });
               },
             },
-            style,
+            style: getNodeStyle(updates.data?.type || node.data.type), // Always use getNodeStyle
           };
           if (selectedNode?.id === nodeId) {
             setSelectedNode(updatedNode);
@@ -1395,7 +1312,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [parseError, setParseError] = useState<string | null>(null);
 
   return (
-    <div className="w-full h-full relative font-josefin">
+    <div className="w-full h-full relative font-sans">
       <PanelGroup direction="horizontal">
         {/* Evidence Panel Container */}
         {isEvidencePanelOpen && (
@@ -1932,7 +1849,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 text-lg text-center w-full"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "390",
+                          fontWeight: "200",
                         }}
                         autoFocus
                       />
@@ -1942,7 +1859,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "390",
+                          fontWeight: "200",
                         }}
                       >
                         {title}
@@ -2228,7 +2145,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               edgeTypes={edgeTypes}
               fitView
               minZoom={0.25}
-              maxZoom={2.5}
+              maxZoom={6}
               className="bg-white h-full [--xy-theme-selected:#f57dbd] [--xy-theme-hover:#c5c5c5] [--xy-theme-color-focus:#e8e8e8]"
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}

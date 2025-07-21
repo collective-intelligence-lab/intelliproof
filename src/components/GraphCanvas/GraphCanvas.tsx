@@ -1394,6 +1394,139 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [parseLoading, setParseLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  // Add state for API queue and processing
+  const [apiQueue, setApiQueue] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const prevSelectedNodeRef = useRef<ClaimNode | null>(null);
+
+  // Detect node deselect and queue API call
+  useEffect(() => {
+    if (
+      prevSelectedNodeRef.current?.id &&
+      !selectedNode
+    ) {
+      const prevId = prevSelectedNodeRef.current.id;
+      if (prevId) {
+        setApiQueue((q) => [...q, prevId]);
+      }
+    }
+    prevSelectedNodeRef.current = selectedNode || null;
+  }, [selectedNode]);
+
+  // Queue processor effect
+  useEffect(() => {
+    if (!isProcessing && apiQueue.length > 0) {
+      setIsProcessing(true);
+      const nodeId = apiQueue[0];
+      triggerCheckNodeEvidence(nodeId).finally(() => {
+        setApiQueue((q) => q.slice(1));
+        setIsProcessing(false);
+      });
+    }
+  }, [apiQueue, isProcessing]);
+
+  // API call function for queued node evidence check
+  const triggerCheckNodeEvidence = async (nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    const requestBody = {
+      node: {
+        id: node.id,
+        text: node.data.text,
+        type: node.data.type,
+        evidenceIds: node.data.evidenceIds || [],
+      },
+      evidence: evidenceCards,
+      supportingDocuments: supportingDocumentsRedux,
+    };
+    try {
+      const response = await fetch("/api/ai/check-node-evidence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        let errorMsg = "Failed to check evidence for node.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch { }
+        throw new Error(errorMsg);
+      }
+      const data = await response.json();
+      // Output each result as a structured message (same as check_evidence)
+      data.results.forEach((result: any) => {
+        const claimNode = node;
+        const claimText = claimNode ? claimNode.data.text : "";
+        const evidenceObj = evidenceCards.find((ev) => ev.id === result.evidence_id);
+        const evidenceTitle = evidenceObj ? evidenceObj.title : "";
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: {
+              "Claim Node ID": result.node_id,
+              Claim: claimText,
+              "Evidence ID": result.evidence_id,
+              "Evidence Title": evidenceTitle,
+              Evaluation: result.evaluation,
+              Reasoning: result.reasoning,
+              Confidence: `${Math.round(result.confidence * 100)}%`,
+            },
+            isStructured: true,
+          },
+        ]);
+      });
+      // Update evidence confidences for the node's evidence
+      setEvidenceCards((prevEvidence) =>
+        prevEvidence.map((ev) => {
+          const found = data.results.find((r: any) => r.evidence_id === ev.id);
+          if (found) {
+            return { ...ev, confidence: found.confidence };
+          }
+          return ev;
+        })
+      );
+      // Use updated confidences from API response to update node belief
+      const updatedConfidences = (node.data.evidenceIds || [])
+        .map((eid) => {
+          const found = data.results.find((r: any) => r.evidence_id === eid);
+          return found ? found.confidence : undefined;
+        })
+        .filter((c) => typeof c === 'number');
+      const avgConfidence =
+        updatedConfidences.length > 0
+          ? updatedConfidences.reduce((a, b) => a + b, 0) / updatedConfidences.length
+          : 0.5;
+      setNodes((prevNodes) =>
+        prevNodes.map((n) =>
+          n.id === node.id
+            ? {
+              ...n,
+              data: {
+                ...n.data,
+                belief: avgConfidence,
+              },
+            }
+            : n
+        )
+      );
+    } catch (err: any) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "assistant",
+          content: `<span class='text-red-600'>Error: ${err.message}</span>`,
+        },
+      ]);
+    }
+  };
+
+  // Add this handler in GraphCanvasInner:
+  const handleClearCopilotChat = () => {
+    setCopilotMessages([]); // Only clear chat messages, not the CommandMessageBox buttons
+  };
+
   return (
     <div className="w-full h-full relative font-josefin">
       <PanelGroup direction="horizontal">
@@ -2467,44 +2600,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   </button>
                 </div>
                 {/* AI Functionality Section */}
-                {/*
-                <div className="flex flex-row justify-between gap-4 mt-4">
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Claim</span>
-                    <button
-                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                      title="Compute claim credibility: Aggregates evidence for the selected claim and returns the initial credibility score (Eᵢ)."
-                      onClick={handleClaimCredibility}
-                      disabled={copilotLoading}
-                    >
-                      <HandRaisedIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Check Evidence</span>
-                    <button
-                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                      title="Check evidence for each claim: Evaluates whether each piece of evidence supports its linked claim."
-                      onClick={handleCheckEvidence}
-                      disabled={copilotLoading}
-                    >
-                      <DocumentMagnifyingGlassIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Edge</span>
-                    <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                      <ArrowPathIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Graph</span>
-                    <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                      <SparklesIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
+                {/* ... existing code ... */}
+                <div className="flex justify-center mt-2">
+                  <button
+                    onClick={handleClearCopilotChat}
+                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
+                    type="button"
+                  >
+                    Clear Chat
+                  </button>
                 </div>
-                */}
+                {/* ... existing code ... */}
               </div>
             </div>
           </Panel>

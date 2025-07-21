@@ -297,3 +297,66 @@ async def extract_text_from_image(
     except Exception as e:
         print(f"[ai_api] extract_text_from_image: Error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 
+
+class CheckNodeEvidenceRequest(BaseModel):
+    node: NodeWithEvidenceModel
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+@router.post("/api/ai/check-node-evidence", response_model=CheckEvidenceResponse)
+def check_node_evidence(data: CheckNodeEvidenceRequest = Body(...)):
+    print("[ai_api] check_node_evidence: Function started.")
+    results = []
+    node = data.node
+    for eid in node.evidenceIds or []:
+        evidence = next((e for e in data.evidence if e.id == eid), None)
+        if not evidence:
+            continue
+        doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
+        doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
+        prompt = f"""
+Claim: {node.text}
+Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc_info}
+
+Question: Does the above evidence support the claim?
+Respond in this format:
+Evaluation: <yes|no|unsure|unrelated>
+Reasoning: <your explanation>
+Confidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
+"""
+        try:
+            content = run_llm(
+                [{"role": "user", "content": prompt}],
+                DEFAULT_MCP
+            )
+            eval_val = "unsure"
+            reasoning = content
+            confidence_val = 0.5
+            for line in content.splitlines():
+                if line.lower().startswith("evaluation:"):
+                    eval_val = line.split(":", 1)[1].strip().lower()
+                if line.lower().startswith("reasoning:"):
+                    reasoning = line.split(":", 1)[1].strip()
+                if line.lower().startswith("confidence:"):
+                    try:
+                        confidence_val = float(line.split(":", 1)[1].strip())
+                        confidence_val = min(max(confidence_val, 0.0), 1.0)
+                    except Exception:
+                        confidence_val = 0.5
+            results.append(EvidenceEvaluation(
+                node_id=node.id,
+                evidence_id=evidence.id,
+                evaluation=eval_val,
+                reasoning=reasoning,
+                confidence=confidence_val
+            ))
+        except Exception as e:
+            results.append(EvidenceEvaluation(
+                node_id=node.id,
+                evidence_id=evidence.id,
+                evaluation="unsure",
+                reasoning=f"Error: {str(e)}",
+                confidence=0.5
+            ))
+    print("[ai_api] check_node_evidence: Function finished.")
+    return CheckEvidenceResponse(results=results) 

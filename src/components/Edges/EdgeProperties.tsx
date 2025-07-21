@@ -7,12 +7,14 @@ interface EdgePropertiesProps {
   edge: ClaimEdge | null;
   onClose: () => void;
   onUpdate: (edgeId: string, updates: Partial<ClaimEdge>) => void;
+  copilotOpen?: boolean;
 }
 
 const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   edge,
   onClose,
   onUpdate,
+  copilotOpen,
 }) => {
   const [confidence, setConfidence] = useState(0);
 
@@ -49,7 +51,10 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   };
 
   return (
-    <div className="fixed right-6 top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50">
+    <div
+      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50"
+      style={{ right: copilotOpen ? "27vw" : "1.5rem", transition: "right 0.3s" }}
+    >
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-medium">Edge Properties</h2>

@@ -27,6 +27,7 @@ interface NodePropertiesProps {
   evidenceCards: EvidenceCard[];
   supportingDocuments: SupportingDocument[];
   onUpdateEvidenceConfidence: (evidenceId: string, confidence: number) => void;
+  copilotOpen?: boolean;
 }
 
 const NodeProperties: React.FC<NodePropertiesProps> = ({
@@ -36,6 +37,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   evidenceCards,
   supportingDocuments,
   onUpdateEvidenceConfidence,
+  copilotOpen,
 }) => {
   const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -128,7 +130,10 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   };
 
   return (
-    <div className="fixed right-6 top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50">
+    <div
+      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50"
+      style={{ right: copilotOpen ? "27vw" : "1.5rem", transition: "right 0.3s" }}
+    >
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-medium">Claim Properties</h2>
@@ -149,31 +154,28 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "factual"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
                   ? "bg-[#3A4553] text-white"
                   : "bg-[#3A4553] bg-opacity-60 text-[#3A4553] hover:bg-opacity-80 hover:text-white"
-              }`}
+                }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "value"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
                   ? "bg-[#889178] text-white"
                   : "bg-[#889178] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-white"
-              }`}
+                }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "policy"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
                   ? "bg-[#888C94] text-white"
                   : "bg-[#888C94] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-white"
-              }`}
+                }`}
             >
               Policy
             </button>
@@ -240,7 +242,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0 ? (
+              node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;

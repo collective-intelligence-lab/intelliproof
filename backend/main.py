@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 from supabase import create_client, Client
 import ai_api
+from models import SignupRequest, SignupResponse, SigninRequest, SigninResponse, SignoutResponse, UserData
 
 # Load environment variables
 load_dotenv()
@@ -33,36 +34,7 @@ supabase: Client = create_client(
 )
 
 # Models
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    first_name: str
-    last_name: str
 
-class SignupResponse(BaseModel):
-    message: str
-    user_id: Optional[str] = None
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    user: Optional[dict] = None
-
-class SigninRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-class SigninResponse(BaseModel):
-    message: str
-    user_id: Optional[str] = None
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    user: Optional[dict] = None
-
-class SignoutResponse(BaseModel):
-    message: str
-
-class UserData(BaseModel):
-    profile: dict
-    graphs: List[dict]
 
 @app.post("/api/signup", response_model=SignupResponse)
 async def signup(request: SignupRequest):

@@ -32,7 +32,7 @@ export interface ClaimNode extends Node<ClaimData> {
 }
 
 export const createClaimNode = (
-    text: string = "New Claim",
+    text: string = "new node",
     type: ClaimType = 'factual',
     mousePosition?: { x: number; y: number }
 ): ClaimNode => {
@@ -40,23 +40,23 @@ export const createClaimNode = (
         switch (nodeType) {
             case "factual":
                 return {
-                    background: "#E6EAF3",
-                    header: "#8BA2D3"
+                    background: "#eeeeee",
+                    header: "#aeaeae"
                 };
             case "value":
                 return {
-                    background: "#E6EEE8",
-                    header: "#7DAF8C"
+                    background: "#F2F4E8",  // Very light olive green
+                    header: "#B2B4A8"  // Darker olive green
                 };
             case "policy":
                 return {
-                    background: "#F2E6E7",
-                    header: "#BD7E8B"
+                    background: "#F0F3F9",  // Very light navy blue
+                    header: "#B0B3B9"  // Darker navy blue with similar contrast
                 };
             default:
                 return {
-                    background: "#E6EAF3",
-                    header: "#6B8BC5"
+                    background: "#eeeeee",
+                    header: "#aeaeae"
                 };
         }
     };
@@ -81,28 +81,22 @@ export const createClaimNode = (
         },
         style: {
             backgroundColor: colors.background,
-            boxShadow: `
-                0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.05),
-                0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.13),
-                0px 0.51px 1.01px 0px rgba(0, 0, 0, 0.2)
-            `,
-            // border: `0.5px solid ${colors.header}`,
+            color: "#000000",
             border: "none",
             borderRadius: "3px",
-            padding: "0",
-            margin: 0,
+            padding: "4px 12px",
             fontFamily: "Arial, sans-serif",
-            fontSize: "8px",
+            fontSize: "7px",  // Ensure font size is 10px
             cursor: "pointer",
-            minWidth: "85px",
+            minWidth: "100px",
+            maxWidth: "200px",
             width: "fit-content",
-            maxWidth: "190px",
-            overflow: "hidden",
             display: "flex",
             justifyContent: "center",
-            alignItems: "flex-start",
+            alignItems: "center",
             textAlign: "center" as const,
-            transition: "all 200ms ease"
+            transition: "all 200ms ease",
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)"
         }
     };
 };

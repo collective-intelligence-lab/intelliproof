@@ -129,21 +129,16 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
 
   return {
     backgroundColor: colors.background,
-    boxShadow: `
-      0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.05),
-      0px 3.54px 4.55px 0px rgba(0, 0, 0, 0.13),
-      0px 0.51px 1.01px 0px rgba(0, 0, 0, 0.2)
-    `,
-    // border: `0.5px solid ${colors.header}`,
-    border: "none",
+    boxShadow: "0 3px 10px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.25)",
+    border: "1px solid rgba(0, 0, 0, 0.8)",
     borderRadius: "3px",
     padding: "0",
     fontFamily: "Arial, sans-serif",
     fontSize: "8px",
     cursor: "pointer",
-    minWidth: "85px",
+    minWidth: "70px",
     width: "fit-content",
-    maxWidth: "190px",
+    maxWidth: "160px",
     overflow: "hidden",
     display: "flex",
     justifyContent: "center",
@@ -163,23 +158,23 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
     switch (data.type) {
       case "factual":
         return {
-          background: "#E6EAF3",
-          header: "#8BA2D3",
+          background: "#eeeeee", // Light gray
+          header: "#aeaeae", // Medium gray
         };
       case "value":
         return {
-          background: "#E6EEE8",
-          header: "#7DAF8C",
+          background: "#F2F4E8", // Very light olive green
+          header: "#B2B4A8", // Darker olive green
         };
       case "policy":
         return {
-          background: "#F2E6E7",
-          header: "#BD7E8B",
+          background: "#F0F3F9", // Very light navy blue
+          header: "#B0B3B9", // Darker navy blue
         };
       default:
         return {
-          background: "#E6EAF3",
-          header: "#6B8BC5",
+          background: "#eeeeee", // Light gray
+          header: "#aeaeae", // Medium gray
         };
     }
   })();
@@ -229,37 +224,53 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="!absolute w-8 h-8 !bg-black !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
-        style={{ left: -16, top: "50%", transform: "translateY(-50%)" }}
+        className="!absolute !w-1 !h-1 !bg-black !rounded-full !z-10 !border !border-white !border-[0.5px]"
+        style={{
+          left: "-0.45px",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          border: "none",
+          outline: "none",
+          boxShadow: "none",
+        }}
       />
       <div className="flex flex-col w-full p-0 m-0 group">
-        {/* Type label - now part of the natural flow */}
+        {/* Corner header section */}
         <div
           style={{
-            backgroundColor: colors.header,
-            fontSize: "8px",
-            lineHeight: "11px",
+            position: "absolute",
+            top: 0,
+            left: 0,
             width: "fit-content",
-            minWidth: "32px",
-            position: "relative",
-            padding: "0px 4px",
-            textAlign: "center",
-            borderBottomRightRadius: "2px",
-            margin: "-1px -1px 0 -1px",
+            minWidth: "28px",
+            maxWidth: "40px",
+            height: "10px", // Reduced from 12px to 10px
+            backgroundColor: colors.header,
+            borderBottomRightRadius: "3px",
+            zIndex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            height: "12px",
+            color: "#000000",
+            fontSize: "8px",
+            fontWeight: "300",
+            letterSpacing: "0.03em",
+            fontFamily: "DM Sans, sans-serif",
+            padding: "7px 7px 7px 7px", // Added minimal padding
           }}
-          className="font-medium capitalize"
         >
-          {data.type}
+          {data.type === "factual" ? "Factual" : data.type}
         </div>
-
         {/* Content section */}
         <div
           onDoubleClick={handleDoubleClick}
-          className={`w-full px-2 pb-1 ${isEditing ? "nodrag" : ""}`}
+          className={`w-full px-1.5 ${isEditing ? "nodrag" : ""}`}
+          style={{
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: "8px",
+            paddingTop: "10px",
+            paddingBottom: "0px",
+          }}
         >
           {isEditing ? (
             <input
@@ -270,10 +281,12 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               className="w-full bg-transparent outline-none border-b border-gray-300"
+              style={{ fontFamily: "DM Sans, sans-serif", fontSize: "8px" }}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <div className="w-full break-words">
+            // Fon
+            <div className="w-full break-words text-[8px]">
               {truncateText(data.text || "Click to edit")}
             </div>
           )}
@@ -282,8 +295,15 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="!absolute w-8 h-8 !bg-black !border-2 !border-white opacity-0 group-hover:opacity-100 [.selected>&]:opacity-100 hover:scale-110 transition-all duration-200"
-        style={{ right: -16, top: "50%", transform: "translateY(-50%)" }}
+        className="!absolute !w-1 !h-1 !bg-black !rounded-full !z-10 !border !border-white !border-[0.5px]"
+        style={{
+          right: "-0.45px",
+          top: "50%",
+          transform: "translate(50%, -50%)",
+          border: "none",
+          outline: "none",
+          boxShadow: "none",
+        }}
       />
     </>
   );
@@ -645,10 +665,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const addNode = (type: ClaimType) => {
     const newNode = {
-      ...createClaimNode("New Claim", type),
+      ...createClaimNode("new node", type), // Changed from "New Claim" to "new node"
       data: {
-        ...createClaimNode("New Claim", type).data,
-        text: "New Claim", // Ensure consistent text for all new nodes
+        ...createClaimNode("new node", type).data, // Changed from "New Claim" to "new node"
+        text: "new node", // Changed from "New Claim" to "new node"
         author: profile?.email || "Anonymous",
         onChange: (newText: string) => {
           handleNodeUpdate(newNode.id, {
@@ -756,11 +776,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
         // Create the new node
         const newNode = {
-          ...createClaimNode("New Claim", "factual"),
+          ...createClaimNode("new node", "factual"),
           position,
           data: {
-            ...createClaimNode("New Claim", "factual").data,
-            text: "New Claim", // Ensure consistent text for all new nodes
+            ...createClaimNode("new node", "factual").data,
+            text: "new node",
             onChange: (newText: string) => {
               handleNodeUpdate(newNode.id, {
                 data: { ...newNode.data, text: newText },
@@ -818,7 +838,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         if (node.id === nodeId) {
           const newType = updates.data?.type || node.data.type;
           const currentStyle = node.style || {};
-          const newStyleProps = getNodeStyle(newType);
+
+          // Only update style if the type has changed
+          const style =
+            newType !== node.data.type
+              ? {
+                  ...currentStyle,
+                  ...getNodeStyle(newType),
+                  // Keep existing width/height if they exist
+                  ...(currentStyle.width && { width: currentStyle.width }),
+                  ...(currentStyle.height && { height: currentStyle.height }),
+                }
+              : currentStyle;
 
           const updatedNode = {
             ...node,
@@ -832,14 +863,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 });
               },
             },
-            // Preserve existing dimensions and only update color-related properties
-            style: {
-              ...currentStyle,
-              backgroundColor: newStyleProps.backgroundColor,
-              // Keep existing width/height if they exist
-              ...(currentStyle.width && { width: currentStyle.width }),
-              ...(currentStyle.height && { height: currentStyle.height }),
-            },
+            style,
           };
           if (selectedNode?.id === nodeId) {
             setSelectedNode(updatedNode);
@@ -1906,14 +1930,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         onKeyDown={handleTitleChange}
                         onBlur={() => setIsEditing(false)}
                         className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 text-lg text-center w-full"
-                        style={{ fontWeight: "390" }}
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontWeight: "390",
+                        }}
                         autoFocus
                       />
                     ) : (
                       <span
                         onClick={() => setIsEditing(true)}
                         className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
-                        style={{ fontWeight: "390" }}
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontWeight: "390",
+                        }}
                       >
                         {title}
                       </span>

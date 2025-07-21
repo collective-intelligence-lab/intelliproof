@@ -1257,6 +1257,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           role: "ai",
           content: {
             "Claim Node ID": id,
+            "Node Title": nodeIdToText[id] ? nodeIdToText[id] : id,
             "Claim Text": nodeIdToText[id] ? nodeIdToText[id] : id,
             "Final Credibility Score": (score as number).toFixed(5),
           },
@@ -1324,6 +1325,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             role: "ai",
             content: {
               "Claim Node ID": result.node_id,
+              "Node Title": claimText,
               Claim: claimText,
               "Evidence ID": result.evidence_id,
               "Evidence Title": evidenceTitle,
@@ -1466,6 +1468,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             role: "ai",
             content: {
               "Claim Node ID": result.node_id,
+              "Node Title": claimText,
               Claim: claimText,
               "Evidence ID": result.evidence_id,
               "Evidence Title": evidenceTitle,

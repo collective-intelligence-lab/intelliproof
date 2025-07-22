@@ -6,6 +6,12 @@ const MessageBox: React.FC<{ message: any }> = ({ message }) => {
             {message["Claim Node ID"] && (
                 <div><span className="font-semibold">Claim Node ID:</span> {message["Claim Node ID"]}</div>
             )}
+            {message["Node Title"] && (
+                <>
+                    <div><span className="font-semibold">Node Title:</span> {message["Node Title"]}</div>
+                    <div style={{ height: '0.75em' }} />
+                </>
+            )}
             {message["Claim Text"] && (
                 <div><span className="font-semibold">Claim:</span> {message["Claim Text"]}</div>
             )}
@@ -13,7 +19,10 @@ const MessageBox: React.FC<{ message: any }> = ({ message }) => {
                 <div><span className="font-semibold">Evidence ID:</span> {message["Evidence ID"]}</div>
             )}
             {message["Evidence Title"] && (
-                <div><span className="font-semibold">Evidence Title:</span> {message["Evidence Title"]}</div>
+                <>
+                    <div><span className="font-semibold">Evidence Title:</span> {message["Evidence Title"]}</div>
+                    <div style={{ height: '0.75em' }} />
+                </>
             )}
             {message["Evaluation"] && (
                 <div><span className="font-semibold">Evaluation:</span> {message["Evaluation"]}</div>

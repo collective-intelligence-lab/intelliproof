@@ -21,6 +21,21 @@ import openai
 import os
 from dotenv import load_dotenv
 import time
+from ai_models import (
+    NodeModel,
+    EdgeModel,
+    CredibilityPropagationRequest,
+    CredibilityPropagationResponse,
+    EvidenceModel,
+    SupportingDocumentModel,
+    NodeWithEvidenceModel,
+    CheckEvidenceRequest,
+    EvidenceEvaluation,
+    CheckEvidenceResponse,
+    ValidateEdgeRequest,  # NEW
+    ValidateEdgeResponse  # NEW
+)
+from llm_manager import run_llm, DEFAULT_MCP
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,122 +47,6 @@ router = APIRouter()
 # =============================================================================
 # PYDANTIC MODELS - Data validation and serialization
 # =============================================================================
-
-class NodeModel(BaseModel):
-    """
-    Represents a node in the argument graph for credibility analysis.
-    
-    Attributes:
-        id: Unique identifier for the node
-        evidence: List of evidence scores (0.0 to 1.0) supporting this node
-        evidence_min: Minimum evidence value for this node (optional)
-        evidence_max: Maximum evidence value for this node (optional)
-    """
-    id: str
-    evidence: Optional[List[float]] = None
-    evidence_min: Optional[float] = None
-    evidence_max: Optional[float] = None
-
-class EdgeModel(BaseModel):
-    """
-    Represents a directed edge between nodes in the argument graph.
-    
-    Attributes:
-        source: ID of the source node
-        target: ID of the target node  
-        weight: Influence weight of the edge (-1.0 to 1.0)
-    """
-    source: str
-    target: str
-    weight: float
-
-class CredibilityPropagationRequest(BaseModel):
-    """
-    Request model for credibility propagation algorithm.
-    
-    This implements a network-based credibility scoring system where:
-    - Nodes represent claims/arguments
-    - Edges represent logical relationships
-    - Evidence scores influence initial credibility
-    - Iterative propagation spreads credibility through the network
-    """
-    nodes: List[NodeModel]
-    edges: List[EdgeModel]
-    lambda_: float = Field(default=0.5, description="Weight parameter for evidence vs. neighbor influence")
-    max_iterations: int = Field(default=100, description="Maximum number of iterations")
-    epsilon: float = Field(default=1e-6, description="Convergence threshold")
-    evidence_min: Optional[float] = Field(default=0.0, description="Global minimum evidence value")
-    evidence_max: Optional[float] = Field(default=1.0, description="Global maximum evidence value")
-
-class CredibilityPropagationResponse(BaseModel):
-    """
-    Response model containing results of credibility propagation.
-    
-    Attributes:
-        initial_evidence: Initial evidence scores for each node
-        iterations: Score progression through each iteration
-        final_scores: Final credibility scores after convergence
-    """
-    initial_evidence: Dict[str, float]
-    iterations: List[Dict[str, float]]
-    final_scores: Dict[str, float]
-
-class EvidenceModel(BaseModel):
-    """
-    Represents a piece of evidence supporting or refuting a claim.
-    """
-    id: str
-    title: str
-    supportingDocId: str
-    supportingDocName: str
-    excerpt: str
-    confidence: float
-
-class SupportingDocumentModel(BaseModel):
-    """
-    Represents a document containing evidence.
-    """
-    id: str
-    name: str
-    type: str
-    url: str
-    size: Optional[float] = None
-    uploadDate: Optional[str] = None
-    uploader: Optional[str] = None
-    metadata: Optional[dict] = None
-
-class NodeWithEvidenceModel(BaseModel):
-    """
-    Node model that includes associated evidence IDs.
-    """
-    id: str
-    text: str
-    type: str
-    evidenceIds: Optional[List[str]] = []
-
-class CheckEvidenceRequest(BaseModel):
-    """
-    Request model for AI-powered evidence evaluation.
-    """
-    nodes: List[NodeWithEvidenceModel]
-    evidence: List[EvidenceModel]
-    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
-
-class EvidenceEvaluation(BaseModel):
-    """
-    AI evaluation result for how well evidence supports a claim.
-    """
-    node_id: str
-    evidence_id: str
-    evaluation: str  # yes, no, unsure, unrelated
-    reasoning: str
-    confidence: float
-
-class CheckEvidenceResponse(BaseModel):
-    """
-    Response containing AI evaluations of evidence-claim relationships.
-    """
-    results: List[EvidenceEvaluation]
 
 # =============================================================================
 # API ENDPOINTS
@@ -252,59 +151,33 @@ def map_evaluation_to_confidence(evaluation: str) -> float:
 
 @router.post("/api/ai/check-evidence", response_model=CheckEvidenceResponse)
 def check_evidence(data: CheckEvidenceRequest = Body(...)):
-    """
-    Use GPT-4 to evaluate how well pieces of evidence support claims.
-    
-    For each claim-evidence pair:
-    1. Format a structured prompt with claim text and evidence
-    2. Send to GPT-4 for analysis
-    3. Parse response for evaluation, reasoning, and confidence
-    4. Return structured results for frontend processing
-    """
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
-    
-    openai.api_key = OPENAI_API_KEY
+    print("[ai_api] check_evidence: Function started.")
     results = []
-    
-    # Process each node and its associated evidence
     for node in data.nodes:
         for eid in node.evidenceIds or []:
-            # Find the evidence object by ID
             evidence = next((e for e in data.evidence if e.id == eid), None)
             if not evidence:
                 continue
-            
-            # Find supporting document info
             doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
             doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
-            
-            # Construct prompt for GPT-4 analysis
             prompt = f"""
 Claim: {node.text}
 Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc_info}
 
-Question: Does the above evidence support the claim?\nRespond in this format:\nEvaluation: <yes|no|unsure|unrelated>\nReasoning: <your explanation>\nConfidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
+Question: Does the above evidence support the claim?
+Respond in this format:
+Evaluation: <yes|no|unsure|unrelated>
+Reasoning: <your explanation>
+Confidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
 """
-            
             try:
-                # Call OpenAI GPT-4 for evidence evaluation
-                response = openai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are an expert fact-checker and argument analyst."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=256
+                content = run_llm(
+                    [{"role": "user", "content": prompt}],
+                    DEFAULT_MCP
                 )
-                
-                # Parse GPT-4 response
-                content = response.choices[0].message.content.strip()
                 eval_val = "unsure"
                 reasoning = content
                 confidence_val = 0.5
-                
-                # Extract structured information from response
                 for line in content.splitlines():
                     if line.lower().startswith("evaluation:"):
                         eval_val = line.split(":", 1)[1].strip().lower()
@@ -313,10 +186,9 @@ Question: Does the above evidence support the claim?\nRespond in this format:\nE
                     if line.lower().startswith("confidence:"):
                         try:
                             confidence_val = float(line.split(":", 1)[1].strip())
-                            confidence_val = min(max(confidence_val, 0.0), 1.0)  # Clamp to [0,1]
+                            confidence_val = min(max(confidence_val, 0.0), 1.0)
                         except Exception:
                             confidence_val = 0.5
-                
                 results.append(EvidenceEvaluation(
                     node_id=node.id,
                     evidence_id=evidence.id,
@@ -324,9 +196,7 @@ Question: Does the above evidence support the claim?\nRespond in this format:\nE
                     reasoning=reasoning,
                     confidence=confidence_val
                 ))
-                
             except Exception as e:
-                # Handle API errors gracefully
                 results.append(EvidenceEvaluation(
                     node_id=node.id,
                     evidence_id=evidence.id,
@@ -334,7 +204,7 @@ Question: Does the above evidence support the claim?\nRespond in this format:\nE
                     reasoning=f"Error: {str(e)}",
                     confidence=0.5
                 ))
-    
+    print("[ai_api] check_evidence: Function finished.")
     return CheckEvidenceResponse(results=results)
 
 # =============================================================================
@@ -349,13 +219,77 @@ def classify_claim_type():
     """
     pass
 
-@router.post("/api/ai/validate-edge")
-def validate_edge():
+@router.post("/api/ai/validate-edge", response_model=ValidateEdgeResponse)
+def validate_edge(data: ValidateEdgeRequest = Body(...)):
     """
-    TODO: Validate logical relationships between claims.
-    Check if proposed edges represent valid logical connections.
+    Validate logical relationship between two nodes via an edge.
+    Determines if the edge represents an attack or support, provides reasoning, and a confidence value in [-1, 1].
     """
-    pass
+    def format_evidence(evidence_list):
+        if not evidence_list:
+            return "None"
+        return "\n".join([
+            f"- Title: {ev.title}\n  Excerpt: {ev.excerpt}" for ev in evidence_list
+        ])
+
+    prompt = f"""
+You are an expert in argument analysis. Given the following two nodes and their connecting edge, determine whether the source node ATTACKS, SUPPORTS, or is NEUTRAL to the target node. 
+
+- If you choose 'attack', it means the source claim attacks, contradicts, or undermines the target claim.
+- If you choose 'support', it means the source claim supports, strengthens, or provides evidence for the target claim.
+- If you choose 'neutral', it means there is no clear relation between the source and target claims.
+
+The output confidence value should match the evaluation:
+- -1 means strong attack
+- +1 means strong support
+- 0 means neutral or no relation
+
+Respond in this format:
+Evaluation: <attack|support|neutral>
+Reasoning: <3-5 sentences explaining your reasoning>
+Confidence: <float between -1 and 1, matching the evaluation>
+
+Source Node:
+ID: {data.source_node.id}
+Text: {getattr(data.source_node, 'text', '')}
+Evidence:
+{format_evidence(getattr(data.source_node, 'evidence', None))}
+
+Target Node:
+ID: {data.target_node.id}
+Text: {getattr(data.target_node, 'text', '')}
+Evidence:
+{format_evidence(getattr(data.target_node, 'evidence', None))}
+
+Edge:
+Source: {data.edge.source}
+Target: {data.edge.target}
+"""
+    try:
+        content = run_llm([
+            {"role": "user", "content": prompt}
+        ], DEFAULT_MCP)
+        evaluation = "unsure"
+        reasoning = content
+        confidence = 0.0
+        for line in content.splitlines():
+            if line.lower().startswith("evaluation:"):
+                evaluation = line.split(":", 1)[1].strip().lower()
+            if line.lower().startswith("reasoning:"):
+                reasoning = line.split(":", 1)[1].strip()
+            if line.lower().startswith("confidence:"):
+                try:
+                    confidence = float(line.split(":", 1)[1].strip())
+                    confidence = min(max(confidence, -1.0), 1.0)
+                except Exception:
+                    confidence = 0.0
+        return ValidateEdgeResponse(
+            evaluation=evaluation,
+            reasoning=reasoning,
+            confidence=confidence
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/ai/generate-assumptions")
 def generate_assumptions():
@@ -402,22 +336,13 @@ async def extract_text_from_image(
     url: str = Body(..., embed=True),
     summarize: bool = Query(False)
 ):
-    """
-    Extract text from a public image URL using GPT-4 Vision API.
-    Args:
-        url: Publicly accessible image URL
-    Returns:
-        Dictionary with extracted/summarized text
-    """
-    print(f"[extract_text_from_image] Received request. url={url}, summarize={summarize}")
+    print(f"[ai_api] extract_text_from_image: Function started. url={url}, summarize={summarize}")
     if not OPENAI_API_KEY:
-        print("[extract_text_from_image] No OpenAI API key configured.")
+        print("[ai_api] extract_text_from_image: No OpenAI API key configured.")
         raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
     try:
         openai.api_key = OPENAI_API_KEY
         prompt = "Extract all readable text from this image. If no text is present, describe the image in detail in 3-6 sentences."
-        print(f"[extract_text_from_image] Sending request to OpenAI. prompt={prompt}")
-        start_time = time.time()
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -432,11 +357,72 @@ async def extract_text_from_image(
             ],
             max_tokens=512
         )
-        elapsed = time.time() - start_time
-        print(f"[extract_text_from_image] OpenAI API call completed in {elapsed:.2f} seconds.")
         result = response.choices[0].message.content
-        print(f"[extract_text_from_image] Result: {result[:200]}{'...' if len(result) > 200 else ''}")
+        print(f"[ai_api] extract_text_from_image: Function finished.")
         return {"text": result}
     except Exception as e:
-        print(f"[extract_text_from_image] Error: {e}")
+        print(f"[ai_api] extract_text_from_image: Error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 
+
+class CheckNodeEvidenceRequest(BaseModel):
+    node: NodeWithEvidenceModel
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+@router.post("/api/ai/check-node-evidence", response_model=CheckEvidenceResponse)
+def check_node_evidence(data: CheckNodeEvidenceRequest = Body(...)):
+    print("[ai_api] check_node_evidence: Function started.")
+    results = []
+    node = data.node
+    for eid in node.evidenceIds or []:
+        evidence = next((e for e in data.evidence if e.id == eid), None)
+        if not evidence:
+            continue
+        doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
+        doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
+        prompt = f"""
+Claim: {node.text}
+Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc_info}
+
+Question: Does the above evidence support the claim?
+Respond in this format:
+Evaluation: <yes|no|unsure|unrelated>
+Reasoning: <your explanation>
+Confidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
+"""
+        try:
+            content = run_llm(
+                [{"role": "user", "content": prompt}],
+                DEFAULT_MCP
+            )
+            eval_val = "unsure"
+            reasoning = content
+            confidence_val = 0.5
+            for line in content.splitlines():
+                if line.lower().startswith("evaluation:"):
+                    eval_val = line.split(":", 1)[1].strip().lower()
+                if line.lower().startswith("reasoning:"):
+                    reasoning = line.split(":", 1)[1].strip()
+                if line.lower().startswith("confidence:"):
+                    try:
+                        confidence_val = float(line.split(":", 1)[1].strip())
+                        confidence_val = min(max(confidence_val, 0.0), 1.0)
+                    except Exception:
+                        confidence_val = 0.5
+            results.append(EvidenceEvaluation(
+                node_id=node.id,
+                evidence_id=evidence.id,
+                evaluation=eval_val,
+                reasoning=reasoning,
+                confidence=confidence_val
+            ))
+        except Exception as e:
+            results.append(EvidenceEvaluation(
+                node_id=node.id,
+                evidence_id=evidence.id,
+                evaluation="unsure",
+                reasoning=f"Error: {str(e)}",
+                confidence=0.5
+            ))
+    print("[ai_api] check_node_evidence: Function finished.")
+    return CheckEvidenceResponse(results=results) 

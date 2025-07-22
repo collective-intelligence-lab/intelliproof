@@ -768,6 +768,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
+          const newType = updates.data?.type || node.data.type;
+          const currentStyle = node.style || {};
+
+          // Only update style if the type has changed
+          const style =
+            newType !== node.data.type
+              ? {
+                  ...currentStyle,
+                  ...getNodeStyle(newType),
+                  // Keep existing width/height if they exist
+                  ...(currentStyle.width && { width: currentStyle.width }),
+                  ...(currentStyle.height && { height: currentStyle.height }),
+                }
+              : currentStyle;
           const updatedNode = {
             ...node,
             ...updates,
@@ -1174,6 +1188,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           role: "ai",
           content: {
             "Claim Node ID": id,
+            "Node Title": nodeIdToText[id] ? nodeIdToText[id] : id,
             "Claim Text": nodeIdToText[id] ? nodeIdToText[id] : id,
             "Final Credibility Score": (score as number).toFixed(5),
           },
@@ -1241,6 +1256,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             role: "ai",
             content: {
               "Claim Node ID": result.node_id,
+              "Node Title": claimText,
               Claim: claimText,
               "Evidence ID": result.evidence_id,
               "Evidence Title": evidenceTitle,
@@ -1310,6 +1326,511 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Place these at the top level of GraphCanvasInner (with other hooks):
   const [parseLoading, setParseLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+
+  // Add state for API queue and processing
+  const [apiQueue, setApiQueue] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const prevSelectedNodeRef = useRef<ClaimNode | null>(null);
+
+  // Detect node deselect and queue API call
+  useEffect(() => {
+    if (prevSelectedNodeRef.current?.id && !selectedNode) {
+      const prevId = prevSelectedNodeRef.current.id;
+      if (prevId) {
+        setApiQueue((q) => [...q, prevId]);
+      }
+    }
+    prevSelectedNodeRef.current = selectedNode || null;
+  }, [selectedNode]);
+
+  // Queue processor effect
+  useEffect(() => {
+    if (!isProcessing && apiQueue.length > 0) {
+      setIsProcessing(true);
+      const nodeId = apiQueue[0];
+      triggerCheckNodeEvidence(nodeId).finally(() => {
+        setApiQueue((q) => q.slice(1));
+        setIsProcessing(false);
+      });
+    }
+  }, [apiQueue, isProcessing]);
+
+  // API call function for queued node evidence check
+  const triggerCheckNodeEvidence = async (nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    const requestBody = {
+      node: {
+        id: node.id,
+        text: node.data.text,
+        type: node.data.type,
+        evidenceIds: node.data.evidenceIds || [],
+      },
+      evidence: evidenceCards,
+      supportingDocuments: supportingDocumentsRedux,
+    };
+    try {
+      const response = await fetch("/api/ai/check-node-evidence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        let errorMsg = "Failed to check evidence for node.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const data = await response.json();
+      // Output each result as a structured message (same as check_evidence)
+      data.results.forEach((result: any) => {
+        const claimNode = node;
+        const claimText = claimNode ? claimNode.data.text : "";
+        const evidenceObj = evidenceCards.find(
+          (ev) => ev.id === result.evidence_id
+        );
+        const evidenceTitle = evidenceObj ? evidenceObj.title : "";
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: {
+              "Claim Node ID": result.node_id,
+              "Node Title": claimText,
+              Claim: claimText,
+              "Evidence ID": result.evidence_id,
+              "Evidence Title": evidenceTitle,
+              Evaluation: result.evaluation,
+              Reasoning: result.reasoning,
+              Confidence: `${Math.round(result.confidence * 100)}%`,
+            },
+            isStructured: true,
+          },
+        ]);
+      });
+      // Update evidence confidences for the node's evidence
+      setEvidenceCards((prevEvidence) =>
+        prevEvidence.map((ev) => {
+          const found = data.results.find((r: any) => r.evidence_id === ev.id);
+          if (found) {
+            return { ...ev, confidence: found.confidence };
+          }
+          return ev;
+        })
+      );
+      // Use updated confidences from API response to update node belief
+      const updatedConfidences = (node.data.evidenceIds || [])
+        .map((eid) => {
+          const found = data.results.find((r: any) => r.evidence_id === eid);
+          return found ? found.confidence : undefined;
+        })
+        .filter((c) => typeof c === "number");
+      const avgConfidence =
+        updatedConfidences.length > 0
+          ? updatedConfidences.reduce((a, b) => a + b, 0) /
+            updatedConfidences.length
+          : 0.5;
+      setNodes((prevNodes) =>
+        prevNodes.map((n) =>
+          n.id === node.id
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  belief: avgConfidence,
+                },
+              }
+            : n
+        )
+      );
+    } catch (err: any) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "assistant",
+          content: `<span class='text-red-600'>Error: ${err.message}</span>`,
+        },
+      ]);
+    }
+  };
+
+  // Add this handler in GraphCanvasInner:
+  const handleClearCopilotChat = () => {
+    setCopilotMessages([]); // Only clear chat messages, not the CommandMessageBox buttons
+  };
+
+  const handleValidateEdge = async () => {
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      {
+        role: "user",
+        content: "Validate the selected edge for support/attack and reasoning.",
+      },
+    ]);
+    try {
+      if (!selectedEdge) {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "assistant",
+            content:
+              "<span class='text-red-600'>Error: Please select an edge to validate.</span>",
+          },
+        ]);
+        return;
+      }
+      // Find source and target nodes
+      const sourceNode = nodes.find((n) => n.id === selectedEdge.source);
+      const targetNode = nodes.find((n) => n.id === selectedEdge.target);
+      if (!sourceNode || !targetNode) {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "assistant",
+            content:
+              "<span class='text-red-600'>Error: Could not find source or target node for the selected edge.</span>",
+          },
+        ]);
+        return;
+      }
+      // Prepare request body (with evidence)
+      const getNodeEvidence = (node: ClaimNode) => {
+        if (!node.data || !Array.isArray(node.data.evidenceIds)) return [];
+        return evidenceCards
+          .filter((ev) => node.data.evidenceIds!.includes(ev.id))
+          .map((ev) => ({
+            id: ev.id,
+            title: ev.title,
+            excerpt: ev.excerpt,
+            supportingDocId: ev.supportingDocId,
+            supportingDocName: ev.supportingDocName,
+            confidence: ev.confidence,
+          }));
+      };
+      const requestBody = {
+        edge: {
+          source: selectedEdge.source,
+          target: selectedEdge.target,
+        },
+        source_node: {
+          id: sourceNode.id,
+          text: sourceNode.data.text,
+          type: sourceNode.data.type,
+          evidence: getNodeEvidence(sourceNode),
+        },
+        target_node: {
+          id: targetNode.id,
+          text: targetNode.data.text,
+          type: targetNode.data.type,
+          evidence: getNodeEvidence(targetNode),
+        },
+      };
+      const response = await fetch("/api/ai/validate-edge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        let errorMsg = "Failed to validate edge.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const data = await response.json();
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: {
+            "Edge Source": sourceNode.data.text,
+            "Edge Target": targetNode.data.text,
+            Evaluation: data.evaluation,
+            Reasoning: data.reasoning,
+            Confidence: `${Math.round(data.confidence * 100)}%`,
+          },
+          isStructured: true,
+        },
+      ]);
+      // Optionally update the edge confidence in the UI
+      handleEdgeUpdate(selectedEdge.id, {
+        data: {
+          ...selectedEdge.data,
+          confidence: data.confidence,
+        },
+      });
+    } catch (err) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "assistant",
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
+        },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
+  // Validate all edges with AI and output to copilot
+  const validate_edges = async () => {
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      {
+        role: "user",
+        content:
+          "Validate all edges in the graph for support/attack/neutral and reasoning.",
+      },
+    ]);
+    try {
+      for (const edge of edges) {
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        if (!sourceNode || !targetNode) {
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "assistant",
+              content: `<span class='text-red-600'>Error: Could not find source or target node for edge ${edge.id}.</span>`,
+            },
+          ]);
+          continue;
+        }
+        const getNodeEvidence = (node: ClaimNode) => {
+          if (!node.data || !Array.isArray(node.data.evidenceIds)) return [];
+          return evidenceCards
+            .filter((ev) => node.data.evidenceIds!.includes(ev.id))
+            .map((ev) => ({
+              id: ev.id,
+              title: ev.title,
+              excerpt: ev.excerpt,
+              supportingDocId: ev.supportingDocId,
+              supportingDocName: ev.supportingDocName,
+              confidence: ev.confidence,
+            }));
+        };
+        const requestBody = {
+          edge: {
+            source: edge.source,
+            target: edge.target,
+          },
+          source_node: {
+            id: sourceNode.id,
+            text: sourceNode.data.text,
+            type: sourceNode.data.type,
+            evidence: getNodeEvidence(sourceNode),
+          },
+          target_node: {
+            id: targetNode.id,
+            text: targetNode.data.text,
+            type: targetNode.data.type,
+            evidence: getNodeEvidence(targetNode),
+          },
+        };
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "system",
+            content: `Validating edge from "${sourceNode.data.text}" to "${targetNode.data.text}"...`,
+          },
+        ]);
+        try {
+          const response = await fetch("/api/ai/validate-edge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          });
+          if (!response.ok) {
+            let errorMsg = `Failed to validate edge ${edge.id}.`;
+            try {
+              const errorData = await response.json();
+              if (errorData.detail) errorMsg = errorData.detail;
+            } catch {}
+            throw new Error(errorMsg);
+          }
+          const data = await response.json();
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "ai",
+              content: {
+                "Edge Source": sourceNode.data.text,
+                "Edge Target": targetNode.data.text,
+                Evaluation: data.evaluation,
+                Reasoning: data.reasoning,
+                Confidence: `${Math.round(data.confidence * 100)}%`,
+              },
+              isStructured: true,
+            },
+          ]);
+          // Optionally update the edge confidence in the UI
+          handleEdgeUpdate(edge.id, {
+            data: {
+              ...edge.data,
+              confidence: data.confidence,
+            },
+          });
+        } catch (err) {
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "assistant",
+              content: `<span class='text-red-600'>Error: ${
+                err instanceof Error ? err.message : err
+              }</span>`,
+            },
+          ]);
+        }
+      }
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
+  // --- Edge validation queue logic ---
+  const [edgeApiQueue, setEdgeApiQueue] = useState<string[]>([]);
+  const [isEdgeProcessing, setIsEdgeProcessing] = useState(false);
+  const prevSelectedEdgeRef = useRef<ClaimEdge | null>(null);
+
+  // Detect edge deselect and queue API call
+  useEffect(() => {
+    if (prevSelectedEdgeRef.current?.id && !selectedEdge) {
+      const prevId = prevSelectedEdgeRef.current.id;
+      if (prevId) {
+        setEdgeApiQueue((q) => [...q, prevId]);
+      }
+    }
+    prevSelectedEdgeRef.current = selectedEdge || null;
+  }, [selectedEdge]);
+
+  // Queue processor effect for edge validation
+  useEffect(() => {
+    if (!isEdgeProcessing && edgeApiQueue.length > 0) {
+      setIsEdgeProcessing(true);
+      const edgeId = edgeApiQueue[0];
+      triggerValidateEdge(edgeId).finally(() => {
+        setEdgeApiQueue((q) => q.slice(1));
+        setIsEdgeProcessing(false);
+      });
+    }
+  }, [edgeApiQueue, isEdgeProcessing]);
+
+  // API call function for queued edge validation
+  const triggerValidateEdge = async (edgeId: string) => {
+    const edge = edges.find((e) => e.id === edgeId);
+    if (!edge) return;
+    const sourceNode = nodes.find((n) => n.id === edge.source);
+    const targetNode = nodes.find((n) => n.id === edge.target);
+    if (!sourceNode || !targetNode) return;
+    const getNodeEvidence = (node: ClaimNode) => {
+      if (!node.data || !Array.isArray(node.data.evidenceIds)) return [];
+      return evidenceCards
+        .filter((ev) => node.data.evidenceIds!.includes(ev.id))
+        .map((ev) => ({
+          id: ev.id,
+          title: ev.title,
+          excerpt: ev.excerpt,
+          supportingDocId: ev.supportingDocId,
+          supportingDocName: ev.supportingDocName,
+          confidence: ev.confidence,
+        }));
+    };
+    const requestBody = {
+      edge: {
+        source: edge.source,
+        target: edge.target,
+      },
+      source_node: {
+        id: sourceNode.id,
+        text: sourceNode.data.text,
+        type: sourceNode.data.type,
+        evidence: getNodeEvidence(sourceNode),
+      },
+      target_node: {
+        id: targetNode.id,
+        text: targetNode.data.text,
+        type: targetNode.data.type,
+        evidence: getNodeEvidence(targetNode),
+      },
+    };
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      {
+        role: "system",
+        content: `Validating edge from "${sourceNode.data.text}" to "${targetNode.data.text}"...`,
+      },
+    ]);
+    try {
+      const response = await fetch("/api/ai/validate-edge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        let errorMsg = `Failed to validate edge ${edge.id}.`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const data = await response.json();
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: {
+            "Edge Source": sourceNode.data.text,
+            "Edge Target": targetNode.data.text,
+            Evaluation: data.evaluation,
+            Reasoning: data.reasoning,
+            Confidence: `${Math.round(data.confidence * 100)}%`,
+          },
+          isStructured: true,
+        },
+      ]);
+      // Optionally update the edge confidence in the UI
+      handleEdgeUpdate(edge.id, {
+        data: {
+          ...edge.data,
+          confidence: data.confidence,
+        },
+      });
+    } catch (err) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "assistant",
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
+        },
+      ]);
+    }
+  };
+
+  // Queue edge validation when a new edge is created
+  const prevEdgesRef = useRef<ClaimEdge[]>([]);
+  useEffect(() => {
+    // Only run after initial mount
+    if (edges.length === 0) return;
+    // Find edges that are new (not in previous ref)
+    const prevEdges = prevEdgesRef.current;
+    const newEdges = edges.filter(
+      (e) => !prevEdges.some((pe) => pe.id === e.id)
+    );
+    if (newEdges.length > 0) {
+      setEdgeApiQueue((q) => [...q, ...newEdges.map((e) => e.id)]);
+    }
+    prevEdgesRef.current = edges;
+  }, [edges]);
 
   return (
     <div className="w-full h-full relative font-sans">
@@ -2199,6 +2720,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     evidenceCards={evidenceCards}
                     supportingDocuments={supportingDocuments}
                     onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
+                    copilotOpen={isAICopilotOpen}
                   />
                 )}
                 {selectedEdge && !selectedNode && (
@@ -2206,6 +2728,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     edge={selectedEdge}
                     onClose={() => setSelectedEdge(null)}
                     onUpdate={handleEdgeUpdate}
+                    copilotOpen={isAICopilotOpen}
                   />
                 )}
               </div>
@@ -2347,6 +2870,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   onClick={handleClaimCredibility}
                   disabled={copilotLoading}
                 />
+                {/* New function chat boxes */}
+                <CommandMessageBox
+                  title="Validate Edge"
+                  content="Checks whether the support/attack is valid with reasoning"
+                  icon={<ArrowPathIcon className="w-6 h-6" />}
+                  onClick={handleValidateEdge}
+                  disabled={copilotLoading}
+                />
+                <CommandMessageBox
+                  title="Generate Assumptions"
+                  content="Generates up to 5 assumptions required by the edge to be valid"
+                  icon={<HandRaisedIcon className="w-6 h-6" />}
+                  onClick={() => {}}
+                  disabled={copilotLoading}
+                />
+                <CommandMessageBox
+                  title="Validate All Edges"
+                  content="Checks all edges for support/attack/neutral and outputs reasoning for each."
+                  icon={<ArrowPathIcon className="w-6 h-6" />}
+                  onClick={validate_edges}
+                  disabled={copilotLoading}
+                />
                 <div className="mt-4 space-y-2">
                   {copilotMessages.map((msg, idx) => (
                     <ChatBox key={idx}>
@@ -2393,44 +2938,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   </button>
                 </div>
                 {/* AI Functionality Section */}
-                {/*
-                <div className="flex flex-row justify-between gap-4 mt-4">
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Claim</span>
-                    <button
-                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                      title="Compute claim credibility: Aggregates evidence for the selected claim and returns the initial credibility score (Eᵢ)."
-                      onClick={handleClaimCredibility}
-                      disabled={copilotLoading}
-                    >
-                      <HandRaisedIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Check Evidence</span>
-                    <button
-                      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                      title="Check evidence for each claim: Evaluates whether each piece of evidence supports its linked claim."
-                      onClick={handleCheckEvidence}
-                      disabled={copilotLoading}
-                    >
-                      <DocumentMagnifyingGlassIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Edge</span>
-                    <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                      <ArrowPathIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-semibold mb-1">Graph</span>
-                    <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                      <SparklesIcon className="w-6 h-6 text-gray-700" />
-                    </button>
-                  </div>
+                {/* ... existing code ... */}
+                <div className="flex justify-center mt-2">
+                  <button
+                    onClick={handleClearCopilotChat}
+                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
+                    type="button"
+                  >
+                    Clear Chat
+                  </button>
                 </div>
-                */}
+                {/* ... existing code ... */}
               </div>
             </div>
           </Panel>

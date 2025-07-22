@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import dagre from 'dagre';
 import type { ClaimNode } from '../../types/graph';
 import type { ClaimEdge } from '../../types/edges';
+import { Bars3Icon } from "@heroicons/react/24/outline";
 
 export interface LayoutManagerProps {
     nodes: ClaimNode[];

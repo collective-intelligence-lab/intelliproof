@@ -56,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   return (
     <header
       className="flex items-center justify-between px-4 py-2 bg-[#232F3E] text-white"
-      style={{ fontFamily: "Josefin Sans, sans-serif" }}
+      style={{ fontFamily: "DM Sans, sans-serif" }}
     >
       <div className="flex items-center gap-4">
         <Link href="/graph-manager" className="cursor-pointer">

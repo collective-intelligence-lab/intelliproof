@@ -82,13 +82,13 @@ export const createClaimNode = (
         style: {
             backgroundColor: colors.background,
             color: "#000000",
-            border: "none",
-            borderRadius: "3px",
+            // border: "none",
+            // borderRadius: "3px",
             padding: "4px 12px",
             fontFamily: "Arial, sans-serif",
             fontSize: "7px",  // Ensure font size is 10px
             cursor: "pointer",
-            minWidth: "100px",
+            minWidth: "10px",
             maxWidth: "200px",
             width: "fit-content",
             display: "flex",
@@ -96,7 +96,9 @@ export const createClaimNode = (
             alignItems: "center",
             textAlign: "center" as const,
             transition: "all 200ms ease",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)"
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+            border: `1.4px solid ${colors.header}`,
+    borderRadius: "3px", // Add this line to match header color
         }
     };
 };

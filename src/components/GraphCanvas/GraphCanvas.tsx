@@ -104,23 +104,23 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
     switch (type) {
       case "factual":
         return {
-          background: "#E6EAF3",
-          header: "#8BA2D3",
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
       case "value":
         return {
-          background: "#E6EEE8",
-          header: "#7DAF8C",
+          background: "#ecf4e4",
+          header: "#94bc84",
         };
       case "policy":
         return {
-          background: "#F2E6E7",
-          header: "#BD7E8B",
+          background: "#EAF0F7",
+          header: "#91A4C2",
         };
       default:
         return {
-          background: "#E6EAF3",
-          header: "#6B8BC5",
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
     }
   };
@@ -129,22 +129,23 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
 
   return {
     backgroundColor: colors.background,
-    boxShadow: "0 3px 10px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.25)",
-    border: "1px solid rgba(0, 0, 0, 0.8)",
-    borderRadius: "3px",
-    padding: "0",
+    color: "#000000",
+    padding: "0 8px 4px 8px",
     fontFamily: "Arial, sans-serif",
-    fontSize: "8px",
+    fontSize: "7px",
     cursor: "pointer",
-    minWidth: "70px",
+    minWidth: "90px",
+    maxWidth: "140px",
     width: "fit-content",
-    maxWidth: "160px",
-    overflow: "hidden",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     textAlign: "center" as const,
     transition: "all 200ms ease",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+    // border: "none",
+    border: `1.2px solid ${colors.header}`,
+    borderRadius: "3px",
   };
 };
 
@@ -158,23 +159,23 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
     switch (data.type) {
       case "factual":
         return {
-          background: "#eeeeee", // Light gray
-          header: "#aeaeae", // Medium gray
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
       case "value":
         return {
-          background: "#F2F4E8", // Very light olive green
-          header: "#B2B4A8", // Darker olive green
+          background: "#ecf4e4",
+          header: "#94bc84",
         };
       case "policy":
         return {
-          background: "#F0F3F9", // Very light navy blue
-          header: "#B0B3B9", // Darker navy blue
+          background: "#EAF0F7",
+          header: "#91A4C2",
         };
       default:
         return {
-          background: "#eeeeee", // Light gray
-          header: "#aeaeae", // Medium gray
+          background: "#eeeeee",
+          header: "#aeaeae",
         };
     }
   })();
@@ -239,35 +240,38 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         <div
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
+            top: "-0.35px", // Align with border
+            left: "-0.35px", // Align with border
             width: "fit-content",
-            minWidth: "28px",
+            minWidth: "10px",
             maxWidth: "40px",
-            height: "10px", // Reduced from 12px to 10px
+            height: "8px",
             backgroundColor: colors.header,
             borderBottomRightRadius: "3px",
+            borderTopLeftRadius: "3px",
             zIndex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#000000",
-            fontSize: "8px",
-            fontWeight: "300",
+            fontSize: "7px",
+            fontWeight: "200",
             letterSpacing: "0.03em",
-            fontFamily: "DM Sans, sans-serif",
-            padding: "7px 7px 7px 7px", // Added minimal padding
+            fontFamily: "Arial, sans-serif",
+            padding: "5px",
           }}
         >
-          {data.type === "factual" ? "Factual" : data.type}
+          {data.type === "factual"
+            ? "Factual"
+            : data.type.charAt(0).toUpperCase() + data.type.slice(1)}
         </div>
         {/* Content section */}
         <div
           onDoubleClick={handleDoubleClick}
           className={`w-full px-1.5 ${isEditing ? "nodrag" : ""}`}
           style={{
-            fontFamily: "DM Sans, sans-serif",
-            fontSize: "8px",
+            fontFamily: "Arial, sans-serif",
+            fontSize: "7px",
             paddingTop: "10px",
             paddingBottom: "0px",
           }}
@@ -496,80 +500,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         console.error("No graph ID in currentGraph:", currentGraph);
       }
 
-      // Helper for node style
-      const getNodeStyle = (type: string) => {
-        switch (type) {
-          case "factual":
-            return {
-              backgroundColor: "#3A455333",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px ",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-          case "value":
-            return {
-              backgroundColor: "#88917833",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px 12px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-          case "policy":
-            return {
-              backgroundColor: "#888C9433",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px 12px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-          default:
-            return {
-              backgroundColor: "#3A455333",
-              color: "#000000",
-              border: "1px solid #181A1B",
-              borderRadius: 0,
-              padding: "4px",
-              fontFamily: "Josefin Sans, Century Gothic, sans-serif",
-              fontSize: "12px",
-              transition: "all 200ms ease-out",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center" as const,
-              minHeight: 32,
-            };
-        }
-      };
-
       // Transform nodes to include required ReactFlow properties
       const formattedNodes = (currentGraph.graph_data?.nodes || []).map(
         (node) => {
@@ -599,7 +529,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 });
               },
             },
-            style: getNodeStyle(nodeData.type || node.type),
+            style: getNodeStyle(nodeData.type || node.type), // Always use getNodeStyle
           };
         }
       );
@@ -665,10 +595,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const addNode = (type: ClaimType) => {
     const newNode = {
-      ...createClaimNode("new node", type), // Changed from "New Claim" to "new node"
+      ...createClaimNode("new node", type),
       data: {
-        ...createClaimNode("new node", type).data, // Changed from "New Claim" to "new node"
-        text: "new node", // Changed from "New Claim" to "new node"
+        ...createClaimNode("new node", type).data,
+        text: "new node",
         author: profile?.email || "Anonymous",
         onChange: (newText: string) => {
           handleNodeUpdate(newNode.id, {
@@ -676,6 +606,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           });
         },
       },
+      style: getNodeStyle(type), // Explicitly set the style
     };
     setNodes((nds) => [...nds, newNode]);
     setIsAddNodeOpen(false);
@@ -787,6 +718,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               });
             },
           },
+          style: getNodeStyle("factual"), // Explicitly set the style
         };
 
         // Create the edge between the nodes
@@ -843,14 +775,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           const style =
             newType !== node.data.type
               ? {
-                ...currentStyle,
-                ...getNodeStyle(newType),
-                // Keep existing width/height if they exist
-                ...(currentStyle.width && { width: currentStyle.width }),
-                ...(currentStyle.height && { height: currentStyle.height }),
-              }
+                  ...currentStyle,
+                  ...getNodeStyle(newType),
+                  // Keep existing width/height if they exist
+                  ...(currentStyle.width && { width: currentStyle.width }),
+                  ...(currentStyle.height && { height: currentStyle.height }),
+                }
               : currentStyle;
-
           const updatedNode = {
             ...node,
             ...updates,
@@ -863,7 +794,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 });
               },
             },
-            style,
+            style: getNodeStyle(updates.data?.type || node.data.type), // Always use getNodeStyle
           };
           if (selectedNode?.id === nodeId) {
             setSelectedNode(updatedNode);
@@ -1307,7 +1238,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1403,10 +1334,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // Detect node deselect and queue API call
   useEffect(() => {
-    if (
-      prevSelectedNodeRef.current?.id &&
-      !selectedNode
-    ) {
+    if (prevSelectedNodeRef.current?.id && !selectedNode) {
       const prevId = prevSelectedNodeRef.current.id;
       if (prevId) {
         setApiQueue((q) => [...q, prevId]);
@@ -1452,7 +1380,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1460,7 +1388,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       data.results.forEach((result: any) => {
         const claimNode = node;
         const claimText = claimNode ? claimNode.data.text : "";
-        const evidenceObj = evidenceCards.find((ev) => ev.id === result.evidence_id);
+        const evidenceObj = evidenceCards.find(
+          (ev) => ev.id === result.evidence_id
+        );
         const evidenceTitle = evidenceObj ? evidenceObj.title : "";
         setCopilotMessages((msgs) => [
           ...msgs,
@@ -1496,21 +1426,22 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           const found = data.results.find((r: any) => r.evidence_id === eid);
           return found ? found.confidence : undefined;
         })
-        .filter((c) => typeof c === 'number');
+        .filter((c) => typeof c === "number");
       const avgConfidence =
         updatedConfidences.length > 0
-          ? updatedConfidences.reduce((a, b) => a + b, 0) / updatedConfidences.length
+          ? updatedConfidences.reduce((a, b) => a + b, 0) /
+            updatedConfidences.length
           : 0.5;
       setNodes((prevNodes) =>
         prevNodes.map((n) =>
           n.id === node.id
             ? {
-              ...n,
-              data: {
-                ...n.data,
-                belief: avgConfidence,
-              },
-            }
+                ...n,
+                data: {
+                  ...n.data,
+                  belief: avgConfidence,
+                },
+              }
             : n
         )
       );
@@ -1545,7 +1476,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           ...msgs,
           {
             role: "assistant",
-            content: "<span class='text-red-600'>Error: Please select an edge to validate.</span>",
+            content:
+              "<span class='text-red-600'>Error: Please select an edge to validate.</span>",
           },
         ]);
         return;
@@ -1558,7 +1490,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           ...msgs,
           {
             role: "assistant",
-            content: "<span class='text-red-600'>Error: Could not find source or target node for the selected edge.</span>",
+            content:
+              "<span class='text-red-600'>Error: Could not find source or target node for the selected edge.</span>",
           },
         ]);
         return;
@@ -1566,14 +1499,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       // Prepare request body (with evidence)
       const getNodeEvidence = (node: ClaimNode) => {
         if (!node.data || !Array.isArray(node.data.evidenceIds)) return [];
-        return evidenceCards.filter(ev => node.data.evidenceIds!.includes(ev.id)).map(ev => ({
-          id: ev.id,
-          title: ev.title,
-          excerpt: ev.excerpt,
-          supportingDocId: ev.supportingDocId,
-          supportingDocName: ev.supportingDocName,
-          confidence: ev.confidence,
-        }));
+        return evidenceCards
+          .filter((ev) => node.data.evidenceIds!.includes(ev.id))
+          .map((ev) => ({
+            id: ev.id,
+            title: ev.title,
+            excerpt: ev.excerpt,
+            supportingDocId: ev.supportingDocId,
+            supportingDocName: ev.supportingDocName,
+            confidence: ev.confidence,
+          }));
       };
       const requestBody = {
         edge: {
@@ -1603,7 +1538,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1633,7 +1568,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err}</span>`,
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
         },
       ]);
     } finally {
@@ -1648,7 +1585,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       ...msgs,
       {
         role: "user",
-        content: "Validate all edges in the graph for support/attack/neutral and reasoning.",
+        content:
+          "Validate all edges in the graph for support/attack/neutral and reasoning.",
       },
     ]);
     try {
@@ -1667,14 +1605,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         }
         const getNodeEvidence = (node: ClaimNode) => {
           if (!node.data || !Array.isArray(node.data.evidenceIds)) return [];
-          return evidenceCards.filter(ev => node.data.evidenceIds!.includes(ev.id)).map(ev => ({
-            id: ev.id,
-            title: ev.title,
-            excerpt: ev.excerpt,
-            supportingDocId: ev.supportingDocId,
-            supportingDocName: ev.supportingDocName,
-            confidence: ev.confidence,
-          }));
+          return evidenceCards
+            .filter((ev) => node.data.evidenceIds!.includes(ev.id))
+            .map((ev) => ({
+              id: ev.id,
+              title: ev.title,
+              excerpt: ev.excerpt,
+              supportingDocId: ev.supportingDocId,
+              supportingDocName: ev.supportingDocName,
+              confidence: ev.confidence,
+            }));
         };
         const requestBody = {
           edge: {
@@ -1712,7 +1652,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             try {
               const errorData = await response.json();
               if (errorData.detail) errorMsg = errorData.detail;
-            } catch { }
+            } catch {}
             throw new Error(errorMsg);
           }
           const data = await response.json();
@@ -1742,7 +1682,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "assistant",
-              content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err}</span>`,
+              content: `<span class='text-red-600'>Error: ${
+                err instanceof Error ? err.message : err
+              }</span>`,
             },
           ]);
         }
@@ -1759,10 +1701,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // Detect edge deselect and queue API call
   useEffect(() => {
-    if (
-      prevSelectedEdgeRef.current?.id &&
-      !selectedEdge
-    ) {
+    if (prevSelectedEdgeRef.current?.id && !selectedEdge) {
       const prevId = prevSelectedEdgeRef.current.id;
       if (prevId) {
         setEdgeApiQueue((q) => [...q, prevId]);
@@ -1792,14 +1731,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     if (!sourceNode || !targetNode) return;
     const getNodeEvidence = (node: ClaimNode) => {
       if (!node.data || !Array.isArray(node.data.evidenceIds)) return [];
-      return evidenceCards.filter(ev => node.data.evidenceIds!.includes(ev.id)).map(ev => ({
-        id: ev.id,
-        title: ev.title,
-        excerpt: ev.excerpt,
-        supportingDocId: ev.supportingDocId,
-        supportingDocName: ev.supportingDocName,
-        confidence: ev.confidence,
-      }));
+      return evidenceCards
+        .filter((ev) => node.data.evidenceIds!.includes(ev.id))
+        .map((ev) => ({
+          id: ev.id,
+          title: ev.title,
+          excerpt: ev.excerpt,
+          supportingDocId: ev.supportingDocId,
+          supportingDocName: ev.supportingDocName,
+          confidence: ev.confidence,
+        }));
     };
     const requestBody = {
       edge: {
@@ -1837,7 +1778,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1867,7 +1808,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err}</span>`,
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
         },
       ]);
     }
@@ -1880,15 +1823,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     if (edges.length === 0) return;
     // Find edges that are new (not in previous ref)
     const prevEdges = prevEdgesRef.current;
-    const newEdges = edges.filter(e => !prevEdges.some(pe => pe.id === e.id));
+    const newEdges = edges.filter(
+      (e) => !prevEdges.some((pe) => pe.id === e.id)
+    );
     if (newEdges.length > 0) {
-      setEdgeApiQueue((q) => [...q, ...newEdges.map(e => e.id)]);
+      setEdgeApiQueue((q) => [...q, ...newEdges.map((e) => e.id)]);
     }
     prevEdgesRef.current = edges;
   }, [edges]);
 
   return (
-    <div className="w-full h-full relative font-josefin">
+    <div className="w-full h-full relative font-sans">
       <PanelGroup direction="horizontal">
         {/* Evidence Panel Container */}
         {isEvidencePanelOpen && (
@@ -2078,7 +2023,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   <PDFPreviewer
                                     ref={pdfPreviewerRef}
                                     url={doc.url}
-                                    onAddContent={() => { }}
+                                    onAddContent={() => {}}
                                     fixedWidth={350}
                                   />
                                 </div>
@@ -2425,7 +2370,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 text-lg text-center w-full"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "390",
+                          fontWeight: "200",
                         }}
                         autoFocus
                       />
@@ -2435,7 +2380,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "390",
+                          fontWeight: "200",
                         }}
                       >
                         {title}
@@ -2452,10 +2397,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   >
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
-                        ? "bg-gray-100"
-                        : "text-gray-700 hover:bg-gray-100"
-                        }`}
+                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
+                        isMenuOpen
+                          ? "bg-gray-100"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
                       title="Menu"
                     >
                       <EllipsisVerticalIcon
@@ -2500,10 +2446,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={undo}
                   disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
-                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                    }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canUndo
+                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
                   title="Undo"
                 >
                   <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
@@ -2511,10 +2458,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={redo}
                   disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
-                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                    }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canRedo
+                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
                   title="Redo"
                 >
                   <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
@@ -2586,10 +2534,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="relative">
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
+                    isAddNodeOpen
+                      ? "bg-[#232F3E] text-white shadow-inner"
+                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
                   title="Add Claim"
                 >
                   <PlusIcon className="w-8 h-8" strokeWidth={2} />
@@ -2622,10 +2571,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={handleDeleteNode}
                 disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
-                  ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
-                  : "text-gray-300 cursor-not-allowed"
-                  }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  selectedNode
+                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                }`}
                 title="Delete Claim"
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
@@ -2636,10 +2586,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Edge Type Buttons */}
               <button
                 onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "supporting"
-                  ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                  : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "supporting"
+                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
                 title="Supporting Edge"
               >
                 <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
@@ -2647,10 +2598,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <button
                 onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "attacking"
-                  ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                  : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "attacking"
+                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
                 title="Attacking Edge"
               >
                 <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
@@ -2661,10 +2613,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
-                  ? "bg-[#232F3E] text-white shadow-inner"
-                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  isEvidencePanelOpen
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                }`}
                 title={
                   isEvidencePanelOpen
                     ? "Hide Evidence Panel"
@@ -2713,7 +2666,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               edgeTypes={edgeTypes}
               fitView
               minZoom={0.25}
-              maxZoom={2.5}
+              maxZoom={6}
               className="bg-white h-full [--xy-theme-selected:#f57dbd] [--xy-theme-hover:#c5c5c5] [--xy-theme-color-focus:#e8e8e8]"
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
@@ -2868,8 +2821,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
-                    className={`p-2 rounded-full transition-colors ${isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
-                      }`}
+                    className={`p-2 rounded-full transition-colors ${
+                      isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
+                    }`}
                     title={
                       isAICopilotFrozen
                         ? "Unfreeze Copilot Panel"
@@ -2886,8 +2840,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClick={() =>
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
-                    className={`p-2 hover:bg-white rounded-md transition-colors ${isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
+                    className={`p-2 hover:bg-white rounded-md transition-colors ${
+                      isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
+                    }`}
                     aria-label="Close AI copilot"
                     disabled={isAICopilotFrozen}
                   >
@@ -2927,7 +2882,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   title="Generate Assumptions"
                   content="Generates up to 5 assumptions required by the edge to be valid"
                   icon={<HandRaisedIcon className="w-6 h-6" />}
-                  onClick={() => { }}
+                  onClick={() => {}}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
@@ -2949,10 +2904,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         />
                       ) : (
                         <span
-                          className={`text-left text-sm ${msg.role === "system"
-                            ? "text-gray-500"
-                            : "text-black"
-                            }`}
+                          className={`text-left text-sm ${
+                            msg.role === "system"
+                              ? "text-gray-500"
+                              : "text-black"
+                          }`}
                         >
                           {msg.content}
                         </span>

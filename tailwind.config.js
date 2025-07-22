@@ -10,7 +10,7 @@ export default {
         "ip-indigo": "#7283D9",
       },
       fontFamily: {
-        josefin: ["Josefin Sans", "sans-serif"],
+        sans: ["DM Sans", "sans-serif"],
       },
       fontWeight: {
         DEFAULT: 100,

@@ -254,10 +254,10 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
             alignItems: "center",
             justifyContent: "center",
             color: "#000000",
-            fontSize: "7px",
-            fontWeight: "200",
+            fontSize: "8px",
+            fontWeight: "500",
             letterSpacing: "0.03em",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: "DM Sans, sans-serif",
             padding: "5px",
           }}
         >
@@ -270,10 +270,11 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
           onDoubleClick={handleDoubleClick}
           className={`w-full px-1.5 ${isEditing ? "nodrag" : ""}`}
           style={{
-            fontFamily: "Arial, sans-serif",
-            fontSize: "7px",
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: "10px",
             paddingTop: "10px",
             paddingBottom: "0px",
+            fontWeight: "500",
           }}
         >
           {isEditing ? (
@@ -285,7 +286,11 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               className="w-full bg-transparent outline-none border-b border-gray-300"
-              style={{ fontFamily: "DM Sans, sans-serif", fontSize: "8px" }}
+              style={{
+                fontFamily: "DM Sans, sans-serif",
+                fontSize: "10px",
+                fontWeight: "500",
+              }}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -2370,7 +2375,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 text-lg text-center w-full"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "200",
+                          fontWeight: "500",
                         }}
                         autoFocus
                       />
@@ -2380,7 +2385,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "200",
+                          fontWeight: "500",
                         }}
                       >
                         {title}

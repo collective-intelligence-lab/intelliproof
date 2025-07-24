@@ -35,12 +35,16 @@ class NodeModel(BaseModel):
         id: Unique identifier for the node
         text: The claim or statement of the node
         type: The type of claim (factual, value, policy, etc.)
-        evidence: List of evidence objects supporting this node (optional)
+        evidence: List of evidence scores (floats) or objects supporting this node (optional)
+        evidence_min: Optional per-node minimum evidence value
+        evidence_max: Optional per-node maximum evidence value
     """
     id: str
     text: Optional[str] = None
     type: Optional[str] = None
-    evidence: Optional[List[EvidenceModel]] = None
+    evidence: Optional[List[float]] = None  # Accept list of floats for this endpoint
+    evidence_min: Optional[float] = None
+    evidence_max: Optional[float] = None
 
 
 class EdgeModel(BaseModel):
@@ -50,9 +54,11 @@ class EdgeModel(BaseModel):
     Attributes:
         source: ID of the source node
         target: ID of the target node
+        weight: Weight of the edge (influence strength)
     """
     source: str
     target: str
+    weight: float  # Added to support weighted edges
 
 
 class CredibilityPropagationRequest(BaseModel):
@@ -67,7 +73,7 @@ class CredibilityPropagationRequest(BaseModel):
     """
     nodes: List[NodeModel]
     edges: List[EdgeModel]
-    lambda_: float = Field(default=0.5, description="Weight parameter for evidence vs. neighbor influence")
+    lambda_: float = Field(default=0.5, alias="lambda", description="Weight parameter for evidence vs. neighbor influence")
     max_iterations: int = Field(default=100, description="Maximum number of iterations")
     epsilon: float = Field(default=1e-6, description="Convergence threshold")
     evidence_min: Optional[float] = Field(default=0.0, description="Global minimum evidence value")

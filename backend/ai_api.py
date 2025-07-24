@@ -228,10 +228,15 @@ def validate_edge(data: ValidateEdgeRequest = Body(...)):
     def format_evidence(evidence_list):
         if not evidence_list:
             return "None"
+        # If evidence is a list of floats, just print the scores
+        if all(isinstance(ev, (int, float)) for ev in evidence_list):
+            return "Evidence scores: " + ", ".join([str(ev) for ev in evidence_list])
+        # Otherwise, assume it's a list of objects with title/excerpt
         return "\n".join([
-            f"- Title: {ev.title}\n  Excerpt: {ev.excerpt}" for ev in evidence_list
+            f"- Title: {getattr(ev, 'title', 'N/A')}\n  Excerpt: {getattr(ev, 'excerpt', str(ev))}" for ev in evidence_list
         ])
 
+    # Edge weight is now optional and not required in the prompt
     prompt = f"""
 You are an expert in argument analysis. Given the following two nodes and their connecting edge, determine whether the source node ATTACKS, SUPPORTS, or is NEUTRAL to the target node. 
 

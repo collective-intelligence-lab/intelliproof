@@ -58,7 +58,7 @@ class EdgeModel(BaseModel):
     """
     source: str
     target: str
-    weight: float  # Added to support weighted edges
+    weight: Optional[float] = None  # Made optional for AI endpoints
 
 
 class CredibilityPropagationRequest(BaseModel):

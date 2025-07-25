@@ -15,11 +15,11 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS middleware configuration - Open access for development
+# CORS middleware configuration - Restrict to production frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now
-    allow_credentials=False,  # Set to False when using allow_origins=["*"]
+    allow_origins=["https://intelliproof.vercel.app"],  # Only allow production frontend
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

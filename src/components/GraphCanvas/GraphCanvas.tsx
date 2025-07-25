@@ -131,8 +131,8 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
     backgroundColor: colors.background,
     color: "#000000",
     padding: "0 8px 4px 8px",
-    fontFamily: "Arial, sans-serif",
-    fontSize: "7px",
+    fontFamily: "DM Sans, sans-serif",
+    fontSize: "8px",
     cursor: "pointer",
     minWidth: "90px",
     maxWidth: "140px",
@@ -240,22 +240,22 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         <div
           style={{
             position: "absolute",
-            top: "-0.35px", // Align with border
-            left: "-0.35px", // Align with border
+            top: "-0.69px", // Align with border
+            left: "-0.69px", // Align with border
             width: "fit-content",
             minWidth: "10px",
             maxWidth: "40px",
             height: "8px",
             backgroundColor: colors.header,
             borderBottomRightRadius: "3px",
-            borderTopLeftRadius: "3px",
+            borderTopLeftRadius: "2px",
             zIndex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#000000",
             fontSize: "8px",
-            fontWeight: "500",
+            fontWeight: "400",
             letterSpacing: "0.03em",
             fontFamily: "DM Sans, sans-serif",
             padding: "5px",
@@ -271,10 +271,10 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
           className={`w-full px-1.5 ${isEditing ? "nodrag" : ""}`}
           style={{
             fontFamily: "DM Sans, sans-serif",
-            fontSize: "10px",
+            fontSize: "8px",
             paddingTop: "10px",
             paddingBottom: "0px",
-            fontWeight: "500",
+            fontWeight: "400",
           }}
         >
           {isEditing ? (
@@ -288,8 +288,8 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
               className="w-full bg-transparent outline-none border-b border-gray-300"
               style={{
                 fontFamily: "DM Sans, sans-serif",
-                fontSize: "10px",
-                fontWeight: "500",
+                fontSize: "8px",
+                fontWeight: "400",
               }}
               onClick={(e) => e.stopPropagation()}
             />
@@ -600,10 +600,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const addNode = (type: ClaimType) => {
     const newNode = {
-      ...createClaimNode("new node", type),
+      ...createClaimNode("new claim", type),
       data: {
-        ...createClaimNode("new node", type).data,
-        text: "new node",
+        ...createClaimNode("new claim", type).data,
+        text: "new claim",
         author: profile?.email || "Anonymous",
         onChange: (newText: string) => {
           handleNodeUpdate(newNode.id, {
@@ -712,11 +712,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
         // Create the new node
         const newNode = {
-          ...createClaimNode("new node", "factual"),
+          ...createClaimNode("new claim", "factual"),
           position,
           data: {
-            ...createClaimNode("new node", "factual").data,
-            text: "new node",
+            ...createClaimNode("new claim", "factual").data,
+            text: "new claim",
             onChange: (newText: string) => {
               handleNodeUpdate(newNode.id, {
                 data: { ...newNode.data, text: newText },
@@ -780,12 +780,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           const style =
             newType !== node.data.type
               ? {
-                ...currentStyle,
-                ...getNodeStyle(newType),
-                // Keep existing width/height if they exist
-                ...(currentStyle.width && { width: currentStyle.width }),
-                ...(currentStyle.height && { height: currentStyle.height }),
-              }
+                  ...currentStyle,
+                  ...getNodeStyle(newType),
+                  // Keep existing width/height if they exist
+                  ...(currentStyle.width && { width: currentStyle.width }),
+                  ...(currentStyle.height && { height: currentStyle.height }),
+                }
               : currentStyle;
           const updatedNode = {
             ...node,
@@ -1243,7 +1243,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1385,7 +1385,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1435,18 +1435,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const avgConfidence =
         updatedConfidences.length > 0
           ? updatedConfidences.reduce((a, b) => a + b, 0) /
-          updatedConfidences.length
+            updatedConfidences.length
           : 0.5;
       setNodes((prevNodes) =>
         prevNodes.map((n) =>
           n.id === node.id
             ? {
-              ...n,
-              data: {
-                ...n.data,
-                belief: avgConfidence,
-              },
-            }
+                ...n,
+                data: {
+                  ...n.data,
+                  belief: avgConfidence,
+                },
+              }
             : n
         )
       );
@@ -1536,7 +1536,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1566,8 +1566,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
-            }</span>`,
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
         },
       ]);
     } finally {
@@ -1642,7 +1643,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             try {
               const errorData = await response.json();
               if (errorData.detail) errorMsg = errorData.detail;
-            } catch { }
+            } catch {}
             throw new Error(errorMsg);
           }
           const data = await response.json();
@@ -1672,8 +1673,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "assistant",
-              content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
-                }</span>`,
+              content: `<span class='text-red-600'>Error: ${
+                err instanceof Error ? err.message : err
+              }</span>`,
             },
           ]);
         }
@@ -1760,7 +1762,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1790,8 +1792,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
-            }</span>`,
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
         },
       ]);
     }
@@ -1814,7 +1817,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   }, [edges]);
 
   return (
-    <div className="w-full h-full relative font-sans">
+    <div className="w-full h-full relative font-[DM Sans]">
       <PanelGroup direction="horizontal">
         {/* Evidence Panel Container */}
         {isEvidencePanelOpen && (
@@ -1843,7 +1846,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="p-4 border-b-0">
                 <div className="flex justify-end mb-2">
                   <button
-                    className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm"
+                    className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm font-[DM Sans] font-normal"
                     onClick={() => setIsAddEvidenceOpen(true)}
                   >
                     + Add Evidence
@@ -1852,7 +1855,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 {/* Evidence cards */}
                 <div className="space-y-3">
                   {evidenceCards.length === 0 ? (
-                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center text-gray-500 text-sm">
+                    <div className="p-4 bg-[#FAFAFA] rounded-md border border-gray-300 text-center text-gray-500 text-sm font-medium">
                       No evidence added yet.
                     </div>
                   ) : (
@@ -1873,16 +1876,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-base font-medium truncate">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-base font-medium">
                                   {card.title}
                                 </span>
-                                <span className="text-xs text-gray-500">
-                                  from: {card.supportingDocName}
+
+                                <span className="text-sm text-gray-500 font-medium">
+                                  source: {card.supportingDocName}
                                 </span>
                               </div>
-                              <div className="text-xs text-gray-700 mt-1 line-clamp-2 whitespace-pre-line">
-                                {card.excerpt}
+                              <div className="text-xs font-normal text-gray-400 mt-1 line-clamp-2 whitespace-pre-line truncate">
+                                Excerpt:{card.excerpt}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 ml-3">
@@ -2004,7 +2008,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   <PDFPreviewer
                                     ref={pdfPreviewerRef}
                                     url={doc.url}
-                                    onAddContent={() => { }}
+                                    onAddContent={() => {}}
                                     fixedWidth={350}
                                   />
                                 </div>
@@ -2241,7 +2245,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         Supporting Documents
                       </h3>
                       <button
-                        className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm cursor-pointer"
+                        className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm cursor-pointer font-[DM Sans] font-normal"
                         onClick={() => {
                           console.log("Upload button clicked");
                           setIsUploadModalOpen(true);
@@ -2254,8 +2258,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     {/* Documents List */}
                     <div className="space-y-3">
                       {supportingDocuments.length === 0 ? (
-                        <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center">
-                          <p className="text-gray-500 text-sm">
+                        <div className="p-4 bg-[#FAFAFA] rounded-md border border-gray-300 text-center text-gray-500 text-sm font-medium">
+                          <p className="text-gray-500 text-sm font-normal">
                             No supporting documents yet.
                           </p>
                           <p className="text-gray-500 text-xs mt-1">
@@ -2271,17 +2275,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-base font-medium truncate">
+                                  <span className="text-base font-medium">
                                     {doc.name}
                                   </span>
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-gray-500 font-medium">
                                     ({doc.type})
                                   </span>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-0.5">
+                                <p className="text-xs text-gray-400 mt-0.5 font-normal">
                                   Uploaded by {doc.uploader}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-gray-500 mt-1 font-normal">
                                   Uploaded {doc.uploadDate.toLocaleDateString()}
                                 </p>
                               </div>
@@ -2290,13 +2294,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   href={doc.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                  className="p-1.5 text-gray-500 hover:text-gray-800 transition-colors font-bold"
                                 >
                                   <span className="text-lg">↗</span>
                                 </a>
                                 <button
                                   onClick={() => handleDeleteDocument(doc.id)}
-                                  className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                                  className="p-1.5 text-gray-500 hover:text-red-500 transition-colors font-bold"
                                 >
                                   <span className="text-lg">×</span>
                                 </button>
@@ -2378,10 +2382,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   >
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
+                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
+                        isMenuOpen
                           ? "bg-gray-100"
                           : "text-gray-700 hover:bg-gray-100"
-                        }`}
+                      }`}
                       title="Menu"
                     >
                       <EllipsisVerticalIcon
@@ -2426,10 +2431,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={undo}
                   disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canUndo
                       ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
                       : "text-gray-300 cursor-not-allowed"
-                    }`}
+                  }`}
                   title="Undo"
                 >
                   <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
@@ -2437,10 +2443,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={redo}
                   disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canRedo
                       ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
                       : "text-gray-300 cursor-not-allowed"
-                    }`}
+                  }`}
                   title="Redo"
                 >
                   <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
@@ -2512,31 +2519,32 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="relative">
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
+                    isAddNodeOpen
                       ? "bg-[#232F3E] text-white shadow-inner"
                       : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    }`}
+                  }`}
                   title="Add Claim"
                 >
                   <PlusIcon className="w-8 h-8" strokeWidth={2} />
                 </button>
                 {isAddNodeOpen && (
-                  <div className="absolute left-full top-0 ml-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1.5 min-w-[180px] z-10">
+                  <div className="absolute left-full top-0 ml-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1.5 min-w-[180px] z-10 text-lg">
                     <button
                       onClick={() => addNode("factual")}
-                      className="w-full text-left px-5 py-2.5 text-[#3A4553] hover:bg-[#3A4553] hover:text-white text-xl transition-colors"
+                      className="w-full text-left pl-5 pr-2 py-2.5 text-gray-500 font-normal hover:bg-[#aeaeae] hover:text-black text-lg transition-colors"
                     >
                       Factual
                     </button>
                     <button
                       onClick={() => addNode("value")}
-                      className="w-full text-left px-5 py-2.5 text-[#889178] hover:bg-[#889178] hover:text-white text-xl transition-colors"
+                      className="w-full text-left pl-5 pr-2  py-2.5 text-gray-500 font-normal hover:bg-[#94bc84] hover:text-black text-lg transition-colors"
                     >
                       Value
                     </button>
                     <button
                       onClick={() => addNode("policy")}
-                      className="w-full text-left px-5 py-2.5 text-[#888C94] hover:bg-[#888C94] hover:text-white text-xl transition-colors"
+                      className="w-full text-left pl-5 pr-2 py-2.5 text-gray-500 font-normal hover:bg-[#91A4C2] hover:text-black text-lg transition-colors"
                     >
                       Policy
                     </button>
@@ -2548,10 +2556,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={handleDeleteNode}
                 disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  selectedNode
                     ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
                     : "text-gray-300 cursor-not-allowed"
-                  }`}
+                }`}
                 title="Delete Claim"
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
@@ -2562,10 +2571,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Edge Type Buttons */}
               <button
                 onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "supporting"
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "supporting"
                     ? "bg-[#166534] bg-opacity-20 text-[#166534]"
                     : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                }`}
                 title="Supporting Edge"
               >
                 <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
@@ -2573,10 +2583,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <button
                 onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "attacking"
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "attacking"
                     ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
                     : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                }`}
                 title="Attacking Edge"
               >
                 <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
@@ -2587,10 +2598,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  isEvidencePanelOpen
                     ? "bg-[#232F3E] text-white shadow-inner"
                     : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  }`}
+                }`}
                 title={
                   isEvidencePanelOpen
                     ? "Hide Evidence Panel"
@@ -2794,8 +2806,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
-                    className={`p-2 rounded-full transition-colors ${isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
-                      }`}
+                    className={`p-2 rounded-full transition-colors ${
+                      isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
+                    }`}
                     title={
                       isAICopilotFrozen
                         ? "Unfreeze Copilot Panel"
@@ -2812,8 +2825,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClick={() =>
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
-                    className={`p-2 hover:bg-white rounded-md transition-colors ${isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
+                    className={`p-2 hover:bg-white rounded-md transition-colors ${
+                      isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
+                    }`}
                     aria-label="Close AI copilot"
                     disabled={isAICopilotFrozen}
                   >
@@ -2853,7 +2867,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   title="Generate Assumptions"
                   content="Generates up to 5 assumptions required by the edge to be valid"
                   icon={<HandRaisedIcon className="w-6 h-6" />}
-                  onClick={() => { }}
+                  onClick={() => {}}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
@@ -2875,10 +2889,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         />
                       ) : (
                         <span
-                          className={`text-left text-sm ${msg.role === "system"
+                          className={`text-left text-sm ${
+                            msg.role === "system"
                               ? "text-gray-500"
                               : "text-black"
-                            }`}
+                          }`}
                         >
                           {msg.content}
                         </span>

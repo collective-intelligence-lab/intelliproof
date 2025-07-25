@@ -131,12 +131,15 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
 
   return (
     <div
-      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50"
-      style={{ right: copilotOpen ? "27vw" : "1.5rem", transition: "right 0.3s" }}
+      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50 font-[DM Sans] font-normal"
+      style={{
+        right: copilotOpen ? "27vw" : "1.5rem",
+        transition: "right 0.3s",
+      }}
     >
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-medium">Claim Properties</h2>
+        <h2 className="text-lg font-semibold">Claim Properties</h2>
         <button
           onClick={onClose}
           className="text-2xl text-gray-500 hover:text-gray-700"
@@ -154,28 +157,31 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
-                  ? "bg-[#3A4553] text-white"
-                  : "bg-[#3A4553] bg-opacity-60 text-[#3A4553] hover:bg-opacity-80 hover:text-white"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "factual"
+                  ? "bg-[#aeaeae] text-black"
+                  : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
+              }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
-                  ? "bg-[#889178] text-white"
-                  : "bg-[#889178] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-white"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "value"
+                  ? "bg-[#94bc84] text-black"
+                  : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
+              }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
-                  ? "bg-[#888C94] text-white"
-                  : "bg-[#888C94] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-white"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "policy"
+                  ? "bg-[#91A4C2] text-black"
+                  : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
+              }`}
             >
               Policy
             </button>
@@ -242,7 +248,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0 ? (
+            node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;
@@ -337,7 +343,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
                 );
               })
             ) : (
-              <div className="p-4 bg-[#FAFAFA] rounded-md border border-dashed border-gray-300 text-center">
+              <div className="p-4 bg-[#FAFAFA] rounded-md border border-gray-300 text-center">
                 <p className="text-gray-500 text-base">
                   No evidence attached to this node yet.
                 </p>

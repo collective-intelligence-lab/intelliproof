@@ -105,12 +105,12 @@ export default function SignupForm() {
       className="w-full max-w-md space-y-6 p-8 rounded-lg"
       style={{ fontFamily: "DM Sans, sans-serif" }}
     >
-      <h2 className="text-2xl font-semibold text-black mb-2">
-        Account Sign Up
-      </h2>
-      <p className="text-black text-sm mb-6">Enter your information below</p>
+      <h2 className="text-2xl font-bold text-black mb-2">Account Sign Up</h2>
+      <p className="text-black text-lg mb-6 font-normal">
+        Enter your information below
+      </p>
       <div className="flex flex-col gap-4">
-        <label className="text-black text-sm font-medium" htmlFor="firstName">
+        <label className="text-black text-base font-medium" htmlFor="firstName">
           First Name
         </label>
         <Input
@@ -123,7 +123,7 @@ export default function SignupForm() {
         />
       </div>
       <div className="flex flex-col gap-4">
-        <label className="text-black text-sm font-medium" htmlFor="lastName">
+        <label className="text-black text-base font-medium" htmlFor="lastName">
           Last Name
         </label>
         <Input
@@ -136,7 +136,7 @@ export default function SignupForm() {
         />
       </div>
       <div className="flex flex-col gap-4">
-        <label className="text-black text-sm font-medium" htmlFor="email">
+        <label className="text-black text-base font-medium" htmlFor="email">
           Email
         </label>
         <Input
@@ -150,7 +150,7 @@ export default function SignupForm() {
         />
       </div>
       <div className="flex flex-col gap-4 relative">
-        <label className="text-black text-sm font-medium" htmlFor="password">
+        <label className="text-black text-base font-medium" htmlFor="password">
           Password
         </label>
         <Input
@@ -173,13 +173,14 @@ export default function SignupForm() {
         type="submit"
         loading={loading}
         disabled={loading}
-        className="mt-4"
+        className="mt-4 text-lg font-semibold text-black font-[DM Sans]"
       >
         Sign Up
       </ContinueButton>
+
       {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       {success && <p className="text-green-500 text-sm mt-2">{success}</p>}
-      <p className="text-black mt-6 text-center">
+      <p className="text-black mt-6 text-center font-medium">
         Already have an account?{" "}
         <a href="/signin" className="text-black underline">
           Log in

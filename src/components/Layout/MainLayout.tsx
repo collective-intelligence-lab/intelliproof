@@ -1,5 +1,7 @@
 import React from "react";
-import GraphCanvas from "../GraphCanvas/GraphCanvas";
+import dynamic from "next/dynamic";
+
+const GraphCanvas = dynamic(() => import("../GraphCanvas/GraphCanvas"), { ssr: false });
 
 const MainLayout = ({ hideNavbar = false }: { hideNavbar?: boolean }) => {
   return (

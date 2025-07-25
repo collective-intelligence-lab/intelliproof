@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Header
+from fastapi import FastAPI, HTTPException, status, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
@@ -144,6 +145,15 @@ async def signout():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+@app.options("/api/signin")
+async def options_signin(request: Request):
+    response = JSONResponse(content={})
+    response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 @app.get("/api/user/data", response_model=UserData)
 async def get_user_data(authorization: str = Header(None)):

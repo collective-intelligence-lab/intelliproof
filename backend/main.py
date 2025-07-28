@@ -1,6 +1,5 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Header, Request
+from fastapi import FastAPI, HTTPException, status, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
@@ -16,15 +15,11 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS middleware configuration - Allow both production and development
+# CORS middleware configuration - Open access for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://intelliproof.vercel.app",  # Production frontend
-        "http://localhost:3000",            # Local development frontend
-        "http://localhost:5173",            # Vite default port
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for now
+    allow_credentials=False,  # Set to False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -149,33 +144,6 @@ async def signout():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
-@app.options("/api/signin")
-async def options_signin(request: Request):
-    response = JSONResponse(content={})
-    response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
-
-@app.options("/api/signup")
-async def options_signup(request: Request):
-    response = JSONResponse(content={})
-    response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
-
-@app.options("/api/signout")
-async def options_signout(request: Request):
-    response = JSONResponse(content={})
-    response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
 
 @app.get("/api/user/data", response_model=UserData)
 async def get_user_data(authorization: str = Header(None)):

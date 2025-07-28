@@ -1,6 +1,6 @@
 import os
-from langchain_community.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
+import openai
+from typing import List, Dict, Any
 
 class ModelControlProtocol:
     def __init__(
@@ -25,25 +25,29 @@ class ModelControlProtocol:
 # Define a single, project-wide MCP instance
 DEFAULT_MCP = ModelControlProtocol()
 
-def get_llm(mcp: ModelControlProtocol = DEFAULT_MCP):
-    print(f"[llm_manager] get_llm: Initializing LLM with model={mcp.model_name}")
-    llm = ChatOpenAI(
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        model=mcp.model_name,
-        temperature=mcp.temperature,
-        max_tokens=mcp.max_tokens,
-    )
-    print(f"[llm_manager] get_llm: LLM initialized.")
-    return llm
-
-def run_llm(messages, mcp: ModelControlProtocol = DEFAULT_MCP):
+def run_llm(messages: List[Dict[str, str]], mcp: ModelControlProtocol = DEFAULT_MCP):
     print(f"[llm_manager] run_llm: Running LLM with {len(messages)} messages.")
-    llm = get_llm(mcp)
-    chat_messages = []
+    
+    # Set up OpenAI client
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    
+    # Prepare messages for OpenAI API
+    openai_messages = []
     if mcp.system_prompt:
-        chat_messages.append(SystemMessage(content=mcp.system_prompt))
+        openai_messages.append({"role": "system", "content": mcp.system_prompt})
+    
     for msg in messages:
-        chat_messages.append(HumanMessage(content=msg["content"]))
-    response = llm(chat_messages)
-    print(f"[llm_manager] run_llm: LLM call finished.")
-    return response.content 
+        openai_messages.append({"role": "user", "content": msg["content"]})
+    
+    try:
+        response = openai.chat.completions.create(
+            model=mcp.model_name,
+            messages=openai_messages,
+            temperature=mcp.temperature,
+            max_tokens=mcp.max_tokens,
+        )
+        print(f"[llm_manager] run_llm: LLM call finished.")
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"[llm_manager] run_llm: Error calling OpenAI API: {e}")
+        raise e 

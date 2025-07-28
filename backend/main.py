@@ -8,9 +8,17 @@ import os
 from supabase import create_client, Client
 import ai_api
 from models import SignupRequest, SignupResponse, SigninRequest, SigninResponse, SignoutResponse, UserData
+import sys
 
 # Load environment variables
 load_dotenv()
+
+# Check required environment variables
+required_env_vars = ["SUPABASE_URL", "SUPABASE_KEY"]
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+if missing_vars:
+    print(f"Warning: Missing required environment variables: {missing_vars}")
+    print("Some features may not work properly")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -24,14 +32,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include AI API router
-app.include_router(ai_api.router)
+# Add explicit CORS preflight handler
+@app.options("/{full_path:path}")
+async def preflight_handler():
+    return {"message": "CORS preflight successful"}
+
+# Include AI API router with error handling
+try:
+    import ai_api
+    app.include_router(ai_api.router)
+    print("AI API router loaded successfully")
+except ImportError as e:
+    print(f"Warning: Could not import AI API router: {e}")
+    print("AI endpoints will not be available")
+except Exception as e:
+    print(f"Warning: Error loading AI API router: {e}")
+    print("AI endpoints will not be available")
 
 # Supabase configuration
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_KEY")
-)
+try:
+    supabase: Client = create_client(
+        os.getenv("SUPABASE_URL"),
+        os.getenv("SUPABASE_KEY")
+    )
+    print("Supabase client initialized successfully")
+except Exception as e:
+    print(f"Warning: Could not initialize Supabase client: {e}")
+    supabase = None
+
+# Health check endpoint
+@app.get("/")
+async def health_check():
+    return {"status": "healthy", "message": "Intelliproof Backend API is running"}
 
 # Models
 
@@ -39,6 +71,12 @@ supabase: Client = create_client(
 @app.post("/api/signup", response_model=SignupResponse)
 async def signup(request: SignupRequest):
     try:
+        if not supabase:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database service not available"
+            )
+        
         # First, sign up the user with Supabase Auth
         auth_response = supabase.auth.sign_up({
             "email": request.email.lower().strip(),
@@ -99,6 +137,12 @@ async def signup(request: SignupRequest):
 @app.post("/api/signin", response_model=SigninResponse)
 async def signin(request: SigninRequest):
     try:
+        if not supabase:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database service not available"
+            )
+        
         # Authenticate user with Supabase Auth
         auth_response = supabase.auth.sign_in_with_password({
             "email": request.email.lower().strip(),
@@ -136,6 +180,12 @@ async def signin(request: SigninRequest):
 @app.post("/api/signout", response_model=SignoutResponse)
 async def signout():
     try:
+        if not supabase:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database service not available"
+            )
+        
         # Sign out from Supabase
         supabase.auth.sign_out()
         return SignoutResponse(message="Sign out successful")
@@ -148,6 +198,12 @@ async def signout():
 @app.get("/api/user/data", response_model=UserData)
 async def get_user_data(authorization: str = Header(None)):
     try:
+        if not supabase:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database service not available"
+            )
+        
         print("DEBUG: Received authorization header:", authorization)
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(
@@ -224,5 +280,12 @@ async def get_user_data(authorization: str = Header(None)):
         )
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    try:
+        import uvicorn
+        print("Starting Intelliproof Backend...")
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    except Exception as e:
+        print(f"Failed to start server: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1) 

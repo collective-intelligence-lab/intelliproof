@@ -16,10 +16,14 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS middleware configuration - Restrict to production frontend
+# CORS middleware configuration - Allow both production and development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://intelliproof.vercel.app"],  # Only allow production frontend
+    allow_origins=[
+        "https://intelliproof.vercel.app",  # Production frontend
+        "http://localhost:3000",            # Local development frontend
+        "http://localhost:5173",            # Vite default port
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -148,6 +152,24 @@ async def signout():
 
 @app.options("/api/signin")
 async def options_signin(request: Request):
+    response = JSONResponse(content={})
+    response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
+@app.options("/api/signup")
+async def options_signup(request: Request):
+    response = JSONResponse(content={})
+    response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
+@app.options("/api/signout")
+async def options_signout(request: Request):
     response = JSONResponse(content={})
     response.headers["Access-Control-Allow-Origin"] = "https://intelliproof.vercel.app"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"

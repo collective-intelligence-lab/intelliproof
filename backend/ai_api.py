@@ -252,6 +252,7 @@ The output confidence value should match the evaluation:
 Respond in this format:
 Evaluation: <attack|support|neutral>
 Reasoning: <3-5 sentences explaining your reasoning>
+Implicit Assumptions: <2-3 sentences explaining the most important necessary implicit assumptions underlying the argument>
 Confidence: <float between -1 and 1, matching the evaluation>
 
 Source Node:

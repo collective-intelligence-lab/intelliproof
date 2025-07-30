@@ -41,16 +41,16 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
 }) => {
   const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const [confidence, setConfidence] = useState(0.5);
+  const [confidence, setConfidence] = useState(0);
   const [editingEvidenceId, setEditingEvidenceId] = useState<string | null>(
     null
   );
-  const [editingConfidence, setEditingConfidence] = useState<number>(0.5);
+  const [editingConfidence, setEditingConfidence] = useState<number>(0);
 
   useEffect(() => {
     if (node) {
       setText(node.data.text);
-      setConfidence(node.data.belief || 0.5);
+      setConfidence(node.data.belief ?? 0);
     }
   }, [node]);
 

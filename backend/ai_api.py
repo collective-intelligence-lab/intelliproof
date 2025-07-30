@@ -71,53 +71,85 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
     # Step 1: Compute E_i (initial evidence score) for each node
     E = {}
     for node in data.nodes:
+        # Explicitly initialize to 0.0
+        E[node.id] = 0.0
+        print(f"DEBUG: Initially set Node {node.id} E_i = 0.0")
+
         evidence = node.evidence or []
         print(f"DEBUG: Node {node.id} has evidence: {evidence}")
-        
-        # Use per-node min/max if provided, else global, else default
-        min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
-        max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
-        
-        # Clamp evidence values to valid range
-        clamped_evidence = [
-            max(min(ev, max_val), min_val) for ev in evidence
-        ]
-        
-        # Calculate average evidence score
-        N_i = len(clamped_evidence)
-        E[node.id] = sum(clamped_evidence) / N_i if N_i > 0 else 0.0
-        print(f"DEBUG: Node {node.id} E_i = {E[node.id]} (from {N_i} evidence items)")
+
+        # Only update E if there is actual evidence
+        if evidence:
+            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
+            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
+            
+            clamped_evidence = [
+                max(min(ev, max_val), min_val) for ev in evidence
+            ]
+            
+            N_i = len(clamped_evidence)
+            if N_i > 0:
+                E[node.id] = sum(clamped_evidence) / N_i
+                print(f"DEBUG: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+
+    # Verify final evidence scores
+    print("DEBUG: Final evidence scores:")
+    for node_id, score in E.items():
+        print(f"DEBUG: Node {node_id}: {score}")
 
     # Step 2: Initialize credibility scores c_i^(0) = E_i
     c_prev = {node.id: E[node.id] for node in data.nodes}
     iterations = [c_prev.copy()]
 
+    # For single node with no edges, return immediately
+    if len(data.nodes) == 1 and len(data.edges) == 0:
+        print("DEBUG: Single node with no edges, returning initial score")
+        return CredibilityPropagationResponse(
+            initial_evidence=E,
+            iterations=iterations,
+            final_scores=c_prev
+        )
+
     # Build incoming edges map for efficient lookup during iteration
     incoming_edges = {node.id: [] for node in data.nodes}
     for edge in data.edges:
-        incoming_edges[edge.target].append(edge)
+        # Reverse source and target to match graph visualization
+        incoming_edges[edge.source].append(edge)
+        print(f"DEBUG: Added edge to {edge.source} from {edge.target} with weight {edge.weight}")
+
+    # First identify all source nodes (nodes that only have outgoing edges)
+    source_nodes = set()
+    for node in data.nodes:
+        if not incoming_edges[node.id]:
+            source_nodes.add(node.id)
+            print(f"DEBUG: Identified {node.id} as a source node")
 
     # Step 3: Iterative credibility propagation
     print(f"DEBUG: Starting iterations with initial scores: {c_prev}")
     for iteration in range(data.max_iterations):
-        c_new = {}
+        # Start by copying previous scores
+        c_new = c_prev.copy()
         
-        for node in data.nodes:
-            # Start with evidence contribution (weighted by lambda)
-            Z = data.lambda_ * E[node.id]
-            
-            # Add contributions from incoming edges (neighbor influence)
-            for edge in incoming_edges[node.id]:
-                c_j = c_prev[edge.source]  # Current score of source node
-                Z += edge.weight * c_j     # Weighted influence
-            
-            # Apply tanh squashing function to keep scores in [-1, 1]
-            c_new[node.id] = math.tanh(Z)
+        # Only update target nodes
+        for node_id in incoming_edges:
+            if node_id not in source_nodes and incoming_edges[node_id]:
+                # Calculate new score for target node
+                Z = data.lambda_ * E[node_id]
+                print(f"DEBUG: Node {node_id} initial Z = {Z} (lambda={data.lambda_} * evidence={E[node_id]})")
+                
+                # Add contributions from incoming edges
+                for edge in incoming_edges[node_id]:
+                    edge_contribution = edge.weight * c_prev[edge.target]
+                    Z += edge_contribution
+                    print(f"DEBUG: Edge from {edge.target} contributes {edge_contribution} (weight={edge.weight} * source_score={c_prev[edge.target]})")
+                
+                c_new[node_id] = math.tanh(Z)
+                print(f"DEBUG: Target node {node_id} final Z={Z}, new score={c_new[node_id]}")
         
         iterations.append(c_new.copy())
-        print(f"DEBUG: Iteration {iteration + 1}: {c_new}")
+        print(f"DEBUG: Iteration {iteration + 1} scores: {c_new}")
         
-        # Check for convergence (if changes are below epsilon threshold)
+        # Check for convergence
         if max(abs(c_new[nid] - c_prev[nid]) for nid in c_new) < data.epsilon:
             print(f"DEBUG: Converged after {iteration + 1} iterations")
             break
@@ -125,6 +157,10 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
         c_prev = c_new
 
     final_scores = iterations[-1]
+    print("DEBUG: Final scores:")
+    for node_id, score in final_scores.items():
+        print(f"DEBUG: Node {node_id}: {score}")
+
     return CredibilityPropagationResponse(
         initial_evidence=E,
         iterations=iterations,

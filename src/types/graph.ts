@@ -78,6 +78,8 @@ export const createClaimNode = (
         data: {
             text,
             type,
+            belief: 0,  // Add this line to explicitly set initial belief to 0
+            evidenceIds: [],  // Also initialize evidenceIds as empty array
         },
         style: {
             backgroundColor: colors.background,

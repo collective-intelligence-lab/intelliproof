@@ -294,9 +294,14 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            // Fon
-            <div className="w-full break-words text-[8px]">
-              {truncateText(data.text || "Click to edit")}
+            <div>
+              <div className="w-full break-words text-[8px]">
+                {truncateText(data.text || "Click to edit")}
+              </div>
+              {/* Add this new div to display the credibility score */}
+              <div className="text-[7px] text-gray-600 mt-1">
+                Score: {data.belief ? Number(data.belief).toFixed(5) : 0.0}
+              </div>
             </div>
           )}
         </div>
@@ -401,7 +406,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           ...node,
           data: {
             ...node.data,
-            belief: data.final_scores[node.id] || node.data.belief,
+            // belief: data.final_scores[node.id] || node.data.belief,
+            belief: data.final_scores[node.id],
           },
         }))
       );
@@ -617,7 +623,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               text: nodeData.text || "New Claim",
               type: nodeData.type || "factual",
               author: nodeData.author,
-              belief: nodeData.belief || 0.5,
+              belief: nodeData.belief ?? 0,
               created_on: nodeData.created_on || new Date().toISOString(),
               onChange: (newText: string) => {
                 handleNodeUpdate(node.id, {
@@ -632,7 +638,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     evidenceIds: [...(nodeData.evidenceIds || []), evidenceId],
                   },
                 });
-                updateCredibilityScores();
               },
             },
             style: getNodeStyle(nodeData.type || node.type), // Always use getNodeStyle
@@ -676,8 +681,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       setNodes(formattedNodes);
       setEdges(formattedEdges);
-
-      setTimeout(() => updateCredibilityScores(), 0);
     }
   }, [currentGraph]);
 
@@ -687,7 +690,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       setEvidenceCards(
         currentGraph.graph_data.evidence.map((ev) => ({
           ...ev,
-          confidence: typeof ev.confidence === "number" ? ev.confidence : 0.5,
+          confidence: typeof ev.confidence === "number" ? ev.confidence : 0,
         }))
       );
     } else {
@@ -718,7 +721,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     };
     setNodes((nds) => [...nds, newNode]);
     setIsAddNodeOpen(false);
-    updateCredibilityScores();
   };
 
   const onNodesChange: OnNodesChange = (changes) => {
@@ -727,7 +729,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const onEdgesChange: OnEdgesChange = useCallback((changes) => {
     setEdges((eds) => applyEdgeChanges(changes, eds) as ClaimEdge[]);
-    updateCredibilityScores();
   }, []);
 
   const onConnect = useCallback(
@@ -758,7 +759,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
-      updateCredibilityScores();
     },
     [edges]
   );
@@ -915,7 +915,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         return node;
       })
     );
-    updateCredibilityScores();
   };
 
   const onEdgeClick = (event: React.MouseEvent, edge: Edge) => {
@@ -939,7 +938,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         return e;
       })
     );
-    updateCredibilityScores();
   };
 
   const handleDeleteNode = useCallback(() => {
@@ -954,7 +952,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       // Delete the node
       setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
       setSelectedNode(null);
-      updateCredibilityScores();
     }
   }, [selectedNode]);
 
@@ -1482,17 +1479,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const triggerCheckNodeEvidence = async (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return;
-    const requestBody = {
-      node: {
-        id: node.id,
-        text: node.data.text,
-        type: node.data.type,
-        evidenceIds: node.data.evidenceIds || [],
-      },
-      evidence: evidenceCards,
-      supportingDocuments: supportingDocumentsRedux,
-    };
+
     try {
+      const requestBody = {
+        node: {
+          id: node.id,
+          text: node.data.text,
+          type: node.data.type,
+          evidenceIds: node.data.evidenceIds || [],
+        },
+        evidence: evidenceCards,
+        supportingDocuments: supportingDocumentsRedux,
+      };
       const response = await fetch("/api/ai/check-node-evidence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1554,7 +1552,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         updatedConfidences.length > 0
           ? updatedConfidences.reduce((a, b) => a + b, 0) /
             updatedConfidences.length
-          : 0.5;
+          : 0;
       setNodes((prevNodes) =>
         prevNodes.map((n) =>
           n.id === node.id

@@ -1504,6 +1504,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     if (prevSelectedNodeRef.current?.id && !selectedNode) {
       const prevId = prevSelectedNodeRef.current.id;
       if (prevId) {
+        handleClaimCredibility();
         setApiQueue((q) => [...q, prevId]);
       }
     }

@@ -16,6 +16,7 @@ export interface ClaimData {
     text: string;
     type: ClaimType;
     author?: string;
+    credibilityScore?: number;
     belief?: number;
     created_on?: string;
     onChange?: (newText: string) => void;
@@ -78,6 +79,7 @@ export const createClaimNode = (
         data: {
             text,
             type,
+            credibilityScore: 0,
             belief: 0,  // Add this line to explicitly set initial belief to 0
             evidenceIds: [],  // Also initialize evidenceIds as empty array
         },
@@ -112,6 +114,7 @@ export type ExportedGraphData = {
         text: string;
         type: ClaimType;
         author: string | undefined;
+        credibilityScore: number;
         belief: number;
         position: { x: number; y: number };
         created_on: string;

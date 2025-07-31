@@ -235,13 +235,37 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
           boxShadow: "none",
         }}
       />
-      <div className="flex flex-col w-full p-0 m-0 group">
+      <div className="flex flex-col w-full p-0 m-0 group relative">
+        {/* Score circle in top right */}
+        <div
+          className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center z-10"
+          style={{
+            position: "absolute",
+            top: "-4px",
+            right: "-13px",
+            width: "12px",
+            height: "12px",
+            fontSize: "4.5px",
+            fontFamily: "DM Sans, sans-serif",
+            textAlign: "center",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.background,
+            borderColor: colors.header,
+            fontWeight: "normal",
+          }}
+        >
+          {typeof data.credibilityScore === "number"
+            ? data.credibilityScore.toFixed(2)
+            : "0.00"}
+        </div>
+
         {/* Corner header section */}
         <div
           style={{
             position: "absolute",
-            top: "-0.69px", // Align with border
-            left: "-0.69px", // Align with border
+            top: "-0.69px",
+            left: "-8.4px",
             width: "fit-content",
             minWidth: "10px",
             maxWidth: "40px",
@@ -265,6 +289,7 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
             ? "Factual"
             : data.type.charAt(0).toUpperCase() + data.type.slice(1)}
         </div>
+
         {/* Content section */}
         <div
           onDoubleClick={handleDoubleClick}
@@ -297,10 +322,6 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
             <div>
               <div className="w-full break-words text-[8px]">
                 {truncateText(data.text || "Click to edit")}
-              </div>
-              {/* Add this new div to display the credibility score */}
-              <div className="text-[7px] text-gray-600 mt-1">
-                Score: {data.belief ? Number(data.belief).toFixed(5) : 0.0}
               </div>
             </div>
           )}
@@ -407,7 +428,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           data: {
             ...node.data,
             // belief: data.final_scores[node.id] || node.data.belief,
-            belief: data.final_scores[node.id],
+            // belief: data.final_scores[node.id],
+            credibilityScore: data.final_scores[node.id],
           },
         }))
       );
@@ -624,6 +646,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               type: nodeData.type || "factual",
               author: nodeData.author,
               belief: nodeData.belief ?? 0,
+              credibilityScore: nodeData.credibilityScore ?? 0,
               created_on: nodeData.created_on || new Date().toISOString(),
               onChange: (newText: string) => {
                 handleNodeUpdate(node.id, {
@@ -983,6 +1006,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           text: node.data.text,
           type: node.data.type,
           author: node.data.author,
+          credibilityScore: node.data.credibilityScore,
           belief: clamp(node.data.belief ?? 0.5, 0, 1),
           position: node.position,
           created_on: node.data.created_on || new Date().toISOString(),
@@ -1096,6 +1120,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         type: node.data.type,
         author: node.data.author,
         belief: clamp(node.data.belief ?? 0.5, 0, 1),
+        credibilityScore: node.data.credibilityScore ?? 0,
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
         evidenceIds: node.data.evidenceIds || [],
@@ -1245,7 +1270,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const requestEdges = edges.map((edge) => ({
         source: edge.source,
         target: edge.target,
-        weight: edge.data.confidence || 0.5,
+        weight: edge.data.confidence || 0,
       }));
 
       const requestBody = {
@@ -1289,19 +1314,37 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       }
 
       const data = await response.json();
+      console.log("API Response:", data);
+      console.log("Final scores from API:", data.final_scores);
+
+      // Update nodes with credibility scores
+      setNodes((nds) =>
+        nds.map((node) => {
+          const newScore = data.final_scores[node.id];
+          console.log(`Node ${node.id} update:`, {
+            currentScore: node.data.credibilityScore,
+            newScore: newScore,
+            scoreFromAPI: data.final_scores[node.id],
+            nodeId: node.id,
+            allScores: data.final_scores,
+            hasScore: node.id in data.final_scores,
+          });
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              credibilityScore:
+                newScore !== undefined ? newScore : node.data.credibilityScore,
+            },
+          };
+        })
+      );
+
       // Map node IDs to their text for display
       const nodeIdToText = Object.fromEntries(
         nodes.map((node) => [node.id, node.data.text])
       );
-      // Build a readable string for the scores, tabbed and rounded to 5 decimal places, with node text in quotes
-      const scoresList = Object.entries(data.final_scores)
-        .map(
-          ([id, score]) =>
-            `"${nodeIdToText[id] ? nodeIdToText[id] : id}"\t${(
-              score as number
-            ).toFixed(5)}`
-        )
-        .join("<br />");
+
       const credibilityMessages = Object.entries(data.final_scores).map(
         ([id, score]) => ({
           role: "ai",

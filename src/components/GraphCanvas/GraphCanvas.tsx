@@ -673,10 +673,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         (edge) => {
           let edgeType: EdgeType = "supporting";
           let confidence: number = 0;
+          let edgeScore: number | undefined;
           // If edge is a ClaimEdge (has 'data'), use its data
           if ("data" in edge && edge.data) {
             edgeType = edge.data.edgeType || "supporting";
             confidence = edge.data.confidence ?? 0;
+            edgeScore = edge.data.edgeScore ?? 0;
           } else if ("weight" in edge && typeof edge.weight === "number") {
             // Legacy or exported edge
             confidence = edge.weight;
@@ -690,6 +692,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             data: {
               edgeType,
               confidence,
+              edgeScore,
             },
             markerStart: {
               type: MarkerType.ArrowClosed,
@@ -775,6 +778,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         data: {
           edgeType: "supporting", // default, will be updated by user
           confidence: 0,
+          edgeScore: 0,
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
@@ -1685,11 +1689,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           evidence: getNodeEvidence(targetNode),
         },
       };
+
       const response = await fetch("/api/ai/validate-edge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+
       if (!response.ok) {
         let errorMsg = "Failed to validate edge.";
         try {
@@ -1698,7 +1704,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         } catch {}
         throw new Error(errorMsg);
       }
+
       const data = await response.json();
+      console.log("Edge validation response:", data); // Debug log
+
+      // Update the edge with both confidence and edgeScore
+      handleEdgeUpdate(selectedEdge.id, {
+        data: {
+          ...selectedEdge.data,
+          confidence: data.confidence,
+          edgeScore: data.confidence, // Set edgeScore from validation result
+        },
+      });
+
       setCopilotMessages((msgs) => [
         ...msgs,
         {
@@ -1713,22 +1731,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           isStructured: true,
         },
       ]);
-      // Optionally update the edge confidence in the UI
-      handleEdgeUpdate(selectedEdge.id, {
-        data: {
-          ...selectedEdge.data,
-          confidence: data.confidence,
-        },
-      });
-    } catch (err) {
+    } catch (err: any) {
       setCopilotMessages((msgs) => [
         ...msgs,
-        {
-          role: "assistant",
-          content: `<span class='text-red-600'>Error: ${
-            err instanceof Error ? err.message : err
-          }</span>`,
-        },
+        { role: "system", content: `Error: ${err.message}` },
       ]);
     } finally {
       setCopilotLoading(false);
@@ -1825,6 +1831,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             data: {
               ...edge.data,
               confidence: data.confidence,
+              edgeScore: data.confidence,
             },
           });
         } catch (err) {
@@ -1944,6 +1951,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         data: {
           ...edge.data,
           confidence: data.confidence,
+          edgeScore: data.confidence,
         },
       });
     } catch (err) {
@@ -2825,6 +2833,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 data: {
                   edgeType: "supporting",
                   confidence: 0.5,
+                  edgeScore: 0,
                 },
               }}
               connectionMode={ConnectionMode.Loose}

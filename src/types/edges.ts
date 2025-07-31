@@ -14,6 +14,7 @@ export interface ClaimEdge {
      */
     edgeType: EdgeType;
     confidence: number;
+    edgeScore?: number;  // Score from edge validation
   };
   markerStart?: {
     type: MarkerType;

@@ -5,6 +5,8 @@ import { EDGE_COLORS, type EdgeType } from "../../types/edges";
 
 interface CustomEdgeData {
   edgeType: EdgeType;
+  confidence: number;
+  edgeScore?: number;
 }
 
 // Helper to get a point and tangent on a cubic bezier at t
@@ -86,8 +88,12 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
 }) => {
   const color = EDGE_COLORS[data?.edgeType || "supporting"];
 
-  // Get the bezier path for the edge
-  const [edgePath] = getBezierPath({
+  // Debug logging
+  console.log(`Edge ${id} data:`, data);
+  console.log(`Edge ${id} edgeScore:`, data?.edgeScore);
+
+  // Get the bezier path for the edge and label position
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -97,18 +103,35 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   });
 
   return (
-    <BaseEdge
-      path={edgePath}
-      style={{
-        ...style,
-        stroke: color,
-        strokeWidth: 2,
-        strokeDasharray: "none",
-        transition: "stroke 0.3s",
-      }}
-      markerStart={markerStart}
-      markerEnd={markerEnd}
-    />
+    <>
+      <BaseEdge
+        path={edgePath}
+        style={{
+          ...style,
+          stroke: color,
+          strokeWidth: 2,
+          strokeDasharray: "none",
+          transition: "stroke 0.3s",
+        }}
+        markerStart={markerStart}
+        markerEnd={markerEnd}
+      />
+      {/* Always show score display for debugging */}
+      <text
+        x={labelX}
+        y={labelY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontSize: "12px",
+          fontFamily: "DM Sans, sans-serif",
+          fill: "red",
+          fontWeight: "bold",
+        }}
+      >
+        {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(2)}
+      </text>
+    </>
   );
 };
 

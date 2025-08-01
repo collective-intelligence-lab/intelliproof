@@ -903,6 +903,24 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<ClaimNode>) => {
+    // Check if this is a meaningful change
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    const hasContentChange =
+      updates.data?.text !== undefined && updates.data.text !== node.data.text;
+    const hasTypeChange =
+      updates.data?.type !== undefined && updates.data.type !== node.data.type;
+    const hasEvidenceChange =
+      updates.data?.evidenceIds !== undefined &&
+      JSON.stringify(updates.data.evidenceIds) !==
+        JSON.stringify(node.data.evidenceIds);
+
+    // Mark node as modified if there are meaningful changes
+    if (hasContentChange || hasTypeChange || hasEvidenceChange) {
+      setModifiedNodes((prev) => new Set([...prev, nodeId]));
+    }
+
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
@@ -1485,6 +1503,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setEvidenceCards((prev) =>
       prev.map((ev) => (ev.id === evidenceId ? { ...ev, confidence } : ev))
     );
+
+    // Find which node this evidence belongs to and mark it as modified
+    const nodeWithEvidence = nodes.find((node) =>
+      node.data.evidenceIds?.includes(evidenceId)
+    );
+    if (nodeWithEvidence) {
+      setModifiedNodes((prev) => new Set([...prev, nodeWithEvidence.id]));
+    }
+
     updateCredibilityScores();
   };
 
@@ -1497,36 +1524,64 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Add state for API queue and processing
   const [apiQueue, setApiQueue] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Add state to track node modifications
+  const [modifiedNodes, setModifiedNodes] = useState<Set<string>>(new Set());
   const prevSelectedNodeRef = useRef<ClaimNode | null>(null);
 
-  // Detect node deselect and queue API call
+  // Detect node deselect and queue API call only if node was modified
   useEffect(() => {
     if (prevSelectedNodeRef.current?.id && !selectedNode) {
       const prevId = prevSelectedNodeRef.current.id;
-      if (prevId) {
-        handleClaimCredibility();
+
+      // Only trigger API calls if the node was actually modified
+      if (modifiedNodes.has(prevId)) {
+        console.log(`Node ${prevId} was modified, triggering API calls`);
+
+        // First run check_evidence to update evidence confidences
         setApiQueue((q) => [...q, prevId]);
+
+        // Remove the node from modified set after triggering API calls
+        setModifiedNodes((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(prevId);
+          return newSet;
+        });
+      } else {
+        console.log(`Node ${prevId} was not modified, skipping API calls`);
       }
     }
     prevSelectedNodeRef.current = selectedNode || null;
-  }, [selectedNode]);
+  }, [selectedNode, modifiedNodes]);
 
-  // Queue processor effect
+  // Queue processor effect - modified to run credibility after evidence check
   useEffect(() => {
     if (!isProcessing && apiQueue.length > 0) {
       setIsProcessing(true);
       const nodeId = apiQueue[0];
-      triggerCheckNodeEvidence(nodeId).finally(() => {
-        setApiQueue((q) => q.slice(1));
-        setIsProcessing(false);
-      });
+      triggerCheckNodeEvidence(nodeId)
+        .then((updatedEvidenceData) => {
+          setApiQueue((q) => q.slice(1));
+          setIsProcessing(false);
+
+          // After evidence check completes, run credibility with updated scores
+          if (updatedEvidenceData) {
+            handleClaimCredibilityWithUpdatedEvidence(updatedEvidenceData);
+          } else {
+            handleClaimCredibility();
+          }
+        })
+        .catch(() => {
+          setApiQueue((q) => q.slice(1));
+          setIsProcessing(false);
+        });
     }
   }, [apiQueue, isProcessing]);
 
   // API call function for queued node evidence check
   const triggerCheckNodeEvidence = async (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return;
+    if (!node) return null;
 
     try {
       const requestBody = {
@@ -1553,6 +1608,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         throw new Error(errorMsg);
       }
       const data = await response.json();
+
       // Output each result as a structured message (same as check_evidence)
       data.results.forEach((result: any) => {
         const claimNode = node;
@@ -1579,6 +1635,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           },
         ]);
       });
+
       // Update evidence confidences for the node's evidence
       setEvidenceCards((prevEvidence) =>
         prevEvidence.map((ev) => {
@@ -1589,6 +1646,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           return ev;
         })
       );
+
       // Use updated confidences from API response to update node belief
       const updatedConfidences = (node.data.evidenceIds || [])
         .map((eid) => {
@@ -1614,20 +1672,155 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             : n
         )
       );
+
+      // Return the updated evidence data for credibility calculation
+      return data.results;
     } catch (err: any) {
       setCopilotMessages((msgs) => [
         ...msgs,
         {
-          role: "assistant",
-          content: `<span class='text-red-600'>Error: ${err.message}</span>`,
+          role: "ai",
+          content: `Error checking evidence for node ${nodeId}: ${err.message}`,
         },
       ]);
+      return null;
     }
   };
 
-  // Add this handler in GraphCanvasInner:
-  const handleClearCopilotChat = () => {
-    setCopilotMessages([]); // Only clear chat messages, not the CommandMessageBox buttons
+  // New function to run credibility with updated evidence data
+  const handleClaimCredibilityWithUpdatedEvidence = async (
+    updatedEvidenceData: any[]
+  ) => {
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      {
+        role: "user",
+        content:
+          "Compute credibility using evidence confidence scores and return credibility score.",
+      },
+    ]);
+    try {
+      // Create a map of updated evidence confidences
+      const updatedEvidenceMap = new Map();
+      updatedEvidenceData.forEach((result: any) => {
+        updatedEvidenceMap.set(result.evidence_id, result.confidence);
+      });
+
+      // Gather evidence scores for all nodes using updated confidences
+      const requestNodes = nodes.map((node) => ({
+        id: node.id,
+        evidence:
+          Array.isArray(node.data.evidenceIds) &&
+          node.data.evidenceIds.length > 0
+            ? node.data.evidenceIds.map((evId) => {
+                // Use updated confidence if available, otherwise fall back to current state
+                const updatedConfidence = updatedEvidenceMap.get(evId);
+                if (updatedConfidence !== undefined) {
+                  return updatedConfidence;
+                }
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
+            : [],
+        evidence_min: -1.0,
+        evidence_max: 1.0,
+      }));
+
+      // Construct edges array from all edges in the graph
+      const requestEdges = edges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        weight: edge.data.confidence || 0,
+      }));
+
+      const requestBody = {
+        nodes: requestNodes,
+        edges: requestEdges,
+        lambda: 0.7,
+        epsilon: 0.01,
+        max_iterations: 20,
+        evidence_min: -1.0,
+        evidence_max: 1.0,
+      };
+
+      console.log(
+        "Sending request body with updated evidence:",
+        JSON.stringify(requestBody, null, 2)
+      );
+
+      const response = await fetch("/api/ai/get-claim-credibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Failed to fetch credibility.";
+        try {
+          const errorData = await response.json();
+          if (response.status === 422 && errorData.detail) {
+            errorMsg =
+              "Invalid request format. Please ensure nodes and edges are provided.";
+          } else if (errorData.detail) {
+            errorMsg =
+              typeof errorData.detail === "string"
+                ? errorData.detail
+                : JSON.stringify(errorData.detail);
+          }
+        } catch {
+          errorMsg = "Failed to fetch credibility.";
+        }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data);
+      console.log("Final scores from API:", data.final_scores);
+
+      // Update nodes with credibility scores
+      setNodes((nds) =>
+        nds.map((node) => {
+          const newScore = data.final_scores[node.id];
+          console.log(`Node ${node.id} update:`, {
+            currentScore: node.data.credibilityScore,
+            newScore: newScore,
+            scoreFromAPI: data.final_scores[node.id],
+            nodeId: node.id,
+            allScores: data.final_scores,
+            hasScore: node.id in data.final_scores,
+          });
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              credibilityScore: newScore || 0,
+            },
+          };
+        })
+      );
+
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: `Credibility scores updated using AI-evaluated evidence confidence scores.`,
+          isStructured: true,
+        },
+      ]);
+    } catch (err: any) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: `Error computing credibility: ${err.message}`,
+        },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
   };
 
   const handleValidateEdge = async () => {
@@ -1983,6 +2176,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
     prevEdgesRef.current = edges;
   }, [edges]);
+
+  // Add this handler in GraphCanvasInner:
+  const handleClearCopilotChat = () => {
+    setCopilotMessages([]); // Only clear chat messages, not the CommandMessageBox buttons
+  };
 
   return (
     <div className="w-full h-full relative font-[DM Sans]">

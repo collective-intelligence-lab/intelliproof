@@ -180,8 +180,9 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
     }
   })();
 
+  // Sync localText with data.text when not editing
   useEffect(() => {
-    if (!isEditing && localText !== data.text) {
+    if (!isEditing) {
       setLocalText(data.text);
     }
   }, [data.text, isEditing]);
@@ -200,7 +201,17 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      inputRef.current?.blur();
+      e.preventDefault();
+      console.log(
+        "Enter pressed - localText:",
+        localText,
+        "data.text:",
+        data.text
+      );
+      // Save the current text state and exit editing mode
+      data.onChange?.(localText);
+      console.log("Called onChange with:", localText);
+      setIsEditing(false);
     } else if (e.key === "Escape") {
       setLocalText(data.text);
       setIsEditing(false);
@@ -903,6 +914,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<ClaimNode>) => {
+    console.log("handleNodeUpdate called with:", { nodeId, updates });
     // Check if this is a meaningful change
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return;
@@ -921,8 +933,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       setModifiedNodes((prev) => new Set([...prev, nodeId]));
     }
 
-    setNodes((nds) =>
-      nds.map((node) => {
+    setNodes((nds) => {
+      console.log("Updating nodes state for nodeId:", nodeId);
+      console.log(
+        "Current nodes before update:",
+        nds.map((n) => ({ id: n.id, text: n.data.text }))
+      );
+      return nds.map((node) => {
         if (node.id === nodeId) {
           const newType = updates.data?.type || node.data.type;
           const currentStyle = node.style || {};
@@ -938,15 +955,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   ...(currentStyle.height && { height: currentStyle.height }),
                 }
               : currentStyle;
+          const updatedData = {
+            ...node.data,
+            ...updates.data,
+          };
+
           const updatedNode = {
             ...node,
             ...updates,
             data: {
-              ...node.data,
-              ...updates.data,
+              ...updatedData,
               onChange: (newText: string) => {
                 handleNodeUpdate(nodeId, {
-                  data: { ...node.data, text: newText },
+                  data: { ...updatedData, text: newText },
                 });
               },
             },
@@ -955,11 +976,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           if (selectedNode?.id === nodeId) {
             setSelectedNode(updatedNode);
           }
+          console.log("Updated node:", {
+            id: updatedNode.id,
+            text: updatedNode.data.text,
+          });
           return updatedNode;
         }
         return node;
-      })
-    );
+      });
+    });
+
+    // Log the nodes state after the update
+    setTimeout(() => {
+      console.log(
+        "Nodes state after update:",
+        nodes.map((n) => ({ id: n.id, text: n.data.text }))
+      );
+    }, 0);
   };
 
   const onEdgeClick = (event: React.MouseEvent, edge: Edge) => {

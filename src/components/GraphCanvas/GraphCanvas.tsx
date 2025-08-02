@@ -397,13 +397,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           id: node.id,
           evidence:
             Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
+              node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                  const evidenceCard = evidenceCards.find(
-                    (card) => card.id === evId
-                  );
-                  return evidenceCard ? evidenceCard.confidence : 0;
-                })
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
               : [],
           evidence_min: -1.0,
           evidence_max: 1.0,
@@ -470,9 +470,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "system",
-          content: `Error: ${
-            error instanceof Error ? error.message : "Unknown error occurred"
-          }`,
+          content: `Error: ${error instanceof Error ? error.message : "Unknown error occurred"
+            }`,
         },
       ]);
     } finally {
@@ -741,7 +740,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
   };
 
+  // Add state to track newly created nodes that need classification
+  const [newlyCreatedNodes, setNewlyCreatedNodes] = useState<Set<string>>(new Set());
+
   const addNode = (type: ClaimType) => {
+    console.log(`[GraphCanvas] addNode: Starting node creation with type: ${type}`);
+
     const newNode = {
       ...createClaimNode("new claim", type),
       data: {
@@ -749,6 +753,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         text: "new claim",
         author: profile?.email || "Anonymous",
         onChange: (newText: string) => {
+          console.log(`[GraphCanvas] addNode: onChange triggered for node ${newNode.id} with text: "${newText}"`);
           handleNodeUpdate(newNode.id, {
             data: { ...newNode.data, text: newText },
           });
@@ -756,8 +761,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       },
       style: getNodeStyle(type), // Explicitly set the style
     };
+
     setNodes((nds) => [...nds, newNode]);
     setIsAddNodeOpen(false);
+    console.log(`[GraphCanvas] addNode: Successfully created new node ${newNode.id} with type ${type}`);
   };
 
   const onNodesChange: OnNodesChange = (changes) => {
@@ -914,10 +921,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleNodeUpdate = (nodeId: string, updates: Partial<ClaimNode>) => {
-    console.log("handleNodeUpdate called with:", { nodeId, updates });
+    console.log(`[GraphCanvas] handleNodeUpdate: Called for node ${nodeId} with updates:`, updates);
+
     // Check if this is a meaningful change
     const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return;
+    if (!node) {
+      console.log(`[GraphCanvas] handleNodeUpdate: Node ${nodeId} not found, returning`);
+      return;
+    }
 
     const hasContentChange =
       updates.data?.text !== undefined && updates.data.text !== node.data.text;
@@ -926,11 +937,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     const hasEvidenceChange =
       updates.data?.evidenceIds !== undefined &&
       JSON.stringify(updates.data.evidenceIds) !==
-        JSON.stringify(node.data.evidenceIds);
+      JSON.stringify(node.data.evidenceIds);
+
+    console.log(`[GraphCanvas] handleNodeUpdate: Change detection - content: ${hasContentChange}, type: ${hasTypeChange}, evidence: ${hasEvidenceChange}`);
 
     // Mark node as modified if there are meaningful changes
     if (hasContentChange || hasTypeChange || hasEvidenceChange) {
       setModifiedNodes((prev) => new Set([...prev, nodeId]));
+      console.log(`[GraphCanvas] handleNodeUpdate: Marked node ${nodeId} as modified`);
     }
 
     setNodes((nds) => {
@@ -948,12 +962,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           const style =
             newType !== node.data.type
               ? {
-                  ...currentStyle,
-                  ...getNodeStyle(newType),
-                  // Keep existing width/height if they exist
-                  ...(currentStyle.width && { width: currentStyle.width }),
-                  ...(currentStyle.height && { height: currentStyle.height }),
-                }
+                ...currentStyle,
+                ...getNodeStyle(newType),
+                // Keep existing width/height if they exist
+                ...(currentStyle.width && { width: currentStyle.width }),
+                ...(currentStyle.height && { height: currentStyle.height }),
+              }
               : currentStyle;
           const updatedData = {
             ...node.data,
@@ -1308,14 +1322,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         id: node.id,
         evidence:
           Array.isArray(node.data.evidenceIds) &&
-          node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-                // Find the evidence card and use its confidence, or 0 if not found
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                return evidenceCard ? evidenceCard.confidence : 0;
-              })
+              // Find the evidence card and use its confidence, or 0 if not found
+              const evidenceCard = evidenceCards.find(
+                (card) => card.id === evId
+              );
+              return evidenceCard ? evidenceCard.confidence : 0;
+            })
             : [], // Empty array for no evidence instead of [0.5]
         evidence_min: -1.0,
         evidence_max: 1.0,
@@ -1455,7 +1469,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1637,7 +1651,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -1690,18 +1704,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const avgConfidence =
         updatedConfidences.length > 0
           ? updatedConfidences.reduce((a, b) => a + b, 0) /
-            updatedConfidences.length
+          updatedConfidences.length
           : 0;
       setNodes((prevNodes) =>
         prevNodes.map((n) =>
           n.id === node.id
             ? {
-                ...n,
-                data: {
-                  ...n.data,
-                  belief: avgConfidence,
-                },
-              }
+              ...n,
+              data: {
+                ...n.data,
+                belief: avgConfidence,
+              },
+            }
             : n
         )
       );
@@ -1745,18 +1759,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         id: node.id,
         evidence:
           Array.isArray(node.data.evidenceIds) &&
-          node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-                // Use updated confidence if available, otherwise fall back to current state
-                const updatedConfidence = updatedEvidenceMap.get(evId);
-                if (updatedConfidence !== undefined) {
-                  return updatedConfidence;
-                }
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                return evidenceCard ? evidenceCard.confidence : 0;
-              })
+              // Use updated confidence if available, otherwise fall back to current state
+              const updatedConfidence = updatedEvidenceMap.get(evId);
+              if (updatedConfidence !== undefined) {
+                return updatedConfidence;
+              }
+              const evidenceCard = evidenceCards.find(
+                (card) => card.id === evId
+              );
+              return evidenceCard ? evidenceCard.confidence : 0;
+            })
             : [],
         evidence_min: -1.0,
         evidence_max: 1.0,
@@ -1928,7 +1942,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -2035,7 +2049,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             try {
               const errorData = await response.json();
               if (errorData.detail) errorMsg = errorData.detail;
-            } catch {}
+            } catch { }
             throw new Error(errorMsg);
           }
           const data = await response.json();
@@ -2066,9 +2080,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "assistant",
-              content: `<span class='text-red-600'>Error: ${
-                err instanceof Error ? err.message : err
-              }</span>`,
+              content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
+                }</span>`,
             },
           ]);
         }
@@ -2155,7 +2168,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -2186,9 +2199,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${
-            err instanceof Error ? err.message : err
-          }</span>`,
+          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
+            }</span>`,
         },
       ]);
     }
@@ -2213,6 +2225,110 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Add this handler in GraphCanvasInner:
   const handleClearCopilotChat = () => {
     setCopilotMessages([]); // Only clear chat messages, not the CommandMessageBox buttons
+  };
+
+  // API call function for claim type classification
+  const triggerClassifyClaimType = async (nodeId: string) => {
+    console.log(`[GraphCanvas] triggerClassifyClaimType: Starting classification for node ${nodeId}`);
+
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      console.log(`[GraphCanvas] triggerClassifyClaimType: Node ${nodeId} not found`);
+      return null;
+    }
+
+    try {
+      // Get evidence for this node
+      const nodeEvidence = evidenceCards.filter((ev) =>
+        (node.data.evidenceIds || []).includes(ev.id)
+      );
+
+      console.log(`[GraphCanvas] triggerClassifyClaimType: Node text: '${node.data.text}'`);
+      console.log(`[GraphCanvas] triggerClassifyClaimType: Node evidence count: ${nodeEvidence.length}`);
+
+      const requestBody = {
+        node_id: node.id,
+        node_text: node.data.text,
+        evidence: nodeEvidence,
+        claim_type_descriptions: {
+          factual: "Verifiable by observation or empirical data.",
+          value: "Expresses judgments, ethics, or aesthetics; cannot be verified empirically.",
+          policy: "Proposes actions or changes; includes normative statements like 'should' or 'must'."
+        }
+      };
+
+      console.log(`[GraphCanvas] triggerClassifyClaimType: Sending request to /api/ai/classify-claim-type`);
+      console.log(`[GraphCanvas] triggerClassifyClaimType: Request body:`, requestBody);
+
+      const response = await fetch("/api/ai/classify-claim-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Failed to classify claim type for node.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch { }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      console.log(`[GraphCanvas] triggerClassifyClaimType: Received response:`, data);
+
+      // Add classification result to copilot messages
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: {
+            "Claim Node ID": data.node_id,
+            "Node Title": data.node_text,
+            Evaluation: data.evaluation,
+            Reasoning: data.reasoning,
+            Confidence: `${Math.round(data.confidence * 100)}%`,
+          },
+          isStructured: true,
+        },
+      ]);
+
+      // Update the node type if classification is confident enough (confidence > 0.7)
+      if (data.confidence > 0.7 && data.evaluation !== "unknown") {
+        console.log(`[GraphCanvas] triggerClassifyClaimType: Updating node type to ${data.evaluation} (confidence: ${data.confidence})`);
+
+        setNodes((prevNodes) =>
+          prevNodes.map((n) =>
+            n.id === node.id
+              ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  type: data.evaluation,
+                },
+                style: getNodeStyle(data.evaluation),
+              }
+              : n
+          )
+        );
+      } else {
+        console.log(`[GraphCanvas] triggerClassifyClaimType: Not updating node type - confidence too low (${data.confidence}) or evaluation is unknown`);
+      }
+
+      return data;
+    } catch (err: any) {
+      console.error(`[GraphCanvas] triggerClassifyClaimType: Error:`, err);
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: `Error classifying claim type for node ${nodeId}: ${err.message}`,
+          isStructured: false,
+        },
+      ]);
+      return null;
+    }
   };
 
   return (
@@ -2407,7 +2523,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   <PDFPreviewer
                                     ref={pdfPreviewerRef}
                                     url={doc.url}
-                                    onAddContent={() => {}}
+                                    onAddContent={() => { }}
                                     fixedWidth={350}
                                   />
                                 </div>
@@ -2781,11 +2897,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   >
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
-                        isMenuOpen
-                          ? "bg-gray-100"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
+                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
+                        ? "bg-gray-100"
+                        : "text-gray-700 hover:bg-gray-100"
+                        }`}
                       title="Menu"
                     >
                       <EllipsisVerticalIcon
@@ -2830,11 +2945,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={undo}
                   disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    canUndo
-                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
+                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                    }`}
                   title="Undo"
                 >
                   <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
@@ -2842,11 +2956,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={redo}
                   disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    canRedo
-                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
+                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                    }`}
                   title="Redo"
                 >
                   <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
@@ -2918,11 +3031,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="relative">
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
-                    isAddNodeOpen
-                      ? "bg-[#232F3E] text-white shadow-inner"
-                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    }`}
                   title="Add Claim"
                 >
                   <PlusIcon className="w-8 h-8" strokeWidth={2} />
@@ -2955,11 +3067,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={handleDeleteNode}
                 disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  selectedNode
-                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
+                  ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                  : "text-gray-300 cursor-not-allowed"
+                  }`}
                 title="Delete Claim"
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
@@ -2970,11 +3081,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Edge Type Buttons */}
               <button
                 onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "supporting"
-                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "supporting"
+                  ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="Supporting Edge"
               >
                 <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
@@ -2982,11 +3092,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <button
                 onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "attacking"
-                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "attacking"
+                  ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="Attacking Edge"
               >
                 <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
@@ -2997,11 +3106,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  isEvidencePanelOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
+                  ? "bg-[#232F3E] text-white shadow-inner"
+                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
                 title={
                   isEvidencePanelOpen
                     ? "Hide Evidence Panel"
@@ -3106,6 +3214,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     supportingDocuments={supportingDocuments}
                     onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
                     copilotOpen={isAICopilotOpen}
+                    onClassifyClaimType={triggerClassifyClaimType} // NEW: Pass the classification function
                   />
                 )}
                 {selectedEdge && !selectedNode && (
@@ -3206,9 +3315,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
-                    className={`p-2 rounded-full transition-colors ${
-                      isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
-                    }`}
+                    className={`p-2 rounded-full transition-colors ${isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
+                      }`}
                     title={
                       isAICopilotFrozen
                         ? "Unfreeze Copilot Panel"
@@ -3225,9 +3333,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClick={() =>
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
-                    className={`p-2 hover:bg-white rounded-md transition-colors ${
-                      isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
-                    }`}
+                    className={`p-2 hover:bg-white rounded-md transition-colors ${isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
+                      }`}
                     aria-label="Close AI copilot"
                     disabled={isAICopilotFrozen}
                   >
@@ -3267,7 +3374,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   title="Generate Assumptions"
                   content="Generates up to 5 assumptions required by the edge to be valid"
                   icon={<HandRaisedIcon className="w-6 h-6" />}
-                  onClick={() => {}}
+                  onClick={() => { }}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
@@ -3289,11 +3396,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         />
                       ) : (
                         <span
-                          className={`text-left text-sm ${
-                            msg.role === "system"
-                              ? "text-gray-500"
-                              : "text-black"
-                          }`}
+                          className={`text-left text-sm ${msg.role === "system"
+                            ? "text-gray-500"
+                            : "text-black"
+                            }`}
                         >
                           {msg.content}
                         </span>

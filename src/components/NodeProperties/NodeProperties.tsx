@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { ClaimNode, ClaimType } from "../../types/graph";
+import ContinueButton from "../ContinueButton";
 
 interface EvidenceCard {
   id: string;
@@ -28,6 +29,7 @@ interface NodePropertiesProps {
   supportingDocuments: SupportingDocument[];
   onUpdateEvidenceConfidence: (evidenceId: string, confidence: number) => void;
   copilotOpen?: boolean;
+  onClassifyClaimType?: (nodeId: string) => Promise<void>; // NEW: Function to trigger claim classification
 }
 
 const NodeProperties: React.FC<NodePropertiesProps> = ({
@@ -38,6 +40,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   supportingDocuments,
   onUpdateEvidenceConfidence,
   copilotOpen,
+  onClassifyClaimType, // NEW: Function to trigger claim classification
 }) => {
   const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -46,6 +49,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
     null
   );
   const [editingConfidence, setEditingConfidence] = useState<number>(0);
+  const [isClassifying, setIsClassifying] = useState(false); // NEW: Track classification loading state
 
   useEffect(() => {
     if (node) {
@@ -129,6 +133,19 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
     setEditingEvidenceId(null);
   };
 
+  const handleClassifyClaimType = async () => {
+    if (!node || !onClassifyClaimType) return;
+
+    setIsClassifying(true);
+    try {
+      await onClassifyClaimType(node.id);
+    } catch (error) {
+      console.error('Error classifying claim type:', error);
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
   return (
     <div
       className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50 font-[DM Sans] font-normal"
@@ -157,35 +174,44 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "factual"
-                  ? "bg-[#aeaeae] text-black"
-                  : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
-              }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
+                ? "bg-[#aeaeae] text-black"
+                : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
+                }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "value"
-                  ? "bg-[#94bc84] text-black"
-                  : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
-              }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
+                ? "bg-[#94bc84] text-black"
+                : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
+                }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "policy"
-                  ? "bg-[#91A4C2] text-black"
-                  : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
-              }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
+                ? "bg-[#91A4C2] text-black"
+                : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
+                }`}
             >
               Policy
             </button>
           </div>
+        </div>
+
+        {/* NEW: Classify Claim Type Button */}
+        <div className="w-full">
+          <ContinueButton
+            onClick={handleClassifyClaimType}
+            loading={isClassifying}
+            disabled={!node || !onClassifyClaimType}
+            className="w-full"
+          >
+            {isClassifying ? "Classifying..." : "Classify Claim Type"}
+          </ContinueButton>
         </div>
 
         {/* Node Text */}
@@ -248,7 +274,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0 ? (
+              node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;

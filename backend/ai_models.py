@@ -163,4 +163,32 @@ class ValidateEdgeResponse(BaseModel):
     """
     evaluation: str
     reasoning: str
+    confidence: float
+
+
+class ClassifyClaimTypeRequest(BaseModel):
+    """
+    Request model for claim type classification.
+    """
+    node_id: str
+    node_text: str
+    evidence: Optional[List[EvidenceModel]] = []
+    claim_type_descriptions: Dict[str, str] = Field(
+        default={
+            "factual": "Verifiable by observation or empirical data.",
+            "value": "Expresses judgments, ethics, or aesthetics; cannot be verified empirically.",
+            "policy": "Proposes actions or changes; includes normative statements like 'should' or 'must'."
+        },
+        description="Descriptions of each claim type for AI classification"
+    )
+
+
+class ClassifyClaimTypeResponse(BaseModel):
+    """
+    Response model for claim type classification.
+    """
+    node_id: str
+    node_text: str
+    evaluation: str  # factual, value, policy, or unknown
+    reasoning: str
     confidence: float 

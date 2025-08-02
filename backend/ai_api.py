@@ -33,7 +33,9 @@ from ai_models import (
     EvidenceEvaluation,
     CheckEvidenceResponse,
     ValidateEdgeRequest,  # NEW
-    ValidateEdgeResponse  # NEW
+    ValidateEdgeResponse,  # NEW
+    ClassifyClaimTypeRequest,  # NEW
+    ClassifyClaimTypeResponse  # NEW
 )
 from llm_manager import run_llm, DEFAULT_MCP
 
@@ -247,13 +249,120 @@ Confidence: <a number between 0 and 1 representing your confidence in the eviden
 # FUTURE AI ENDPOINTS - Placeholder implementations
 # =============================================================================
 
-@router.post("/api/ai/classify-claim-type")
-def classify_claim_type():
+@router.post("/api/ai/classify-claim-type", response_model=ClassifyClaimTypeResponse)
+def classify_claim_type(data: ClassifyClaimTypeRequest = Body(...)):
     """
-    TODO: Classify claims into types (factual, causal, normative, etc.)
-    This will help apply appropriate evaluation criteria.
+    Classify claims into types (factual, value, policy) based on their content.
+    This helps apply appropriate evaluation criteria for different types of claims.
+    
+    Triggered when a new node is created and the user has finished typing the claim text.
     """
-    pass
+    print(f"[ai_api] classify_claim_type: Function started for node {data.node_id}")
+    print(f"[ai_api] classify_claim_type: Node text: '{data.node_text}'")
+    print(f"[ai_api] classify_claim_type: Number of evidence items: {len(data.evidence)}")
+    
+    # Log evidence details if present
+    if data.evidence:
+        print(f"[ai_api] classify_claim_type: Evidence details:")
+        for i, ev in enumerate(data.evidence):
+            print(f"[ai_api] classify_claim_type: Evidence {i+1}: ID={ev.id}, Title='{ev.title}', Excerpt='{ev.excerpt[:100]}...'")
+    
+    # Format evidence information if present
+    evidence_info = ""
+    if data.evidence:
+        evidence_info = "\nEvidence:\n" + "\n".join([
+            f"- Title: {ev.title}\n  Excerpt: {ev.excerpt}" for ev in data.evidence
+        ])
+        print(f"[ai_api] classify_claim_type: Formatted evidence info length: {len(evidence_info)} characters")
+    
+    # Build the prompt with claim type descriptions
+    type_descriptions = "\n".join([
+        f"- {claim_type.upper()}: {description}" 
+        for claim_type, description in data.claim_type_descriptions.items()
+    ])
+    print(f"[ai_api] classify_claim_type: Using claim type descriptions: {list(data.claim_type_descriptions.keys())}")
+    
+    prompt = f"""
+You are an expert in argument analysis and claim classification. Given a claim statement, classify it into one of the following types:
+
+{type_descriptions}
+
+Claim to classify:
+Node ID: {data.node_id}
+Text: {data.node_text}{evidence_info}
+
+Instructions:
+1. Analyze the claim text carefully
+2. Consider any provided evidence that might help determine the claim type
+3. Choose the most appropriate classification from: factual, value, policy, or unknown
+4. Provide clear reasoning for your classification
+5. Assign a confidence score between 0 and 1
+
+Respond in this format:
+Evaluation: <factual|value|policy|unknown>
+Reasoning: <3-5 sentences explaining your classification reasoning>
+Confidence: <float between 0 and 1 representing your confidence in the classification>
+"""
+    
+    print(f"[ai_api] classify_claim_type: Generated prompt length: {len(prompt)} characters")
+    print(f"[ai_api] classify_claim_type: Calling LLM for classification...")
+    
+    try:
+        content = run_llm([
+            {"role": "user", "content": prompt}
+        ], DEFAULT_MCP)
+        
+        print(f"[ai_api] classify_claim_type: LLM response received, length: {len(content)} characters")
+        print(f"[ai_api] classify_claim_type: Raw LLM response: {content}")
+        
+        evaluation = "unknown"
+        reasoning = content
+        confidence = 0.5
+        
+        # Parse the response
+        print(f"[ai_api] classify_claim_type: Parsing LLM response...")
+        for line in content.splitlines():
+            line_lower = line.lower().strip()
+            if line_lower.startswith("evaluation:"):
+                evaluation = line.split(":", 1)[1].strip().lower()
+                print(f"[ai_api] classify_claim_type: Found evaluation: '{evaluation}'")
+            elif line_lower.startswith("reasoning:"):
+                reasoning = line.split(":", 1)[1].strip()
+                print(f"[ai_api] classify_claim_type: Found reasoning: '{reasoning[:100]}...'")
+            elif line_lower.startswith("confidence:"):
+                try:
+                    confidence = float(line.split(":", 1)[1].strip())
+                    confidence = min(max(confidence, 0.0), 1.0)
+                    print(f"[ai_api] classify_claim_type: Found confidence: {confidence}")
+                except Exception as e:
+                    print(f"[ai_api] classify_claim_type: Error parsing confidence: {e}, using default 0.5")
+                    confidence = 0.5
+        
+        # Validate evaluation is one of the expected types
+        if evaluation not in ["factual", "value", "policy", "unknown"]:
+            print(f"[ai_api] classify_claim_type: Invalid evaluation '{evaluation}', defaulting to 'unknown'")
+            evaluation = "unknown"
+        
+        print(f"[ai_api] classify_claim_type: Final classification - Node {data.node_id}: {evaluation} (confidence: {confidence})")
+        print(f"[ai_api] classify_claim_type: Reasoning: {reasoning}")
+        
+        response = ClassifyClaimTypeResponse(
+            node_id=data.node_id,
+            node_text=data.node_text,
+            evaluation=evaluation,
+            reasoning=reasoning,
+            confidence=confidence
+        )
+        
+        print(f"[ai_api] classify_claim_type: Function completed successfully")
+        return response
+        
+    except Exception as e:
+        print(f"[ai_api] classify_claim_type: Error during classification: {str(e)}")
+        print(f"[ai_api] classify_claim_type: Error type: {type(e).__name__}")
+        import traceback
+        print(f"[ai_api] classify_claim_type: Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Classification failed: {str(e)}")
 
 @router.post("/api/ai/validate-edge", response_model=ValidateEdgeResponse)
 def validate_edge(data: ValidateEdgeRequest = Body(...)):

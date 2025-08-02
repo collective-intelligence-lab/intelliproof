@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { ClaimNode, ClaimType } from "../../types/graph";
 import ContinueButton from "../ContinueButton";
+import { InformationCircleIcon } from "@heroicons/react/24/outline";
 
 interface EvidenceCard {
   id: string;
@@ -29,7 +30,17 @@ interface NodePropertiesProps {
   supportingDocuments: SupportingDocument[];
   onUpdateEvidenceConfidence: (evidenceId: string, confidence: number) => void;
   copilotOpen?: boolean;
-  onClassifyClaimType?: (nodeId: string) => Promise<void>; // NEW: Function to trigger claim classification
+  onClassifyClaimType?: (nodeId: string) => Promise<void>;
+  evaluationMessages?: Array<{
+    role: string;
+    content: {
+      "Evidence ID": string;
+      Evaluation: string;
+      Reasoning: string;
+      Confidence: string;
+    };
+    isStructured: boolean;
+  }>;
 }
 
 const NodeProperties: React.FC<NodePropertiesProps> = ({
@@ -40,21 +51,20 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   supportingDocuments,
   onUpdateEvidenceConfidence,
   copilotOpen,
-  onClassifyClaimType, // NEW: Function to trigger claim classification
+  onClassifyClaimType,
+  evaluationMessages = [],
 }) => {
   const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const [confidence, setConfidence] = useState(0);
-  const [editingEvidenceId, setEditingEvidenceId] = useState<string | null>(
+  const [isClassifying, setIsClassifying] = useState(false); // Track classification loading state
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [expandedEvidenceId, setExpandedEvidenceId] = useState<string | null>(
     null
   );
-  const [editingConfidence, setEditingConfidence] = useState<number>(0);
-  const [isClassifying, setIsClassifying] = useState(false); // NEW: Track classification loading state
 
   useEffect(() => {
     if (node) {
       setText(node.data.text);
-      setConfidence(node.data.belief ?? 0);
     }
   }, [node]);
 
@@ -75,16 +85,6 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
       data: {
         ...node.data,
         text: newText,
-      },
-    });
-  };
-
-  const handleConfidenceChange = (newConfidence: number) => {
-    setConfidence(newConfidence);
-    onUpdate(node.id, {
-      data: {
-        ...node.data,
-        belief: newConfidence,
       },
     });
   };
@@ -123,16 +123,6 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
     }
   };
 
-  const handleEditConfidence = (eid: string, current: number) => {
-    setEditingEvidenceId(eid);
-    setEditingConfidence(current);
-  };
-
-  const handleSaveConfidence = (eid: string) => {
-    onUpdateEvidenceConfidence(eid, editingConfidence);
-    setEditingEvidenceId(null);
-  };
-
   const handleClassifyClaimType = async () => {
     if (!node || !onClassifyClaimType) return;
 
@@ -140,7 +130,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
     try {
       await onClassifyClaimType(node.id);
     } catch (error) {
-      console.error('Error classifying claim type:', error);
+      console.error("Error classifying claim type:", error);
     } finally {
       setIsClassifying(false);
     }
@@ -168,34 +158,79 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
 
       {/* Content */}
       <div className="space-y-6">
+        {/* Claim Credibility Score */}
+        <div className="relative">
+          <label className="block text-base font-medium mb-2">
+            <div className="flex items-center gap-2">
+              <span>Claim Credibility Score:</span>
+              <span className="text-blue-600">
+                {typeof node.data.credibilityScore === "number"
+                  ? node.data.credibilityScore.toFixed(2)
+                  : "0.00"}
+              </span>
+              <div className="relative">
+                <InformationCircleIcon
+                  className="w-4 h-4 text-gray-400 hover:text-blue-600 transition-colors cursor-help"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                />
+                {showTooltip && (
+                  <div className="absolute top-full right-0 mt-2 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50">
+                    <div className="whitespace-pre-line leading-tight">
+                      {`How is this score calculated?
+
+This credibility score combines:
+• Evidence scores from attached evidence cards
+• Support/attack relationships from connected claims
+
+Formula: tanh(λ × evidence_avg + Σ(edge_weights × connected_scores))
+
+Where:
+• λ = 0.7 (70% more importance to evidence over network)
+• evidence_avg = average of attached evidence scores
+• edge_weights = strength of supporting/attacking connections
+
+Range: 0.00 (least credible) to 1.00 (most credible)`}
+                    </div>
+                    <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </label>
+        </div>
+
         {/* Node Type */}
         <div>
           <label className="block text-base font-medium mb-2">Claim Type</label>
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
-                ? "bg-[#aeaeae] text-black"
-                : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "factual"
+                  ? "bg-[#aeaeae] text-black"
+                  : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
+              }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
-                ? "bg-[#94bc84] text-black"
-                : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "value"
+                  ? "bg-[#94bc84] text-black"
+                  : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
+              }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
-                ? "bg-[#91A4C2] text-black"
-                : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
-                }`}
+              className={`px-4 py-2 rounded-md text-base transition-colors ${
+                node.data.type === "policy"
+                  ? "bg-[#91A4C2] text-black"
+                  : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
+              }`}
             >
               Policy
             </button>
@@ -226,31 +261,6 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           />
         </div>
 
-        {/* Confidence Slider */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-base font-medium">
-              Confidence Level
-            </label>
-            <span className="text-sm text-gray-500">
-              {Math.round(confidence * 100)}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={confidence}
-            onChange={(e) => handleConfidenceChange(parseFloat(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>Low</span>
-            <span>High</span>
-          </div>
-        </div>
-
         {/* Evidence Section */}
         <div
           onDragOver={handleEvidenceDragOver}
@@ -274,7 +284,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0 ? (
+            node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;
@@ -314,57 +324,59 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
                     <div className="text-xs text-gray-700 line-clamp-2 whitespace-pre-line">
                       {card.excerpt}
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs">Confidence:</span>
-                      <span className="text-xs font-semibold">
-                        {Math.round((card.confidence ?? 0.5) * 100)}%
-                      </span>
-                      <button
-                        className="ml-2 px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300"
-                        onClick={() =>
-                          handleEditConfidence(eid, card.confidence ?? 0.5)
-                        }
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    {editingEvidenceId === eid && (
-                      <div className="mt-2 p-2 bg-white border rounded shadow">
-                        <label className="block text-xs font-medium mb-1">
-                          Edit Confidence
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={editingConfidence}
-                            onChange={(e) =>
-                              setEditingConfidence(parseFloat(e.target.value))
+                    <div className="space-y-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs">Score:</span>
+                        <span className="text-xs font-semibold">
+                          {Math.round((card.confidence ?? 0.5) * 100)}%
+                        </span>
+                        {evaluationMessages.some(
+                          (msg) => msg.content["Evidence ID"] === eid
+                        ) && (
+                          <button
+                            onClick={() =>
+                              setExpandedEvidenceId(
+                                expandedEvidenceId === eid ? null : eid
+                              )
                             }
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
-                          />
-                          <span className="text-xs w-10 text-right">
-                            {Math.round(editingConfidence * 100)}%
-                          </span>
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                            onClick={() => handleSaveConfidence(eid)}
+                            className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1"
                           >
-                            Save
+                            <InformationCircleIcon className="w-3.5 h-3.5" />
+                            {expandedEvidenceId === eid
+                              ? "Hide analysis"
+                              : "Show analysis"}
                           </button>
-                          <button
-                            className="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300"
-                            onClick={() => setEditingEvidenceId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                        )}
                       </div>
-                    )}
+                      {expandedEvidenceId === eid && (
+                        <div className="text-xs bg-gray-50 p-3 rounded space-y-2">
+                          {evaluationMessages.find(
+                            (msg) => msg.content["Evidence ID"] === eid
+                          )?.content && (
+                            <>
+                              <div>
+                                <span className="font-medium">
+                                  Evaluation:{" "}
+                                </span>
+                                {
+                                  evaluationMessages.find(
+                                    (msg) => msg.content["Evidence ID"] === eid
+                                  )?.content.Evaluation
+                                }
+                              </div>
+                              <div>
+                                <span className="font-medium">Reasoning: </span>
+                                {
+                                  evaluationMessages.find(
+                                    (msg) => msg.content["Evidence ID"] === eid
+                                  )?.content.Reasoning
+                                }
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })

@@ -1606,29 +1606,72 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     if (!isProcessing && apiQueue.length > 0) {
       setIsProcessing(true);
       const nodeId = apiQueue[0];
+      console.log(`[GraphCanvas] Queue processor: Processing node ${nodeId}`);
+
       triggerCheckNodeEvidence(nodeId)
-        .then((updatedEvidenceData) => {
+        .then(async (updatedEvidenceData) => {
+          console.log(`[GraphCanvas] Queue processor: Evidence check completed for node ${nodeId}`);
+          console.log(`[GraphCanvas] Queue processor: Updated evidence data:`, updatedEvidenceData);
+
           setApiQueue((q) => q.slice(1));
           setIsProcessing(false);
 
           // After evidence check completes, run credibility with updated scores
-          if (updatedEvidenceData) {
-            handleClaimCredibilityWithUpdatedEvidence(updatedEvidenceData);
+          if (updatedEvidenceData && updatedEvidenceData.length > 0) {
+            console.log(`[GraphCanvas] Queue processor: Running credibility with updated evidence data`);
+            try {
+              await handleClaimCredibilityWithUpdatedEvidence(updatedEvidenceData);
+              console.log(`[GraphCanvas] Queue processor: Credibility computation completed successfully`);
+            } catch (error) {
+              console.error(`[GraphCanvas] Queue processor: Error in credibility computation:`, error);
+              setCopilotMessages((msgs) => [
+                ...msgs,
+                {
+                  role: "ai",
+                  content: `Error computing credibility scores: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                },
+              ]);
+            }
           } else {
-            handleClaimCredibility();
+            console.log(`[GraphCanvas] Queue processor: No updated evidence data, running standard credibility`);
+            try {
+              await handleClaimCredibility();
+              console.log(`[GraphCanvas] Queue processor: Standard credibility computation completed`);
+            } catch (error) {
+              console.error(`[GraphCanvas] Queue processor: Error in standard credibility computation:`, error);
+              setCopilotMessages((msgs) => [
+                ...msgs,
+                {
+                  role: "ai",
+                  content: `Error computing credibility scores: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                },
+              ]);
+            }
           }
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error(`[GraphCanvas] Queue processor: Error in evidence check:`, error);
           setApiQueue((q) => q.slice(1));
           setIsProcessing(false);
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "ai",
+              content: `Error checking evidence: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ]);
         });
     }
   }, [apiQueue, isProcessing]);
 
   // API call function for queued node evidence check
   const triggerCheckNodeEvidence = async (nodeId: string) => {
+    console.log(`[GraphCanvas] triggerCheckNodeEvidence: Starting evidence check for node ${nodeId}`);
     const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return null;
+    if (!node) {
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: Node ${nodeId} not found`);
+      return null;
+    }
 
     try {
       const requestBody = {
@@ -1641,20 +1684,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         evidence: evidenceCards,
         supportingDocuments: supportingDocumentsRedux,
       };
+
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: Request body:`, requestBody);
+
       const response = await fetch("/api/ai/check-node-evidence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: Response status: ${response.status}`);
+
       if (!response.ok) {
         let errorMsg = "Failed to check evidence for node.";
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
         } catch { }
+        console.error(`[GraphCanvas] triggerCheckNodeEvidence: API error: ${errorMsg}`);
         throw new Error(errorMsg);
       }
       const data = await response.json();
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: API response data:`, data);
 
       // Output each result as a structured message (same as check_evidence)
       data.results.forEach((result: any) => {
@@ -1688,6 +1739,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         prevEvidence.map((ev) => {
           const found = data.results.find((r: any) => r.evidence_id === ev.id);
           if (found) {
+            console.log(`[GraphCanvas] triggerCheckNodeEvidence: Updating evidence ${ev.id} confidence from ${ev.confidence} to ${found.confidence}`);
             return { ...ev, confidence: found.confidence };
           }
           return ev;
@@ -1701,11 +1753,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           return found ? found.confidence : undefined;
         })
         .filter((c) => typeof c === "number");
+
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: Updated confidences for node ${nodeId}:`, updatedConfidences);
+
       const avgConfidence =
         updatedConfidences.length > 0
           ? updatedConfidences.reduce((a, b) => a + b, 0) /
           updatedConfidences.length
           : 0;
+
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: Average confidence for node ${nodeId}: ${avgConfidence}`);
+
       setNodes((prevNodes) =>
         prevNodes.map((n) =>
           n.id === node.id
@@ -1721,8 +1779,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       );
 
       // Return the updated evidence data for credibility calculation
+      console.log(`[GraphCanvas] triggerCheckNodeEvidence: Returning ${data.results.length} evidence results for credibility computation`);
       return data.results;
     } catch (err: any) {
+      console.error(`[GraphCanvas] triggerCheckNodeEvidence: Error checking evidence for node ${nodeId}:`, err);
       setCopilotMessages((msgs) => [
         ...msgs,
         {
@@ -1738,6 +1798,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const handleClaimCredibilityWithUpdatedEvidence = async (
     updatedEvidenceData: any[]
   ) => {
+    console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Starting with ${updatedEvidenceData.length} evidence items`);
+    console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Updated evidence data:`, updatedEvidenceData);
+
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
@@ -1753,28 +1816,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       updatedEvidenceData.forEach((result: any) => {
         updatedEvidenceMap.set(result.evidence_id, result.confidence);
       });
+      console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Created evidence map with ${updatedEvidenceMap.size} entries`);
+      console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Evidence map:`, Object.fromEntries(updatedEvidenceMap));
 
       // Gather evidence scores for all nodes using updated confidences
-      const requestNodes = nodes.map((node) => ({
-        id: node.id,
-        evidence:
-          Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
-            ? node.data.evidenceIds.map((evId) => {
-              // Use updated confidence if available, otherwise fall back to current state
-              const updatedConfidence = updatedEvidenceMap.get(evId);
-              if (updatedConfidence !== undefined) {
-                return updatedConfidence;
-              }
-              const evidenceCard = evidenceCards.find(
-                (card) => card.id === evId
-              );
-              return evidenceCard ? evidenceCard.confidence : 0;
-            })
-            : [],
-        evidence_min: -1.0,
-        evidence_max: 1.0,
-      }));
+      const requestNodes = nodes.map((node) => {
+        const nodeEvidence = Array.isArray(node.data.evidenceIds) &&
+          node.data.evidenceIds.length > 0
+          ? node.data.evidenceIds.map((evId) => {
+            // Use updated confidence if available, otherwise fall back to current state
+            const updatedConfidence = updatedEvidenceMap.get(evId);
+            if (updatedConfidence !== undefined) {
+              console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using updated confidence ${updatedConfidence} for evidence ${evId}`);
+              return updatedConfidence;
+            }
+            const evidenceCard = evidenceCards.find(
+              (card) => card.id === evId
+            );
+            const fallbackConfidence = evidenceCard ? evidenceCard.confidence : 0;
+            console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using fallback confidence ${fallbackConfidence} for evidence ${evId}`);
+            return fallbackConfidence;
+          })
+          : [];
+
+        console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Node ${node.id} evidence scores:`, nodeEvidence);
+
+        return {
+          id: node.id,
+          evidence: nodeEvidence,
+          evidence_min: -1.0,
+          evidence_max: 1.0,
+        };
+      });
 
       // Construct edges array from all edges in the graph
       const requestEdges = edges.map((edge) => ({
@@ -1794,7 +1867,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       };
 
       console.log(
-        "Sending request body with updated evidence:",
+        "[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Sending request body with updated evidence:",
         JSON.stringify(requestBody, null, 2)
       );
 
@@ -1803,6 +1876,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+
+      console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Response status: ${response.status}`);
 
       if (!response.ok) {
         let errorMsg = "Failed to fetch credibility.";
@@ -1820,18 +1895,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         } catch {
           errorMsg = "Failed to fetch credibility.";
         }
+        console.error(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: API error: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
       const data = await response.json();
-      console.log("API Response:", data);
-      console.log("Final scores from API:", data.final_scores);
+      console.log("[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: API Response:", data);
+      console.log("[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Final scores from API:", data.final_scores);
 
       // Update nodes with credibility scores
       setNodes((nds) =>
         nds.map((node) => {
           const newScore = data.final_scores[node.id];
-          console.log(`Node ${node.id} update:`, {
+          console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Node ${node.id} update:`, {
             currentScore: node.data.credibilityScore,
             newScore: newScore,
             scoreFromAPI: data.final_scores[node.id],
@@ -1857,7 +1933,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           isStructured: true,
         },
       ]);
+
+      console.log(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Successfully completed credibility computation`);
     } catch (err: any) {
+      console.error(`[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Error:`, err);
       setCopilotMessages((msgs) => [
         ...msgs,
         {
@@ -1865,6 +1944,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           content: `Error computing credibility: ${err.message}`,
         },
       ]);
+      throw err; // Re-throw to be caught by the queue processor
     } finally {
       setCopilotLoading(false);
     }

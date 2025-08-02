@@ -536,6 +536,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [newEvidence, setNewEvidence] = useState({
     title: "",
     supportingDocId: "",
+    selectedNodeId: "",
     excerpt: "",
   });
   const [evidenceCards, setEvidenceCards] = useState<
@@ -562,6 +563,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Add state for loading OCR
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+
+  // Add state for AI evidence suggestion
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  // Add state for extract all text functionality
+  const [extractLoading, setExtractLoading] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
 
   // Use supportingDocuments from Redux
   const supportingDocumentsRedux = useSelector((state: RootState) =>
@@ -1170,7 +1179,111 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const closeEvidenceModal = () => {
     setIsAddEvidenceOpen(false);
-    setNewEvidence({ title: "", supportingDocId: "", excerpt: "" });
+    setNewEvidence({ title: "", supportingDocId: "", selectedNodeId: "", excerpt: "" });
+  };
+
+  // Handle AI evidence suggestion
+  const handleSuggestContent = async () => {
+    if (!newEvidence.selectedNodeId) {
+      alert("Please select an Associated Node to use AI suggestions.");
+      return;
+    }
+
+    const selectedNode = nodes.find(node => node.id === newEvidence.selectedNodeId);
+    const selectedDoc = supportingDocuments.find(doc => doc.id === newEvidence.supportingDocId);
+
+    if (!selectedNode || !selectedDoc) {
+      alert("Selected node or document not found.");
+      return;
+    }
+
+    setSuggestLoading(true);
+    setSuggestError(null);
+
+    try {
+      const response = await fetch("/api/ai/suggest-evidence-text", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          document_url: selectedDoc.url,
+          node_type: selectedNode.data.type || "unknown",
+          node_content: selectedNode.data.text || "",
+          node_description: ""
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to get AI suggestions");
+      }
+
+      const data = await response.json();
+
+      // Add the suggested text to the excerpt
+      setNewEvidence((ev) => ({
+        ...ev,
+        excerpt: ev.excerpt ? ev.excerpt + "\n\n" + data.suggested_text : data.suggested_text,
+      }));
+
+      console.log("AI suggestion successful:", data);
+    } catch (error: any) {
+      console.error("AI suggestion failed:", error);
+      setSuggestError(error.message || "Failed to get AI suggestions");
+      alert(`AI suggestion failed: ${error.message || "Unknown error"}`);
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  // Handle extract all text functionality
+  const handleExtractAllText = async () => {
+    const selectedDoc = supportingDocuments.find(doc => doc.id === newEvidence.supportingDocId);
+
+    if (!selectedDoc) {
+      alert("Please select a document first.");
+      return;
+    }
+
+    setExtractLoading(true);
+    setExtractError(null);
+
+    try {
+      const response = await fetch("/api/ai/extract-all-text", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          document_url: selectedDoc.url,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to extract text");
+      }
+
+      const data = await response.json();
+
+      // Add the extracted text to the excerpt (append, don't overwrite)
+      setNewEvidence((ev) => ({
+        ...ev,
+        excerpt: ev.excerpt ? ev.excerpt + "\n\n" + data.extracted_text : data.extracted_text,
+      }));
+
+      console.log("Text extraction successful:", {
+        page_count: data.page_count,
+        total_characters: data.total_characters
+      });
+    } catch (error: any) {
+      console.error("Text extraction failed:", error);
+      setExtractError(error.message || "Failed to extract text");
+      alert(`Text extraction failed: ${error.message || "Unknown error"}`);
+    } finally {
+      setExtractLoading(false);
+    }
   };
 
   // Drag start handler for evidence cards
@@ -2578,6 +2691,37 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           ))}
                         </select>
                       </div>
+
+                      {/* Node Selection - only show when a document is selected */}
+                      {newEvidence.supportingDocId && (
+                        <div>
+                          <label className="block text-sm font-medium mb-0.5">
+                            Associated Node (Optional but Required for AI Suggestions)
+                          </label>
+                          <select
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] text-sm"
+                            value={newEvidence.selectedNodeId}
+                            onChange={(e) =>
+                              setNewEvidence((ev) => ({
+                                ...ev,
+                                selectedNodeId: e.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">
+                              Select a node (optional)...
+                            </option>
+                            {nodes.map((node) => (
+                              <option key={node.id} value={node.id}>
+                                {node.data.text ?
+                                  `${node.data.text} (${node.data.type || 'unknown'})` :
+                                  `Node ${node.id} (${node.data.type || 'unknown'})`
+                                }
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       {/* Excerpt/Lines and PDF Preview side by side */}
                       {(() => {
                         const doc = supportingDocuments.find(
@@ -2612,7 +2756,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               <div className="flex flex-col justify-center items-center px-2">
                                 <button
                                   type="button"
-                                  className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330] text-base font-medium whitespace-pre-line text-center"
+                                  className="px-3 py-1.5 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330] text-sm font-medium transition-colors"
                                   onClick={() => {
                                     const selectedText =
                                       pdfPreviewerRef.current?.getSelectedText() ||
@@ -2631,8 +2775,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     }
                                   }}
                                 >
-                                  {`Add\nContent`}
+                                  Add Content
                                 </button>
+
+                                {/* Document-specific buttons - only show when type is document */}
+                                <div className="flex flex-col gap-2 mt-3">
+                                  <button
+                                    type="button"
+                                    className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={handleSuggestContent}
+                                    disabled={suggestLoading || !newEvidence.selectedNodeId}
+                                  >
+                                    {suggestLoading ? "Analyzing..." : "Suggest Content"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="px-3 py-1.5 rounded-md bg-green-100 text-green-700 hover:bg-green-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={handleExtractAllText}
+                                    disabled={extractLoading || !newEvidence.supportingDocId}
+                                  >
+                                    {extractLoading ? "Extracting..." : "Select All"}
+                                  </button>
+                                </div>
                               </div>
                               {/* Excerpt/Lines on the right */}
                               <div className="w-1/2">

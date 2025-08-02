@@ -21,6 +21,9 @@ import openai
 import os
 from dotenv import load_dotenv
 import time
+import requests
+import fitz  # PyMuPDF
+import io
 from ai_models import (
     NodeModel,
     EdgeModel,
@@ -514,6 +517,205 @@ async def extract_text_from_image(
     except Exception as e:
         print(f"[ai_api] extract_text_from_image: Error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 
+
+class SuggestEvidenceTextRequest(BaseModel):
+    document_url: str
+    node_type: str
+    node_content: str
+    node_description: str
+
+class SuggestEvidenceTextResponse(BaseModel):
+    suggested_text: str
+    reasoning: str
+
+class ExtractAllTextRequest(BaseModel):
+    document_url: str
+
+class ExtractAllTextResponse(BaseModel):
+    extracted_text: str
+    page_count: int
+    total_characters: int
+
+@router.post("/api/ai/suggest-evidence-text", response_model=SuggestEvidenceTextResponse)
+def suggest_evidence_text(data: SuggestEvidenceTextRequest = Body(...)):
+    """
+    AI-powered evidence suggestion that analyzes a document and returns text that supports a specific claim/node.
+    
+    This endpoint:
+    1. Downloads and extracts text from the document at the given URL
+    2. Analyzes the text content to find supporting evidence for the claim
+    3. Returns the most relevant supporting text with reasoning
+    """
+    print(f"[ai_api] suggest_evidence_text: Function started for node type '{data.node_type}'")
+    print(f"[ai_api] suggest_evidence_text: Node content: '{data.node_content[:100]}...'")
+    print(f"[ai_api] suggest_evidence_text: Document URL: {data.document_url}")
+    
+    if not OPENAI_API_KEY:
+        print("[ai_api] suggest_evidence_text: No OpenAI API key configured.")
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
+    
+    try:
+        openai.api_key = OPENAI_API_KEY
+        
+        # STEP 1: Download the document
+        print(f"[ai_api] suggest_evidence_text: Downloading document from URL...")
+        response = requests.get(data.document_url)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        document_data = response.content
+        print(f"[ai_api] suggest_evidence_text: Document downloaded, size: {len(document_data)} bytes")
+        
+        # STEP 2: Extract text from PDF
+        print(f"[ai_api] suggest_evidence_text: Extracting text from PDF...")
+        doc = fitz.open(stream=io.BytesIO(document_data), filetype="pdf")
+        pdf_text = ""
+        for page in doc:
+            pdf_text += page.get_text()
+        
+        # Close the document
+        doc.close()
+        
+        print(f"[ai_api] suggest_evidence_text: Text extracted, length: {len(pdf_text)} characters")
+        
+        # STEP 3: Truncate if it's too long for OpenAI
+        max_chars = 12000  # adjust based on token limits
+        if len(pdf_text) > max_chars:
+            pdf_text = pdf_text[:max_chars]
+            print(f"[ai_api] suggest_evidence_text: Text truncated to {max_chars} characters")
+        
+        # STEP 4: Build the prompt for evidence suggestion
+        prompt = f"""
+You are an expert at analyzing documents and identifying supporting evidence for claims.
+
+TASK: Analyze the following document content and find all text passages that support the given claim.
+
+CLAIM DETAILS:
+- Type: {data.node_type}
+- Content: {data.node_content}
+- Description: {data.node_description}
+
+DOCUMENT CONTENT:
+{pdf_text}
+
+INSTRUCTIONS:
+1. Carefully read through the document content above
+2. Identify all text passages that directly support or provide evidence for the claim
+3. Extract the most relevant supporting text
+4. Provide clear reasoning for why this text supports the claim
+5. Focus on factual, verifiable information that strengthens the claim
+6. If no relevant supporting evidence is found, indicate this clearly
+
+Respond in this format:
+Suggested Text: <extract the most relevant supporting text from the document>
+Reasoning: <explain why this text supports the claim, including how it relates to the claim type and content>
+"""
+        
+        print(f"[ai_api] suggest_evidence_text: Calling OpenAI API...")
+        
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are an expert document analyst and evidence finder."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000
+        )
+        
+        result = response.choices[0].message.content
+        print(f"[ai_api] suggest_evidence_text: OpenAI response received, length: {len(result)} characters")
+        
+        # Parse the response
+        suggested_text = ""
+        reasoning = result
+        
+        for line in result.splitlines():
+            line_lower = line.lower().strip()
+            if line_lower.startswith("suggested text:"):
+                suggested_text = line.split(":", 1)[1].strip()
+                print(f"[ai_api] suggest_evidence_text: Found suggested text: '{suggested_text[:100]}...'")
+            elif line_lower.startswith("reasoning:"):
+                reasoning = line.split(":", 1)[1].strip()
+                print(f"[ai_api] suggest_evidence_text: Found reasoning: '{reasoning[:100]}...'")
+        
+        # If no structured response, use the full response as suggested text
+        if not suggested_text:
+            suggested_text = result
+            reasoning = "AI analyzed the document and provided supporting evidence."
+        
+        print(f"[ai_api] suggest_evidence_text: Function completed successfully")
+        return SuggestEvidenceTextResponse(
+            suggested_text=suggested_text,
+            reasoning=reasoning
+        )
+        
+    except requests.RequestException as e:
+        print(f"[ai_api] suggest_evidence_text: Error downloading document: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
+    except Exception as e:
+        print(f"[ai_api] suggest_evidence_text: Error during analysis: {str(e)}")
+        print(f"[ai_api] suggest_evidence_text: Error type: {type(e).__name__}")
+        import traceback
+        print(f"[ai_api] suggest_evidence_text: Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Evidence suggestion failed: {str(e)}")
+
+@router.post("/api/ai/extract-all-text", response_model=ExtractAllTextResponse)
+def extract_all_text(data: ExtractAllTextRequest = Body(...)):
+    """
+    Extract all text from a PDF document at the given URL.
+    
+    This endpoint:
+    1. Downloads the PDF from the provided URL
+    2. Extracts all text from all pages using PyMuPDF
+    3. Returns the complete text content with metadata
+    """
+    print(f"[ai_api] extract_all_text: Function started")
+    print(f"[ai_api] extract_all_text: Document URL: {data.document_url}")
+    
+    try:
+        # STEP 1: Download the document
+        print(f"[ai_api] extract_all_text: Downloading document from URL...")
+        response = requests.get(data.document_url)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        document_data = response.content
+        print(f"[ai_api] extract_all_text: Document downloaded, size: {len(document_data)} bytes")
+        
+        # STEP 2: Extract text from PDF
+        print(f"[ai_api] extract_all_text: Extracting text from PDF...")
+        doc = fitz.open(stream=io.BytesIO(document_data), filetype="pdf")
+        
+        pdf_text = ""
+        page_count = len(doc)
+        
+        for page_num in range(page_count):
+            page = doc.load_page(page_num)
+            page_text = page.get_text()
+            pdf_text += page_text
+            
+            # Add page separator for better readability
+            if page_num < page_count - 1:
+                pdf_text += f"\n\n--- Page {page_num + 1} ---\n\n"
+        
+        # Close the document
+        doc.close()
+        
+        total_characters = len(pdf_text)
+        print(f"[ai_api] extract_all_text: Text extracted, {page_count} pages, {total_characters} characters")
+        
+        print(f"[ai_api] extract_all_text: Function completed successfully")
+        return ExtractAllTextResponse(
+            extracted_text=pdf_text,
+            page_count=page_count,
+            total_characters=total_characters
+        )
+        
+    except requests.RequestException as e:
+        print(f"[ai_api] extract_all_text: Error downloading document: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
+    except Exception as e:
+        print(f"[ai_api] extract_all_text: Error during text extraction: {str(e)}")
+        print(f"[ai_api] extract_all_text: Error type: {type(e).__name__}")
+        import traceback
+        print(f"[ai_api] extract_all_text: Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Text extraction failed: {str(e)}")
 
 class CheckNodeEvidenceRequest(BaseModel):
     node: NodeWithEvidenceModel

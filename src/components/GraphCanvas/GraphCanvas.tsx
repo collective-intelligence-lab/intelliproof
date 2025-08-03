@@ -1357,6 +1357,29 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   // Drag start handler for evidence cards
+  // Function to clone evidence when it's added to a node
+  const cloneEvidence = (originalEvidenceId: string, nodeId: string) => {
+    const originalEvidence = evidenceCards.find(
+      (card) => card.id === originalEvidenceId
+    );
+    if (!originalEvidence) return originalEvidenceId; // Fallback to original if not found
+
+    // Create a new ID that combines original evidence ID and node ID
+    const newEvidenceId = `${originalEvidenceId}_${nodeId}`;
+
+    // Create the cloned evidence card
+    const clonedEvidence = {
+      ...originalEvidence,
+      id: newEvidenceId,
+      confidence: originalEvidence.confidence, // Start with same confidence
+    };
+
+    // Add the cloned evidence to evidenceCards
+    setEvidenceCards((prev) => [...prev, clonedEvidence]);
+
+    return newEvidenceId;
+  };
+
   const handleEvidenceDragStart = (event: React.DragEvent, cardId: string) => {
     event.dataTransfer.setData("application/x-evidence-id", cardId);
     event.dataTransfer.effectAllowed = "move";
@@ -3398,59 +3421,63 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 </div>
                 {/* Evidence cards */}
                 <div className="space-y-3">
-                  {evidenceCards.length === 0 ? (
+                  {evidenceCards.filter((card) => !card.id.includes("_"))
+                    .length === 0 ? (
                     <div className="p-4 bg-[#FAFAFA] rounded-md border border-gray-300 text-center text-gray-500 text-sm font-medium">
                       No evidence added yet.
                     </div>
                   ) : (
-                    evidenceCards.map((card) => {
-                      const doc = supportingDocuments.find(
-                        (d) => d.id === card.supportingDocId
-                      );
-                      const isImage = doc?.type === "image";
-                      return (
-                        <div
-                          key={card.id}
-                          className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200 cursor-pointer"
-                          onClick={() => setSelectedEvidenceCard(card)}
-                          draggable
-                          onDragStart={(e) =>
-                            handleEvidenceDragStart(e, card.id)
-                          }
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="text-base font-medium">
-                                  {card.title}
-                                </span>
+                    // Only show original (non-cloned) evidence cards
+                    evidenceCards
+                      .filter((card) => !card.id.includes("_"))
+                      .map((card) => {
+                        const doc = supportingDocuments.find(
+                          (d) => d.id === card.supportingDocId
+                        );
+                        const isImage = doc?.type === "image";
+                        return (
+                          <div
+                            key={card.id}
+                            className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200 cursor-pointer"
+                            onClick={() => setSelectedEvidenceCard(card)}
+                            draggable
+                            onDragStart={(e) =>
+                              handleEvidenceDragStart(e, card.id)
+                            }
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-base font-medium">
+                                    {card.title}
+                                  </span>
 
-                                <span className="text-sm text-gray-500 font-medium">
-                                  source: {card.supportingDocName}
-                                </span>
+                                  <span className="text-sm text-gray-500 font-medium">
+                                    source: {card.supportingDocName}
+                                  </span>
+                                </div>
+                                <div className="text-xs font-normal text-gray-400 mt-1 line-clamp-2 whitespace-pre-line truncate">
+                                  Excerpt:{card.excerpt}
+                                </div>
                               </div>
-                              <div className="text-xs font-normal text-gray-400 mt-1 line-clamp-2 whitespace-pre-line truncate">
-                                Excerpt:{card.excerpt}
+                              <div className="flex items-center gap-2 ml-3">
+                                {/* Type Icon/Preview */}
+                                {isImage ? (
+                                  <img
+                                    src={doc?.url}
+                                    alt="preview"
+                                    className="w-8 h-8 object-cover rounded"
+                                  />
+                                ) : (
+                                  <span className="w-8 h-8 flex items-center justify-center bg-[#7283D9] text-white rounded text-xs font-bold">
+                                    DOC
+                                  </span>
+                                )}
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-3">
-                              {/* Type Icon/Preview */}
-                              {isImage ? (
-                                <img
-                                  src={doc?.url}
-                                  alt="preview"
-                                  className="w-8 h-8 object-cover rounded"
-                                />
-                              ) : (
-                                <span className="w-8 h-8 flex items-center justify-center bg-[#7283D9] text-white rounded text-xs font-bold">
-                                  DOC
-                                </span>
-                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
                   )}
                 </div>
               </div>
@@ -4317,12 +4344,29 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
                     copilotOpen={isAICopilotOpen}
                     onClassifyClaimType={triggerClassifyClaimType}
-                    // evaluationMessages={copilotMessages.filter(
-                    //   (msg) =>
-                    //     msg.role === "ai" &&
-                    //     msg.isStructured &&
-                    //     msg.content["Evidence ID"]
-                    // )} // NEW: Pass the classification function
+                    onCloneEvidence={cloneEvidence}
+                    evaluationMessages={copilotMessages.filter(
+                      (
+                        msg
+                      ): msg is {
+                        role: string;
+                        content: {
+                          "Evidence ID": string;
+                          Evaluation: string;
+                          Reasoning: string;
+                          Confidence: string;
+                        };
+                        isStructured: boolean;
+                      } =>
+                        msg.role === "ai" &&
+                        msg.isStructured === true &&
+                        typeof msg.content === "object" &&
+                        msg.content !== null &&
+                        "Evidence ID" in msg.content &&
+                        "Evaluation" in msg.content &&
+                        "Reasoning" in msg.content &&
+                        "Confidence" in msg.content
+                    )}
                   />
                 )}
                 {selectedEdge && !selectedNode && (

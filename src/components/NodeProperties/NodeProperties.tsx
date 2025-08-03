@@ -31,6 +31,7 @@ interface NodePropertiesProps {
   onUpdateEvidenceConfidence: (evidenceId: string, confidence: number) => void;
   copilotOpen?: boolean;
   onClassifyClaimType?: (nodeId: string) => Promise<void>;
+  onCloneEvidence: (originalEvidenceId: string, nodeId: string) => string;
   evaluationMessages?: Array<{
     role: string;
     content: {
@@ -52,6 +53,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   onUpdateEvidenceConfidence,
   copilotOpen,
   onClassifyClaimType,
+  onCloneEvidence,
   evaluationMessages = [],
 }) => {
   const [text, setText] = useState("");
@@ -109,15 +111,21 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
     e.preventDefault();
     setIsDragOver(false);
     const evidenceId = e.dataTransfer.getData("application/x-evidence-id");
-    if (!evidenceId) return;
+    if (!evidenceId || !node) return;
+
     const prevIds = Array.isArray(node.data.evidenceIds)
       ? node.data.evidenceIds
       : [];
+
     if (!prevIds.includes(evidenceId)) {
+      // Clone the evidence and get the new ID
+      const clonedEvidenceId = onCloneEvidence(evidenceId, node.id);
+
+      // Update the node with the cloned evidence ID
       onUpdate(node.id, {
         data: {
           ...node.data,
-          evidenceIds: [...prevIds, evidenceId],
+          evidenceIds: [...prevIds, clonedEvidenceId],
         },
       });
     }

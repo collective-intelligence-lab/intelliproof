@@ -194,6 +194,46 @@ class ClassifyClaimTypeResponse(BaseModel):
     confidence: float
 
 
+class GenerateAssumptionsRequest(BaseModel):
+    """
+    Request model for generating implicit assumptions required by an edge relationship.
+    
+    This endpoint analyzes the relationship between two nodes connected by an edge
+    and identifies the implicit assumptions that must be true for the relationship to be valid.
+    """
+    edge: EdgeModel
+    source_node: NodeWithEvidenceModel
+    target_node: NodeWithEvidenceModel
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+
+class Assumption(BaseModel):
+    """
+    Represents a single implicit assumption required by an edge relationship.
+    """
+    assumption_text: str
+    reasoning: str
+    importance: float  # 0.0 to 1.0, indicating how critical this assumption is
+    confidence: float  # 0.0 to 1.0, indicating AI confidence in this assumption
+
+
+class GenerateAssumptionsResponse(BaseModel):
+    """
+    Response model containing generated assumptions for an edge relationship.
+    """
+    edge_id: str
+    source_node_id: str
+    target_node_id: str
+    source_node_text: str  # Text content of source node
+    target_node_text: str  # Text content of target node
+    edge_type: str  # "support", "attack", or "neutral"
+    relationship_type: str  # "support", "attack", or "neutral"
+    assumptions: List[Assumption]
+    summary: str  # Brief explanation of what assumptions are needed and why
+    overall_confidence: float  # 0.0 to 1.0, indicating AI confidence in the overall analysis
+
+
 class NodeCredibilityRequest(BaseModel):
     """
     Request model for selective node credibility calculation.

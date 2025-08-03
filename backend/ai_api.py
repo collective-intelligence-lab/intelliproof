@@ -40,9 +40,12 @@ from ai_models import (
     ClassifyClaimTypeRequest,  # NEW
     ClassifyClaimTypeResponse,  # NEW
     NodeCredibilityRequest,  # NEW
-    NodeCredibilityResponse  # NEW
+    NodeCredibilityResponse,  # NEW
+    GenerateAssumptionsRequest,  # NEW
+    GenerateAssumptionsResponse,  # NEW
+    Assumption  # NEW
 )
-from llm_manager import run_llm, DEFAULT_MCP
+from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol
 
 # Load environment variables from .env file
 load_dotenv()
@@ -447,13 +450,202 @@ Target: {data.edge.target}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/ai/generate-assumptions")
-def generate_assumptions():
+@router.post("/api/ai/generate-assumptions", response_model=GenerateAssumptionsResponse)
+def generate_assumptions(data: GenerateAssumptionsRequest = Body(...)):
     """
-    TODO: Generate implicit assumptions underlying arguments.
-    Help identify hidden premises that need to be evaluated.
+    Generate 3-5 implicit assumptions required by an edge relationship to be valid.
+    
+    This endpoint analyzes the relationship between two nodes connected by an edge
+    and identifies the implicit assumptions that must be true for the relationship to be valid.
+    
+    The function considers:
+    - Edge direction (support vs attack)
+    - Node content and evidence
+    - Logical relationships between claims
+    - Hidden premises that strengthen or weaken the connection
     """
-    pass
+    print(f"[ai_api] generate_assumptions: Function started for edge {data.edge.source} -> {data.edge.target}")
+    
+    def format_evidence_for_node(node: NodeWithEvidenceModel) -> str:
+        """Format evidence for a specific node."""
+        if not node.evidenceIds:
+            return "No evidence provided"
+        
+        evidence_texts = []
+        for eid in node.evidenceIds:
+            evidence = next((e for e in data.evidence if e.id == eid), None)
+            if evidence:
+                doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
+                doc_info = f" (from {doc.name})" if doc else ""
+                evidence_texts.append(f"- {evidence.title}: {evidence.excerpt}{doc_info}")
+        
+        return "\n".join(evidence_texts) if evidence_texts else "No evidence provided"
+    
+    # Format evidence for both nodes
+    source_evidence = format_evidence_for_node(data.source_node)
+    target_evidence = format_evidence_for_node(data.target_node)
+    
+    # Determine edge type based on weight or default to support
+    edge_type = "support"
+    if data.edge.weight is not None:
+        if data.edge.weight < 0:
+            edge_type = "attack"
+        elif data.edge.weight > 0:
+            edge_type = "support"
+        else:
+            edge_type = "neutral"
+    
+    # Build the prompt for assumption generation
+    prompt = f"""
+You are an expert in argument analysis. Identify 3-5 implicit assumptions required for this {edge_type} relationship to be valid.
+
+EDGE: {data.source_node.text} → {data.target_node.text}
+SOURCE: {data.source_node.text} (Type: {data.source_node.type})
+TARGET: {data.target_node.text} (Type: {data.target_node.type})
+EVIDENCE: {source_evidence[:500]}... (source) | {target_evidence[:500]}... (target)
+
+TASK: Generate 3-5 assumptions that must be true for this {edge_type} relationship.
+
+Respond in this format:
+Relationship Type: <support|attack|neutral>
+Overall Confidence: <float 0.0-1.0>
+
+Assumption 1: <specific assumption>
+Reasoning 1: <brief explanation>
+Importance 1: <float 0.0-1.0>
+Confidence 1: <float 0.0-1.0>
+
+[Continue for 3-5 assumptions]
+
+Summary: <2-3 sentences>
+"""
+    
+    print(f"[ai_api] generate_assumptions: Calling LLM for assumption generation...")
+    
+    try:
+        # Create a custom MCP with higher token limit for assumption generation
+        assumption_mcp = ModelControlProtocol(
+            model_name="gpt-4o-mini",
+            temperature=0.2,
+            max_tokens=1024,  # Increased from 256 to 1024 for longer responses
+            system_prompt=DEFAULT_MCP.system_prompt
+        )
+        
+        content = run_llm([
+            {"role": "user", "content": prompt}
+        ], assumption_mcp)
+        
+        print(f"[ai_api] generate_assumptions: LLM response received, length: {len(content)} characters")
+        
+        # Check if response might be truncated
+        if len(content) < 200:  # Very short response might indicate truncation
+            print(f"[ai_api] generate_assumptions: Warning: Response seems very short, might be truncated")
+        elif len(content) > 900:  # Close to token limit
+            print(f"[ai_api] generate_assumptions: Warning: Response is close to token limit ({len(content)} chars)")
+        
+        # Parse the response
+        relationship_type = edge_type
+        overall_confidence = 0.5
+        assumptions = []
+        summary = ""
+        
+        lines = content.splitlines()
+        current_assumption = None
+        current_reasoning = ""
+        current_importance = 0.5
+        current_confidence = 0.5
+        
+        for line in lines:
+            line_lower = line.lower().strip()
+            
+            if line_lower.startswith("relationship type:"):
+                relationship_type = line.split(":", 1)[1].strip().lower()
+            elif line_lower.startswith("overall confidence:"):
+                try:
+                    overall_confidence = float(line.split(":", 1)[1].strip())
+                    overall_confidence = min(max(overall_confidence, 0.0), 1.0)
+                except Exception:
+                    overall_confidence = 0.5
+            elif line_lower.startswith("assumption"):
+                # Save previous assumption if exists
+                if current_assumption:
+                    assumptions.append(Assumption(
+                        assumption_text=current_assumption,
+                        reasoning=current_reasoning.strip(),
+                        importance=current_importance,
+                        confidence=current_confidence
+                    ))
+                
+                # Start new assumption
+                current_assumption = line.split(":", 1)[1].strip()
+                current_reasoning = ""
+                current_importance = 0.5
+                current_confidence = 0.5
+            elif line_lower.startswith("reasoning"):
+                current_reasoning = line.split(":", 1)[1].strip()
+            elif line_lower.startswith("importance"):
+                try:
+                    current_importance = float(line.split(":", 1)[1].strip())
+                    current_importance = min(max(current_importance, 0.0), 1.0)
+                except Exception:
+                    current_importance = 0.5
+            elif line_lower.startswith("confidence"):
+                try:
+                    current_confidence = float(line.split(":", 1)[1].strip())
+                    current_confidence = min(max(current_confidence, 0.0), 1.0)
+                except Exception:
+                    current_confidence = 0.5
+            elif line_lower.startswith("summary:"):
+                summary = line.split(":", 1)[1].strip()
+        
+        # Add the last assumption
+        if current_assumption:
+            assumptions.append(Assumption(
+                assumption_text=current_assumption,
+                reasoning=current_reasoning.strip(),
+                importance=current_importance,
+                confidence=current_confidence
+            ))
+        
+        # Ensure we have at least 3 assumptions
+        if len(assumptions) < 3:
+            print(f"[ai_api] generate_assumptions: Warning: Only {len(assumptions)} assumptions generated, adding default ones")
+            while len(assumptions) < 3:
+                assumptions.append(Assumption(
+                    assumption_text=f"Additional assumption needed for {edge_type} relationship",
+                    reasoning="This assumption is required to establish the logical connection between the claims.",
+                    importance=0.5,
+                    confidence=0.5
+                ))
+        
+        # Limit to 5 assumptions
+        if len(assumptions) > 5:
+            assumptions = assumptions[:5]
+        
+        print(f"[ai_api] generate_assumptions: Generated {len(assumptions)} assumptions")
+        
+        response = GenerateAssumptionsResponse(
+            edge_id=f"{data.edge.source}-{data.edge.target}",
+            source_node_id=data.source_node.id,
+            target_node_id=data.target_node.id,
+            source_node_text=data.source_node.text,
+            target_node_text=data.target_node.text,
+            edge_type=edge_type,
+            relationship_type=relationship_type,
+            assumptions=assumptions,
+            summary=summary if summary else f"Generated {len(assumptions)} assumptions for {edge_type} relationship",
+            overall_confidence=overall_confidence
+        )
+        
+        print(f"[ai_api] generate_assumptions: Function completed successfully")
+        return response
+        
+    except Exception as e:
+        print(f"[ai_api] generate_assumptions: Error during assumption generation: {str(e)}")
+        print(f"[ai_api] generate_assumptions: Error type: {type(e).__name__}")
+        import traceback
+        print(f"[ai_api] generate_assumptions: Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Assumption generation failed: {str(e)}")
 
 @router.post("/api/ai/eval-assumption")
 def eval_assumption():

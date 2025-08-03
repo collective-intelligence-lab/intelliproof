@@ -339,3 +339,26 @@ TO WORK ON:
   -- extra LLM keys to test with?
   -- WAITING ON ARGUMENT YAML CONFIMATION FROM KAVEH FOR critique_graph(G)
   -- WAITING ON propagation function      FROM KAVEH  
+
+
+
+  BUGS:
+
+  * critique graph -> yaml identification not showing
+                   -> messages could display more node/yaml info
+
+  * automated calls running when graph loaded?
+
+    * I THink   --> trigger credibility modifies nodes (via score update)
+
+                --> each modified node triggers a check_evidence(call)
+                            and this might change evidence scores
+
+                --> each modified node triggers credibility again and so circular loop
+
+???? WHERE U TESTING YOUR CREDIBILITTY FUNCTION WITH intelliproof@gmail.com missing scientist graph becuase when i did i was getting an infinite loop of credibility and check_evidence calls running forever. might have been my bug but I dont think it was.
+
+
+* check if propagation BFS has a seen data structure to avoid re-processing nodes.
+
+

@@ -24,6 +24,7 @@ import time
 import requests
 import fitz  # PyMuPDF
 import io
+import json
 from ai_models import (
     NodeModel,
     EdgeModel,
@@ -43,7 +44,11 @@ from ai_models import (
     NodeCredibilityResponse,  # NEW
     GenerateAssumptionsRequest,  # NEW
     GenerateAssumptionsResponse,  # NEW
-    Assumption  # NEW
+    Assumption,  # NEW
+    CritiqueGraphRequest,  # NEW
+    CritiqueGraphResponse,  # NEW
+    ArgumentFlaw,  # NEW
+    PatternMatch  # NEW
 )
 from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol
 
@@ -663,13 +668,184 @@ def score_all_edges():
     """
     pass
 
-@router.post("/api/ai/critique-graph")
-def critique_graph():
+@router.post("/api/ai/critique-graph", response_model=CritiqueGraphResponse)
+def critique_graph(data: CritiqueGraphRequest = Body(...)):
     """
-    TODO: Provide overall critique of argument structure.
-    Identify weaknesses, gaps, and improvement suggestions.
+    Provide comprehensive critique of argument structure.
+    
+    This endpoint analyzes the entire graph to:
+    1. Identify argument flaws and weaknesses
+    2. Match patterns from the argument patterns bank
+    3. Provide overall assessment and recommendations
+    
+    The analysis considers:
+    - Structural issues (circular reasoning, contradictions, etc.)
+    - Semantic problems (logical fallacies, weak connections)
+    - Dialectical issues (straw man, ad hominem, etc.)
+    - Pattern matches from the argument patterns bank
     """
-    pass
+    print(f"[ai_api] critique_graph: Function started for graph with {len(data.nodes)} nodes and {len(data.edges)} edges")
+    
+    if not OPENAI_API_KEY:
+        print("[ai_api] critique_graph: No OpenAI API key configured.")
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
+    
+    try:
+        openai.api_key = OPENAI_API_KEY
+        
+        # Format the graph data for analysis
+        nodes_text = "\n".join([f"Node {node.id}: {node.text} (Type: {node.type})" for node in data.nodes])
+        edges_text = "\n".join([f"Edge {edge.source} -> {edge.target} (Weight: {edge.weight})" for edge in data.edges])
+        evidence_text = "\n".join([f"Evidence {ev.id}: {ev.title} - {ev.excerpt}" for ev in data.evidence])
+        
+        # Create node ID to text mapping for detailed pattern matching
+        node_id_to_text = {node.id: node.text for node in data.nodes}
+        edge_id_to_details = {f"{edge.source}->{edge.target}": f"{edge.source}->{edge.target} (weight: {edge.weight})" for edge in data.edges}
+        
+        # Load argument patterns from YAML
+        import yaml
+        import os
+        import json  # Ensure json is available in this scope
+        
+        yaml_path = os.path.join(os.path.dirname(__file__), "..", "spec", "argument_patterns_bank.yaml")
+        with open(yaml_path, 'r') as file:
+            patterns = yaml.safe_load(file)
+        
+        # Create a comprehensive prompt for analysis
+        prompt = f"""
+        Analyze this argument graph for flaws and pattern matches.
+
+        GRAPH DATA:
+        Nodes:
+        {nodes_text}
+        
+        Edges:
+        {edges_text}
+        
+        Evidence:
+        {evidence_text}
+        
+        ARGUMENT PATTERNS BANK:
+        {yaml.dump(patterns, default_flow_style=False)}
+        
+        NODE ID TO TEXT MAPPING:
+        {json.dumps(node_id_to_text, indent=2)}
+        
+        EDGE ID TO DETAILS MAPPING:
+        {json.dumps(edge_id_to_details, indent=2)}
+        
+        Please provide a comprehensive analysis with:
+        
+        1. ARGUMENT FLAWS: Identify specific argument flaws with:
+           - flaw_type: Type of flaw (e.g., "Circular Reasoning", "Straw Man", "False Cause")
+           - description: Clear description of the flaw
+           - affected_nodes: List of node IDs involved
+           - affected_edges: List of edge IDs involved  
+           - severity: "low", "medium", "high", or "critical"
+           - reasoning: Detailed explanation of why this is a flaw
+        
+        2. PATTERN MATCHES: Match against the argument patterns bank:
+           - pattern_name: Name of the matched pattern from the YAML subtypes
+           - category: Category from the patterns bank (fallacious, good_argument, absurd, etc.)
+           - description: Description from the patterns bank
+           - graph_pattern: The pattern description from YAML
+           - graph_implication: The implication description from YAML
+           - matched_nodes: List of node IDs that match this pattern
+           - matched_node_texts: List of actual claim texts from the matched nodes (use the node_id_to_text mapping)
+           - matched_edges: List of edge IDs that match this pattern
+           - matched_edge_details: List of edge details (source->target with weights) from the edge_id_to_details mapping
+           - pattern_details: Specific details about how the pattern was matched and why
+           - severity: "low", "medium", "high", or "critical" based on pattern type (fallacious patterns are usually high/critical)
+        
+        3. OVERALL ASSESSMENT: Provide a general assessment of the argument's quality
+        
+        4. RECOMMENDATIONS: List specific suggestions for improving the argument
+        
+        Format your response as raw JSON (no markdown formatting) with these exact fields:
+        {{
+            "argument_flaws": [
+                {{
+                    "flaw_type": "string",
+                    "description": "string", 
+                    "affected_nodes": ["node_id1", "node_id2"],
+                    "affected_edges": ["edge_id1", "edge_id2"],
+                    "severity": "low|medium|high|critical",
+                    "reasoning": "string"
+                }}
+            ],
+            "pattern_matches": [
+                {{
+                    "pattern_name": "string",
+                    "category": "string",
+                    "description": "string",
+                    "graph_pattern": "string",
+                    "graph_implication": "string",
+                    "matched_nodes": ["node_id1", "node_id2"],
+                    "matched_node_texts": ["actual claim text 1", "actual claim text 2"],
+                    "matched_edges": ["edge_id1", "edge_id2"],
+                    "matched_edge_details": ["source_id->target_id (weight)", "source_id->target_id (weight)"],
+                    "pattern_details": "string",
+                    "severity": "low|medium|high|critical"
+                }}
+            ],
+            "overall_assessment": "string",
+            "recommendations": ["string1", "string2", "string3"]
+        }}
+        
+        IMPORTANT: Return only the JSON object, no markdown formatting, no code blocks.
+        """
+        
+        print(f"[ai_api] critique_graph: Sending request to OpenAI")
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert argument analyst and critical thinking specialist. Analyze argument graphs for logical flaws, fallacies, and pattern matches."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.1
+        )
+        
+        result = response.choices[0].message.content
+        print(f"[ai_api] critique_graph: Received response from OpenAI")
+        
+        # Parse the JSON response
+        import json
+        import re
+        
+        # Clean the response - remove markdown code blocks if present
+        cleaned_result = result.strip()
+        if cleaned_result.startswith("```json"):
+            cleaned_result = cleaned_result[7:]  # Remove ```json
+        if cleaned_result.startswith("```"):
+            cleaned_result = cleaned_result[3:]  # Remove ```
+        if cleaned_result.endswith("```"):
+            cleaned_result = cleaned_result[:-3]  # Remove trailing ```
+        
+        cleaned_result = cleaned_result.strip()
+        
+        try:
+            analysis = json.loads(cleaned_result)
+        except json.JSONDecodeError as e:
+            print(f"[ai_api] critique_graph: JSON parsing error: {e}")
+            print(f"[ai_api] critique_graph: Raw response: {result}")
+            print(f"[ai_api] critique_graph: Cleaned response: {cleaned_result}")
+            raise HTTPException(status_code=500, detail="Failed to parse AI response")
+        
+        # Convert to Pydantic models
+        argument_flaws = [ArgumentFlaw(**flaw) for flaw in analysis.get("argument_flaws", [])]
+        pattern_matches = [PatternMatch(**match) for match in analysis.get("pattern_matches", [])]
+        
+        return CritiqueGraphResponse(
+            argument_flaws=argument_flaws,
+            pattern_matches=pattern_matches,
+            overall_assessment=analysis.get("overall_assessment", ""),
+            recommendations=analysis.get("recommendations", [])
+        )
+        
+    except Exception as e:
+        print(f"[ai_api] critique_graph: Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/ai/export-report")
 def export_report():

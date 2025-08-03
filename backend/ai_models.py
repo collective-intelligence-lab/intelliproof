@@ -261,4 +261,56 @@ class NodeCredibilityResponse(BaseModel):
     affected_nodes: List[str]  # List of node IDs that were affected
     initial_evidence: Dict[str, float]  # Initial evidence scores for affected nodes
     iterations: List[Dict[str, float]]  # Score progression for affected nodes
-    final_scores: Dict[str, float]  # Final credibility scores for affected nodes 
+    final_scores: Dict[str, float]  # Final credibility scores for affected nodes
+
+
+class CritiqueGraphRequest(BaseModel):
+    """
+    Request model for graph critique analysis.
+    
+    This endpoint analyzes the entire graph structure and content to identify
+    argument flaws and match patterns from the argument patterns bank.
+    """
+    nodes: List[NodeWithEvidenceModel]
+    edges: List[EdgeModel]
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+
+class ArgumentFlaw(BaseModel):
+    """
+    Represents a specific argument flaw identified in the graph.
+    """
+    flaw_type: str
+    description: str
+    affected_nodes: List[str]  # Node IDs involved in this flaw
+    affected_edges: List[str]  # Edge IDs involved in this flaw
+    severity: str  # "low", "medium", "high", "critical"
+    reasoning: str
+
+
+class PatternMatch(BaseModel):
+    """
+    Represents a pattern match from the argument patterns bank.
+    """
+    pattern_name: str
+    category: str
+    description: str
+    graph_pattern: str  # The pattern description from YAML
+    graph_implication: str  # The implication description from YAML
+    matched_nodes: List[str]  # Node IDs that match this pattern
+    matched_node_texts: List[str]  # The actual text/claims of matched nodes
+    matched_edges: List[str]  # Edge IDs that match this pattern
+    matched_edge_details: List[str]  # Details about matched edges (source->target)
+    pattern_details: str  # Specific details about how the pattern was matched
+    severity: str  # "low", "medium", "high", "critical" based on pattern type
+
+
+class CritiqueGraphResponse(BaseModel):
+    """
+    Response model for graph critique analysis.
+    """
+    argument_flaws: List[ArgumentFlaw]
+    pattern_matches: List[PatternMatch]
+    overall_assessment: str  # General assessment of the graph's argument quality
+    recommendations: List[str]  # Suggestions for improving the argument 

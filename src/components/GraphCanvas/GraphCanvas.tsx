@@ -3006,6 +3006,200 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
   };
 
+  // Handler for Critique Graph button click
+  const handleCritiqueGraph = async () => {
+    // Check if there are any nodes in the graph
+    if (nodes.length === 0) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: "No nodes found in the graph. Please add some nodes to analyze.",
+        },
+      ]);
+      return;
+    }
+
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      {
+        role: "user",
+        content: "Analyze the entire graph for argument flaws and pattern matches.",
+      },
+    ]);
+
+    try {
+      // Prepare request body with all graph data
+      const requestBody = {
+        nodes: nodes.map((node) => ({
+          id: node.id,
+          text: node.data.text,
+          type: node.data.type,
+          evidenceIds: node.data.evidenceIds || [],
+        })),
+        edges: edges.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          weight: edge.data.confidence,
+        })),
+        evidence: evidenceCards,
+        supportingDocuments: supportingDocumentsRedux,
+      };
+
+      console.log(
+        `[GraphCanvas] handleCritiqueGraph: Sending request to /api/ai/critique-graph`
+      );
+      console.log(
+        `[GraphCanvas] handleCritiqueGraph: Request body:`,
+        requestBody
+      );
+
+      const response = await fetch("/api/ai/critique-graph", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Failed to critique graph.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch { }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      console.log(
+        `[GraphCanvas] handleCritiqueGraph: Received response:`,
+        data
+      );
+
+      // Display overall assessment first
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: {
+            "Overall Assessment": data.overall_assessment,
+          },
+          isStructured: true,
+        },
+      ]);
+
+      // Display argument flaws
+      if (data.argument_flaws && data.argument_flaws.length > 0) {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: `Found ${data.argument_flaws.length} argument flaw(s):`,
+          },
+        ]);
+
+        data.argument_flaws.forEach((flaw: any, index: number) => {
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "ai",
+              content: {
+                [`Flaw ${index + 1}: ${flaw.flaw_type}`]: flaw.description,
+                "Severity": flaw.severity,
+                "Affected Nodes": flaw.affected_nodes.join(", "),
+                "Affected Edges": flaw.affected_edges.join(", "),
+                "Reasoning": flaw.reasoning,
+              },
+              isStructured: true,
+            },
+          ]);
+        });
+      } else {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: "No argument flaws detected.",
+          },
+        ]);
+      }
+
+      // Display pattern matches
+      if (data.pattern_matches && data.pattern_matches.length > 0) {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: `Found ${data.pattern_matches.length} pattern match(es):`,
+          },
+        ]);
+
+        data.pattern_matches.forEach((match: any, index: number) => {
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "ai",
+              content: {
+                [`Pattern ${index + 1}: ${match.pattern_name}`]: match.description,
+                "Category": match.category,
+                "Graph Pattern": match.graph_pattern,
+                "Graph Implication": match.graph_implication,
+                "Severity": match.severity,
+                "Matched Nodes": match.matched_nodes.join(", "),
+                "Node Claims": match.matched_node_texts.join(" | "),
+                "Matched Edges": match.matched_edges.join(", "),
+                "Edge Details": match.matched_edge_details.join(" | "),
+                "Pattern Details": match.pattern_details,
+              },
+              isStructured: true,
+            },
+          ]);
+        });
+      } else {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: "No pattern matches found.",
+          },
+        ]);
+      }
+
+      // Display recommendations
+      if (data.recommendations && data.recommendations.length > 0) {
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: "Recommendations for improvement:",
+          },
+        ]);
+
+        data.recommendations.forEach((recommendation: string, index: number) => {
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "ai",
+              content: `${index + 1}. ${recommendation}`,
+            },
+          ]);
+        });
+      }
+
+    } catch (err: any) {
+      console.error(
+        `[GraphCanvas] handleCritiqueGraph: Error:`,
+        err
+      );
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        { role: "ai", content: `Error: ${err.message}` },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
   // API call function for claim type classification
   const triggerClassifyClaimType = async (nodeId: string) => {
     console.log(
@@ -4252,6 +4446,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   content="Generates assumptions for all edges in the graph sequentially"
                   icon={<HandRaisedIcon className="w-4 h-4" />}
                   onClick={handleGenerateAllAssumptions}
+                  disabled={copilotLoading}
+                />
+                <CommandMessageBox
+                  title="Critique Graph"
+                  content="Analyzes the entire graph for argument flaws and pattern matches"
+                  icon={<DocumentMagnifyingGlassIcon className="w-4 h-4" />}
+                  onClick={handleCritiqueGraph}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox

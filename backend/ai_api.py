@@ -1104,13 +1104,26 @@ def check_node_evidence(data: CheckNodeEvidenceRequest = Body(...)):
         doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
         doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
         prompt = f"""
-Claim: {node.text}
-Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc_info}
+You are evaluating how well a piece of evidence supports a specific claim. Focus ONLY on the claim content provided.
 
-Question: Does the above evidence support the claim?
-Respond in this format:
-Evaluation: <yes|no|unsure|unrelated>
-Reasoning: <your explanation. Keep it to 2-4 sentences, focusing on the evidence and the claim, and a reason for the score.>
+CLAIM TO EVALUATE: "{node.text}"
+
+EVIDENCE TO ANALYZE:
+- Title: {evidence.title}
+- Content: {evidence.excerpt}
+- Supporting Document: {doc_info}
+
+TASK: Evaluate how well this evidence supports or contradicts the specific claim above.
+
+IMPORTANT: 
+- Only consider the claim content: "{node.text}"
+- Do not make assumptions about what the claim might mean
+- Do not evaluate against other claims or broader topics
+- Focus solely on whether this evidence directly supports or contradicts the stated claim
+
+Respond in this exact format:
+Evaluation: <supports|contradicts|neutral|irrelevant|unsure>
+Reasoning: <your explanation. Keep it to 2-4 sentences, focusing specifically on how this evidence relates to the claim: "{node.text}">
 Score: <a precise number between -1.0 and 1.0 giving the evidence a score of how well the evidence supports or contradicts the claim. Use the full range with decimal precision. Examples: 0.8 (strongly supports), -0.3 (weakly contradicts), 0.0 (neutral), 0.45 (moderately supports), -0.9 (strongly contradicts).>
 """
         try:

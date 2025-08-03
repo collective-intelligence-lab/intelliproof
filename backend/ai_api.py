@@ -217,9 +217,9 @@ Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc
 
 Question: Does the above evidence support the claim?
 Respond in this format:
-Evaluation: <yes|no|unsure|unrelated>
-Reasoning: <your explanation>
-Confidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
+Evaluation: <Supports|Contradicts|unsure|unrelated>
+Reasoning: <your explanation. Keep it to 2-4 sentences, focusing on the evidence and the claim.>
+Score: <a number between -1 and 1 giving the evidence a score of how well the evidence supports or contradicts the claim. -1 means fully contradicts, 1 means fully supports, 0 means neutral/ irrelevant. Score can be any number in between this range.>
 """
             try:
                 content = run_llm(

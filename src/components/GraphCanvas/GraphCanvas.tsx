@@ -1150,6 +1150,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           source: edge.source,
           target: edge.target,
           weight: clamp(edge.data.confidence, -1, 1),
+          // Save edge validation data
+          edgeType: edge.data.edgeType,
+          confidence: edge.data.confidence,
+          edgeScore: edge.data.edgeScore,
         })),
       };
 

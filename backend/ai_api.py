@@ -1110,8 +1110,8 @@ Evidence: {evidence.excerpt}\nTitle: {evidence.title}\nSupporting Document: {doc
 Question: Does the above evidence support the claim?
 Respond in this format:
 Evaluation: <yes|no|unsure|unrelated>
-Reasoning: <your explanation>
-Confidence: <a number between 0 and 1 representing your confidence in the evidence's support for the claim>
+Reasoning: <your explanation. Keep it to 2-4 sentences, focusing on the evidence and the claim, and a reason for the score.>
+Score: <a precise number between -1.0 and 1.0 giving the evidence a score of how well the evidence supports or contradicts the claim. Use the full range with decimal precision. Examples: 0.8 (strongly supports), -0.3 (weakly contradicts), 0.0 (neutral), 0.45 (moderately supports), -0.9 (strongly contradicts).>
 """
         try:
             content = run_llm(
@@ -1126,12 +1126,12 @@ Confidence: <a number between 0 and 1 representing your confidence in the eviden
                     eval_val = line.split(":", 1)[1].strip().lower()
                 if line.lower().startswith("reasoning:"):
                     reasoning = line.split(":", 1)[1].strip()
-                if line.lower().startswith("confidence:"):
+                if line.lower().startswith("score:"):
                     try:
                         confidence_val = float(line.split(":", 1)[1].strip())
-                        confidence_val = min(max(confidence_val, 0.0), 1.0)
+                        confidence_val = min(max(confidence_val, -1.0), 1.0)
                     except Exception:
-                        confidence_val = 0.5
+                        confidence_val = 0.0
             results.append(EvidenceEvaluation(
                 node_id=node.id,
                 evidence_id=evidence.id,

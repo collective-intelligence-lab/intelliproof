@@ -2846,6 +2846,166 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
   };
 
+  // Handler for Generate All Assumptions button click
+  const handleGenerateAllAssumptions = async () => {
+    // Check if there are any edges in the graph
+    if (edges.length === 0) {
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: "No edges found in the graph. Please add some edges between nodes to generate assumptions.",
+        },
+      ]);
+      return;
+    }
+
+    setCopilotLoading(true);
+    setCopilotMessages((msgs) => [
+      ...msgs,
+      {
+        role: "user",
+        content: `Generate assumptions for all ${edges.length} edges in the graph.`,
+      },
+    ]);
+
+    try {
+      // Process each edge sequentially
+      for (let i = 0; i < edges.length; i++) {
+        const edge = edges[i];
+
+        // Find the source and target nodes
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        const targetNode = nodes.find((n) => n.id === edge.target);
+
+        if (!sourceNode || !targetNode) {
+          console.warn(`Source or target node not found for edge ${edge.id}`);
+          continue;
+        }
+
+        // Add a separator message for each edge
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: `--- Processing Edge ${i + 1}/${edges.length}: ${sourceNode.data.text} → ${targetNode.data.text} ---`,
+          },
+        ]);
+
+        // Prepare request body
+        const requestBody = {
+          edge: {
+            source: edge.source,
+            target: edge.target,
+            weight: edge.data.confidence,
+          },
+          source_node: {
+            id: sourceNode.id,
+            text: sourceNode.data.text,
+            type: sourceNode.data.type,
+            evidenceIds: sourceNode.data.evidenceIds || [],
+          },
+          target_node: {
+            id: targetNode.id,
+            text: targetNode.data.text,
+            type: targetNode.data.type,
+            evidenceIds: targetNode.data.evidenceIds || [],
+          },
+          evidence: evidenceCards,
+          supportingDocuments: supportingDocumentsRedux,
+        };
+
+        console.log(
+          `[GraphCanvas] handleGenerateAllAssumptions: Processing edge ${i + 1}/${edges.length}`
+        );
+
+        const response = await fetch("/api/ai/generate-assumptions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          let errorMsg = "Failed to generate assumptions for this edge.";
+          try {
+            const errorData = await response.json();
+            if (errorData.detail) errorMsg = errorData.detail;
+          } catch { }
+
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            { role: "ai", content: `Error for edge ${i + 1}: ${errorMsg}` },
+          ]);
+          continue;
+        }
+
+        const data = await response.json();
+        console.log(
+          `[GraphCanvas] handleGenerateAllAssumptions: Received response for edge ${i + 1}:`,
+          data
+        );
+
+        // Display the summary for this edge
+        setCopilotMessages((msgs) => [
+          ...msgs,
+          {
+            role: "ai",
+            content: {
+              [`Edge ${i + 1} Summary`]: {
+                "Edge ID": data.edge_id,
+                "Edge Type": data.edge_type,
+                "Source Node": data.source_node_text,
+                "Target Node": data.target_node_text,
+                "Relationship Type": data.relationship_type,
+                "Overall Confidence": `${Math.round(data.overall_confidence * 100)}%`,
+                Summary: data.summary,
+              },
+            },
+            isStructured: true,
+          },
+        ]);
+
+        // Display each assumption as a separate message
+        data.assumptions.forEach((assumption: any, index: number) => {
+          setCopilotMessages((msgs) => [
+            ...msgs,
+            {
+              role: "ai",
+              content: {
+                [`Edge ${i + 1} - Assumption ${index + 1}`]: assumption.assumption_text,
+                Reasoning: assumption.reasoning,
+                Importance: `${Math.round(assumption.importance * 100)}%`,
+                Confidence: `${Math.round(assumption.confidence * 100)}%`,
+              },
+              isStructured: true,
+            },
+          ]);
+        });
+      }
+
+      // Add completion message
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: `✅ Completed generating assumptions for all ${edges.length} edges in the graph.`,
+        },
+      ]);
+
+    } catch (err: any) {
+      console.error(
+        `[GraphCanvas] handleGenerateAllAssumptions: Error:`,
+        err
+      );
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        { role: "ai", content: `Error: ${err.message}` },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
   // API call function for claim type classification
   const triggerClassifyClaimType = async (nodeId: string) => {
     console.log(
@@ -4061,14 +4221,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <CommandMessageBox
                   title="Check Claim Evidence"
                   content="Check evidence for each claim and evaluate relationship"
-                  icon={<DocumentMagnifyingGlassIcon className="w-6 h-6" />}
+                  icon={<DocumentMagnifyingGlassIcon className="w-4 h-4" />}
                   onClick={handleCheckEvidence}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
                   title="Get Claim Credibility"
                   content="Compute credibility scores for each node using internal evidence scores, and apply propagation algorithm."
-                  icon={<DocumentCheckIcon className="w-6 h-6" />}
+                  icon={<DocumentCheckIcon className="w-4 h-4" />}
                   onClick={handleClaimCredibility}
                   disabled={copilotLoading}
                 />
@@ -4076,21 +4236,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <CommandMessageBox
                   title="Validate Edge"
                   content="Checks whether the support/attack is valid with reasoning"
-                  icon={<ArrowPathIcon className="w-6 h-6" />}
+                  icon={<ArrowPathIcon className="w-4 h-4" />}
                   onClick={handleValidateEdge}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
                   title="Generate Assumptions"
                   content="Generates up to 5 assumptions required by the edge to be valid"
-                  icon={<HandRaisedIcon className="w-6 h-6" />}
+                  icon={<HandRaisedIcon className="w-4 h-4" />}
                   onClick={handleGenerateAssumptions}
+                  disabled={copilotLoading}
+                />
+                <CommandMessageBox
+                  title="Generate All Assumptions"
+                  content="Generates assumptions for all edges in the graph sequentially"
+                  icon={<HandRaisedIcon className="w-4 h-4" />}
+                  onClick={handleGenerateAllAssumptions}
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
                   title="Validate All Edges"
                   content="Checks all edges for support/attack/neutral and outputs reasoning for each."
-                  icon={<ArrowPathIcon className="w-6 h-6" />}
+                  icon={<ArrowPathIcon className="w-4 h-4" />}
                   onClick={validate_edges}
                   disabled={copilotLoading}
                 />

@@ -789,9 +789,26 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setNodes((nds) => applyNodeChanges(changes, nds) as ClaimNode[]);
   };
 
-  const onEdgesChange: OnEdgesChange = useCallback((changes) => {
-    setEdges((eds) => applyEdgeChanges(changes, eds) as ClaimEdge[]);
-  }, []);
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => {
+      // Check for edge deletions and trigger credibility for affected nodes
+      changes.forEach((change) => {
+        if (change.type === "remove" && change.id) {
+          // Find the edge that was deleted to get its target node
+          const deletedEdge = edges.find((e) => e.id === change.id);
+          if (deletedEdge && deletedEdge.target) {
+            console.log(
+              `[GraphCanvas] onEdgesChange: Edge ${change.id} deleted, triggering credibility for target node ${deletedEdge.target}`
+            );
+            setApiQueue((q) => [...q, deletedEdge.target]);
+          }
+        }
+      });
+
+      setEdges((eds) => applyEdgeChanges(changes, eds) as ClaimEdge[]);
+    },
+    [edges]
+  );
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -822,6 +839,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
+
+      // Trigger credibility calculation for the target node only
+      console.log(
+        `[GraphCanvas] onConnect: Edge created between ${params.source} and ${params.target}, triggering credibility for target node ${params.target}`
+      );
+
+      // Queue only the target node for credibility calculation
+      setApiQueue((q) => [...q, params.target!]);
     },
     [edges]
   );
@@ -1042,6 +1067,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleEdgeUpdate = (edgeId: string, updates: Partial<ClaimEdge>) => {
+    // Find the edge to get source and target nodes
+    const edge = edges.find((e) => e.id === edgeId);
+
     setEdges((eds) =>
       eds.map((e) => {
         if (e.id === edgeId) {
@@ -1057,6 +1085,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         return e;
       })
     );
+
+    // If edge was found and has source/target, trigger credibility for target node
+    // (target node depends on source node, so changes to edge affect target)
+    if (edge && edge.target) {
+      console.log(
+        `[GraphCanvas] handleEdgeUpdate: Edge ${edgeId} updated, triggering credibility for target node ${edge.target}`
+      );
+      setApiQueue((q) => [...q, edge.target]);
+    }
   };
 
   const handleDeleteNode = useCallback(() => {
@@ -1583,6 +1620,167 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
   };
 
+  // NEW: Selective credibility calculation for specific node and its dependents
+  const handleNodeCredibility = async (nodeId: string) => {
+    console.log(
+      `[GraphCanvas] handleNodeCredibility: Starting for node ${nodeId}`
+    );
+
+    // Don't run if there are no nodes
+    if (nodes.length === 0) return;
+
+    try {
+      setCopilotLoading(true);
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "user",
+          content: `Computing credibility scores for node ${nodeId} and affected nodes...`,
+        },
+      ]);
+
+      // Gather evidence scores for all nodes (needed for the API)
+      const requestNodes = nodes.map((node) => ({
+        id: node.id,
+        text: node.data.text,
+        type: node.data.type,
+        evidence:
+          Array.isArray(node.data.evidenceIds) &&
+          node.data.evidenceIds.length > 0
+            ? node.data.evidenceIds.map((evId) => {
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
+            : [],
+        evidence_min: -1.0,
+        evidence_max: 1.0,
+      }));
+
+      // Construct edges array from all edges in the graph
+      const requestEdges = edges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        weight: edge.data.confidence || 0,
+      }));
+
+      const requestBody = {
+        target_node_id: nodeId,
+        nodes: requestNodes,
+        edges: requestEdges,
+        lambda: 0.7,
+        epsilon: 0.01,
+        max_iterations: 20,
+        evidence_min: -1.0,
+        evidence_max: 1.0,
+      };
+
+      console.log(
+        `[GraphCanvas] handleNodeCredibility: Sending request for node ${nodeId}:`,
+        JSON.stringify(requestBody, null, 2)
+      );
+
+      const response = await fetch("/api/ai/get-node-credibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Failed to fetch node credibility.";
+        try {
+          const errorData = await response.json();
+          if (response.status === 422 && errorData.detail) {
+            errorMsg =
+              "Invalid request format. Please ensure nodes and edges are provided.";
+          } else if (errorData.detail) {
+            errorMsg =
+              typeof errorData.detail === "string"
+                ? errorData.detail
+                : JSON.stringify(errorData.detail);
+          }
+        } catch {
+          errorMsg = "Failed to fetch node credibility.";
+        }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      console.log(
+        `[GraphCanvas] handleNodeCredibility: API Response for node ${nodeId}:`,
+        data
+      );
+      console.log(
+        `[GraphCanvas] handleNodeCredibility: Affected nodes:`,
+        data.affected_nodes
+      );
+      console.log(
+        `[GraphCanvas] handleNodeCredibility: Final scores:`,
+        data.final_scores
+      );
+
+      // Update only the affected nodes with credibility scores
+      setNodes((nds) =>
+        nds.map((node) => {
+          const newScore = data.final_scores[node.id];
+          if (newScore !== undefined) {
+            console.log(
+              `[GraphCanvas] handleNodeCredibility: Updating node ${node.id} credibility from ${node.data.credibilityScore} to ${newScore}`
+            );
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                credibilityScore: newScore,
+              },
+            };
+          }
+          return node; // Keep unchanged if not affected
+        })
+      );
+
+      // Display results in copilot for affected nodes only
+      const nodeIdToText = Object.fromEntries(
+        nodes.map((node) => [node.id, node.data.text])
+      );
+
+      const credibilityMessages = Object.entries(data.final_scores).map(
+        ([id, score]) => ({
+          role: "ai",
+          content: {
+            "Affected Node ID": id,
+            "Node Title": nodeIdToText[id] ? nodeIdToText[id] : id,
+            "Final Credibility Score": (score as number).toFixed(5),
+          },
+          isStructured: true,
+        })
+      );
+
+      setCopilotMessages((msgs) => [...msgs, ...credibilityMessages]);
+
+      console.log(
+        `[GraphCanvas] handleNodeCredibility: Completed successfully for node ${nodeId}`
+      );
+    } catch (error) {
+      console.error(
+        `[GraphCanvas] handleNodeCredibility: Error for node ${nodeId}:`,
+        error
+      );
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: `<span style="color: red;">Error computing credibility for node ${nodeId}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }</span>`,
+        },
+      ]);
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
   // Handler for Check Evidence icon click
   const handleCheckEvidence = async () => {
     setCopilotLoading(true);
@@ -1767,57 +1965,29 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           setApiQueue((q) => q.slice(1));
           setIsProcessing(false);
 
-          // After evidence check completes, run credibility with updated scores
-          if (updatedEvidenceData && updatedEvidenceData.length > 0) {
+          // After evidence check completes, run selective credibility for the specific node
+          console.log(
+            `[GraphCanvas] Queue processor: Running selective credibility for node ${nodeId}`
+          );
+          try {
+            await handleNodeCredibility(nodeId);
             console.log(
-              `[GraphCanvas] Queue processor: Running credibility with updated evidence data`
+              `[GraphCanvas] Queue processor: Selective credibility computation completed for node ${nodeId}`
             );
-            try {
-              await handleClaimCredibilityWithUpdatedEvidence(
-                updatedEvidenceData
-              );
-              console.log(
-                `[GraphCanvas] Queue processor: Credibility computation completed successfully`
-              );
-            } catch (error) {
-              console.error(
-                `[GraphCanvas] Queue processor: Error in credibility computation:`,
-                error
-              );
-              setCopilotMessages((msgs) => [
-                ...msgs,
-                {
-                  role: "ai",
-                  content: `Error computing credibility scores: ${
-                    error instanceof Error ? error.message : "Unknown error"
-                  }`,
-                },
-              ]);
-            }
-          } else {
-            console.log(
-              `[GraphCanvas] Queue processor: No updated evidence data, running standard credibility`
+          } catch (error) {
+            console.error(
+              `[GraphCanvas] Queue processor: Error in selective credibility computation:`,
+              error
             );
-            try {
-              await handleClaimCredibility();
-              console.log(
-                `[GraphCanvas] Queue processor: Standard credibility computation completed`
-              );
-            } catch (error) {
-              console.error(
-                `[GraphCanvas] Queue processor: Error in standard credibility computation:`,
-                error
-              );
-              setCopilotMessages((msgs) => [
-                ...msgs,
-                {
-                  role: "ai",
-                  content: `Error computing credibility scores: ${
-                    error instanceof Error ? error.message : "Unknown error"
-                  }`,
-                },
-              ]);
-            }
+            setCopilotMessages((msgs) => [
+              ...msgs,
+              {
+                role: "ai",
+                content: `Error computing credibility scores for node ${nodeId}: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ]);
           }
         })
         .catch((error) => {

@@ -38,7 +38,9 @@ from ai_models import (
     ValidateEdgeRequest,  # NEW
     ValidateEdgeResponse,  # NEW
     ClassifyClaimTypeRequest,  # NEW
-    ClassifyClaimTypeResponse  # NEW
+    ClassifyClaimTypeResponse,  # NEW
+    NodeCredibilityRequest,  # NEW
+    NodeCredibilityResponse  # NEW
 )
 from llm_manager import run_llm, DEFAULT_MCP
 
@@ -140,7 +142,7 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
             if node_id not in source_nodes and incoming_edges[node_id]:
                 # Calculate new score for target node
                 Z = data.lambda_ * E[node_id]
-                print(f"DEBUG: Node {node_id} initial Z = {Z} (lambda={data.lambda_} * evidence={E[node_id]})")
+                print(f"DEBUG: Node {node_id} initial Z = {Z} (lambda={data.lambda_} * evidence={E[node.id]})")
                 
                 # Add contributions from incoming edges
                 for edge in incoming_edges[node_id]:
@@ -778,4 +780,182 @@ Confidence: <a number between 0 and 1 representing your confidence in the eviden
                 confidence=0.5
             ))
     print("[ai_api] check_node_evidence: Function finished.")
-    return CheckEvidenceResponse(results=results) 
+    return CheckEvidenceResponse(results=results)
+
+
+def get_affected_nodes(target_node_id: str, nodes: List[NodeModel], edges: List[EdgeModel]) -> set[str]:
+    """
+    Find all nodes that would be affected by a change to the target node.
+    
+    A node is affected if:
+    1. It is the target node itself
+    2. It has an outgoing edge TO another node (other node depends on this one)
+    3. Any node that depends on this node is also affected (transitive dependency)
+    
+    Example: If we have A → B → C, and we modify A:
+    - A is affected (target node)
+    - B is affected (A has outgoing arrow to B)
+    - C is affected (A has outgoing arrow to C through B)
+    
+    When we modify C:
+    - C is affected (target node)
+    - Nothing else is affected (C has no outgoing arrows)
+    
+    Returns a set of node IDs that need credibility recalculation.
+    """
+    print(f"[ai_api] get_affected_nodes: Finding nodes affected by changes to {target_node_id}")
+    
+    # Start with the target node
+    affected_nodes = {target_node_id}
+    nodes_to_check = {target_node_id}
+    
+    # Keep track of all node IDs for validation
+    all_node_ids = {node.id for node in nodes}
+    
+    # Build adjacency list for efficient traversal
+    # dependency_graph[node_id] = list of nodes that depend on this node
+    # If A → B, then B depends on A, so when A changes, B is affected
+    dependency_graph = {}
+    for edge in edges:
+        if edge.source not in dependency_graph:
+            dependency_graph[edge.source] = []
+        dependency_graph[edge.source].append(edge.target)
+    
+    print(f"[ai_api] get_affected_nodes: Dependency graph (when source changes, target is affected): {dependency_graph}")
+    
+    # BFS to find all affected nodes (follow dependencies downstream)
+    while nodes_to_check:
+        current_node = nodes_to_check.pop()
+        print(f"[ai_api] get_affected_nodes: Checking node {current_node}")
+        
+        # Find all nodes that depend on this node
+        if current_node in dependency_graph:
+            for dependent_node in dependency_graph[current_node]:
+                if dependent_node not in affected_nodes:
+                    print(f"[ai_api] get_affected_nodes: Node {dependent_node} depends on {current_node}, adding to affected set")
+                    affected_nodes.add(dependent_node)
+                    nodes_to_check.add(dependent_node)
+    
+    print(f"[ai_api] get_affected_nodes: Final affected nodes: {affected_nodes}")
+    return affected_nodes
+
+
+@router.post("/api/ai/get-node-credibility", response_model=NodeCredibilityResponse)
+def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
+    """
+    Compute credibility scores for a specific node and all nodes that depend on it.
+    
+    This is a selective version of the credibility propagation that only calculates
+    scores for nodes that would be affected by changes to the target node.
+    
+    Algorithm:
+    1. Find all nodes that depend on the target node (outgoing edges)
+    2. Build the complete affected subgraph
+    3. Calculate credibility only for nodes in this subgraph
+    """
+    print(f"[ai_api] get_node_credibility: Function started for target node {data.target_node_id}")
+    print(f"[ai_api] get_node_credibility: Total nodes in graph: {len(data.nodes)}")
+    print(f"[ai_api] get_node_credibility: Total edges in graph: {len(data.edges)}")
+    
+    # Step 1: Find all affected nodes
+    affected_node_ids = get_affected_nodes(data.target_node_id, data.nodes, data.edges)
+    print(f"[ai_api] get_node_credibility: Affected nodes: {affected_node_ids}")
+    
+    # Step 2: Filter nodes and edges to only include affected subgraph
+    affected_nodes = [node for node in data.nodes if node.id in affected_node_ids]
+    affected_edges = [edge for edge in data.edges if edge.source in affected_node_ids and edge.target in affected_node_ids]
+    
+    print(f"[ai_api] get_node_credibility: Affected subgraph has {len(affected_nodes)} nodes and {len(affected_edges)} edges")
+    
+    # Step 3: Calculate initial evidence scores for affected nodes
+    E = {}
+    for node in affected_nodes:
+        E[node.id] = 0.0
+        print(f"[ai_api] get_node_credibility: Initially set Node {node.id} E_i = 0.0")
+
+        evidence = node.evidence or []
+        print(f"[ai_api] get_node_credibility: Node {node.id} has evidence: {evidence}")
+
+        # Only update E if there is actual evidence
+        if evidence:
+            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
+            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
+            
+            clamped_evidence = [
+                max(min(ev, max_val), min_val) for ev in evidence
+            ]
+            
+            N_i = len(clamped_evidence)
+            if N_i > 0:
+                E[node.id] = sum(clamped_evidence) / N_i
+                print(f"[ai_api] get_node_credibility: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+    
+    # Step 4: Initialize credibility scores
+    c = {node.id: E[node.id] for node in affected_nodes}
+    print(f"[ai_api] get_node_credibility: Initial credibility scores: {c}")
+    
+    # Step 5: Build adjacency list for efficient computation
+    incoming_edges = {}
+    for edge in affected_edges:
+        if edge.target not in incoming_edges:
+            incoming_edges[edge.target] = []
+        incoming_edges[edge.target].append((edge.source, edge.weight or 1.0))
+    
+    print(f"[ai_api] get_node_credibility: Incoming edges: {incoming_edges}")
+    
+    # Step 6: Iterative credibility propagation
+    iterations = [c.copy()]
+    converged = False
+    iteration_count = 0
+    
+    while not converged and iteration_count < data.max_iterations:
+        iteration_count += 1
+        c_new = {}
+        max_change = 0.0
+        
+        for node in affected_nodes:
+            node_id = node.id
+            
+            # Calculate new score for target node
+            Z = data.lambda_ * E[node_id]
+            print(f"[ai_api] get_node_credibility: Node {node_id} initial Z = {Z} (lambda={data.lambda_} * evidence={E[node_id]})")
+            
+            # Add contributions from incoming edges
+            if node_id in incoming_edges:
+                for source_id, weight in incoming_edges[node_id]:
+                    if source_id in c:  # Only consider edges from nodes in our subgraph
+                        contribution = weight * c[source_id]
+                        Z += contribution
+                        print(f"[ai_api] get_node_credibility: Adding contribution from {source_id}: {weight} * {c[source_id]} = {contribution}")
+            
+            # Apply tanh squashing function
+            c_new[node_id] = math.tanh(Z)
+            change = abs(c_new[node_id] - c[node_id])
+            max_change = max(max_change, change)
+            
+            print(f"[ai_api] get_node_credibility: Node {node_id} new score: {c_new[node_id]} (change: {change})")
+        
+        # Update scores
+        c = c_new
+        iterations.append(c.copy())
+        
+        # Check convergence
+        if max_change < data.epsilon:
+            converged = True
+            print(f"[ai_api] get_node_credibility: Converged after {iteration_count} iterations (max change: {max_change})")
+        else:
+            print(f"[ai_api] get_node_credibility: Iteration {iteration_count}, max change: {max_change}")
+    
+    if not converged:
+        print(f"[ai_api] get_node_credibility: Warning: Did not converge after {data.max_iterations} iterations")
+    
+    print(f"[ai_api] get_node_credibility: Final credibility scores: {c}")
+    print(f"[ai_api] get_node_credibility: Function completed successfully")
+    
+    return NodeCredibilityResponse(
+        target_node_id=data.target_node_id,
+        affected_nodes=list(affected_node_ids),
+        initial_evidence=E,
+        iterations=iterations,
+        final_scores=c
+    ) 

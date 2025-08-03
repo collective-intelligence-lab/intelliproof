@@ -191,4 +191,34 @@ class ClassifyClaimTypeResponse(BaseModel):
     node_text: str
     evaluation: str  # factual, value, policy, or unknown
     reasoning: str
-    confidence: float 
+    confidence: float
+
+
+class NodeCredibilityRequest(BaseModel):
+    """
+    Request model for selective node credibility calculation.
+    
+    This endpoint calculates credibility for a specific node and all nodes
+    that depend on it (nodes that would be affected by changes to this node).
+    """
+    target_node_id: str
+    nodes: List[NodeModel]
+    edges: List[EdgeModel]
+    lambda_: float = Field(default=0.5, alias="lambda", description="Weight parameter for evidence vs. neighbor influence")
+    max_iterations: int = Field(default=100, description="Maximum number of iterations")
+    epsilon: float = Field(default=1e-6, description="Convergence threshold")
+    evidence_min: Optional[float] = Field(default=0.0, description="Global minimum evidence value")
+    evidence_max: Optional[float] = Field(default=1.0, description="Global maximum evidence value")
+
+
+class NodeCredibilityResponse(BaseModel):
+    """
+    Response model for selective node credibility calculation.
+    
+    Contains credibility scores only for the affected nodes (target node and its dependents).
+    """
+    target_node_id: str
+    affected_nodes: List[str]  # List of node IDs that were affected
+    initial_evidence: Dict[str, float]  # Initial evidence scores for affected nodes
+    iterations: List[Dict[str, float]]  # Score progression for affected nodes
+    final_scores: Dict[str, float]  # Final credibility scores for affected nodes 

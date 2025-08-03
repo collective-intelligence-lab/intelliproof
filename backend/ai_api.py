@@ -1258,6 +1258,30 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
                 E[node.id] = sum(clamped_evidence) / N_i
                 print(f"[ai_api] get_node_credibility: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
     
+    target_node = next((node for node in affected_nodes if node.id == data.target_node_id), None)
+    if target_node:
+        # Check if this node has any incoming edges (other nodes point TO this node)
+        has_incoming_edges = any(edge.target == data.target_node_id for edge in data.edges)
+        # Check if this node has any outgoing edges (this node points TO other nodes)
+        has_outgoing_edges = any(edge.source == data.target_node_id for edge in data.edges)
+        
+        is_isolated = not has_outgoing_edges
+        # not has_incoming_edges
+        
+        if is_isolated:
+            print(f"[ai_api] get_node_credibility: Target node {data.target_node_id} is isolated (source node)")
+            print(f"[ai_api] get_node_credibility: Returning evidence score as intrinsic score: {E[data.target_node_id]}")
+            
+            # For isolated nodes, return the evidence score as the final intrinsic score
+            # Skip the iterative process since isolated nodes are not updated during iterations
+            return NodeCredibilityResponse(
+                target_node_id=data.target_node_id,
+                affected_nodes=[data.target_node_id],
+                initial_evidence={data.target_node_id: E[data.target_node_id]},
+                iterations=[{data.target_node_id: E[data.target_node_id]}],  # Single iteration with evidence score
+                final_scores={data.target_node_id: E[data.target_node_id]}
+            )
+
     # Step 4: Initialize credibility scores
     c = {node.id: E[node.id] for node in affected_nodes}
     print(f"[ai_api] get_node_credibility: Initial credibility scores: {c}")

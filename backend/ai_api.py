@@ -1182,12 +1182,12 @@ def get_affected_nodes(target_node_id: str, nodes: List[NodeModel], edges: List[
     
     # Build adjacency list for efficient traversal
     # dependency_graph[node_id] = list of nodes that depend on this node
-    # If A → B, then B depends on A, so when A changes, B is affected
+    # If A → B, then A depends on B, so when B changes, A is affected
     dependency_graph = {}
     for edge in edges:
-        if edge.source not in dependency_graph:
-            dependency_graph[edge.source] = []
-        dependency_graph[edge.source].append(edge.target)
+        if edge.target not in dependency_graph:
+            dependency_graph[edge.target] = []
+        dependency_graph[edge.target].append(edge.source)
     
     print(f"[ai_api] get_affected_nodes: Dependency graph (when source changes, target is affected): {dependency_graph}")
     
@@ -1266,8 +1266,8 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
     incoming_edges = {}
     for edge in affected_edges:
         if edge.target not in incoming_edges:
-            incoming_edges[edge.target] = []
-        incoming_edges[edge.target].append((edge.source, edge.weight or 1.0))
+            incoming_edges[edge.source] = []
+        incoming_edges[edge.source].append((edge.target, edge.weight or 1.0))
     
     print(f"[ai_api] get_node_credibility: Incoming edges: {incoming_edges}")
     

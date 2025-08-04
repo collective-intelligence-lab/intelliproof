@@ -154,9 +154,21 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
                 
                 # Add contributions from incoming edges
                 for edge in incoming_edges[node_id]:
-                    edge_contribution = edge.weight * c_prev[edge.target]
+                    strength = abs(edge.weight or 1.0)
+                    is_support = (edge.weight or 1.0) > 0
+                    source_score = c_prev[edge.target]
+                    
+                    if is_support:
+                        # For support edges, use raw source score
+                        edge_contribution = strength * source_score
+                    else:
+                        # For attack edges, use absolute value of source score
+                        # A strong negative source with a strong negative edge should result in strong negative contribution
+                        source_strength = abs(source_score)
+                        edge_contribution = -strength * source_strength
+                    
                     Z += edge_contribution
-                    print(f"DEBUG: Edge from {edge.target} contributes {edge_contribution} (weight={edge.weight} * source_score={c_prev[edge.target]})")
+                    print(f"DEBUG: Edge from {edge.target} contributes {edge_contribution} (weight={edge.weight}, source_score={source_score})")
                 
                 c_new[node_id] = math.tanh(Z)
                 print(f"DEBUG: Target node {node_id} final Z={Z}, new score={c_new[node_id]}")

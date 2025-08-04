@@ -346,3 +346,76 @@ TO WORK ON:
 * check if propagation BFS has a seen data structure to avoid re-processing nodes.
 
 
+FRONTEND BUGS
+
+* Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
+
+    --> open graphcanvas, pin the AI copilot and Evidence Navbars
+    --> observe the Intelliproof toolbar and the graph save/crititque/report toolbar
+
+* Inability to change edge from attatcking and supporting
+
+    --> when u add an edge, it is impossible to switch from attack or support
+    --> NOT SERIOUS : easier way to change direction after adding edge
+
+BACKEND BUGS
+
+  * (DONE) argument_patterns_bank.yaml missing from the vercel deployment
+
+        --> run critique graph on vercel deployment and see AI Copilot error and console
+
+    FIX --> copy .yaml file from ../spec to intelliproof/backend/upload
+  * 
+
+## Enhanced Generate Report Functionality
+
+The Generate Report feature has been significantly enhanced to provide comprehensive argument analysis reports. The new functionality:
+
+### What it does:
+1. **Runs multiple AI analyses in sequence:**
+   - Evidence evaluation for all nodes
+   - Edge validation for all connections  
+   - Assumptions generation and analysis
+   - Graph critique and pattern matching
+
+2. **Generates a professional report** following intelligence analysis standards with:
+   - Cover page with case title, date, and analyst info
+   - Executive summary overview
+   - Scope & objectives section
+   - Methodology description
+   - Structured findings with evidence links
+   - Analysis and insights
+   - Conclusions and recommendations
+   - Appendix with raw data
+
+3. **Provides real-time progress feedback** with:
+   - Loading indicators during generation
+   - Progress toast notifications
+   - Step-by-step status updates
+   - Error handling and recovery
+
+### Technical Implementation:
+
+#### Backend (`ai_api.py`):
+- New endpoint: `/api/ai/generate-comprehensive-report`
+- Combines results from multiple AI analyses
+- Generates structured report content
+- Returns PDF-ready data structure
+
+#### Frontend (`GraphCanvas.tsx`):
+- Enhanced `handleGenerateReport()` function
+- Progress tracking and UI feedback
+- Error handling and user notifications
+- Integration with existing AI analysis functions
+
+### Usage:
+1. Click the "Generate Report" button in the graph editor
+2. Watch the progress indicator as analyses run
+3. Download the comprehensive PDF report when complete
+
+### Debug Features:
+- Extensive console logging throughout the process
+- Step-by-step progress tracking
+- Error reporting and recovery
+- Performance monitoring
+ 

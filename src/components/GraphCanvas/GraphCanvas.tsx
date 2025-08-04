@@ -1429,35 +1429,192 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     URL.revokeObjectURL(url);
   };
 
+  // State for report generation
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportProgress, setReportProgress] = useState("");
+  const [showProgressToast, setShowProgressToast] = useState(false);
+
   const handleGenerateReport = async () => {
+    console.log("[GraphCanvas] handleGenerateReport: Starting comprehensive report generation");
+    setIsGeneratingReport(true);
+    setReportProgress("Initializing report generation...");
+    setShowProgressToast(true);
+
     try {
-      // Get the ReactFlow canvas element
-      const element = document.querySelector(".react-flow") as HTMLElement;
-      if (!element) {
-        throw new Error("Could not find ReactFlow canvas");
+      // Step 1: Check all evidence
+      console.log("[GraphCanvas] handleGenerateReport: Step 1 - Checking all evidence");
+      setReportProgress("Step 1/5: Evaluating evidence quality...");
+      const evidenceResults = await handleCheckEvidence();
+      console.log("[GraphCanvas] handleGenerateReport: Evidence evaluation completed");
+
+      // Step 2: Validate all edges
+      console.log("[GraphCanvas] handleGenerateReport: Step 2 - Validating all edges");
+      setReportProgress("Step 2/5: Validating argument relationships...");
+      const edgeResults = await validate_edges();
+      console.log("[GraphCanvas] handleGenerateReport: Edge validation completed");
+
+      // Step 3: Generate all assumptions
+      console.log("[GraphCanvas] handleGenerateReport: Step 3 - Generating all assumptions");
+      setReportProgress("Step 3/5: Identifying implicit assumptions...");
+      const assumptionResults = await handleGenerateAllAssumptions();
+      console.log("[GraphCanvas] handleGenerateReport: Assumptions generation completed");
+
+      // Step 4: Critique graph
+      console.log("[GraphCanvas] handleGenerateReport: Step 4 - Critiquing graph");
+      setReportProgress("Step 4/5: Analyzing argument structure...");
+      const critiqueResults = await handleCritiqueGraph();
+      console.log("[GraphCanvas] handleGenerateReport: Graph critique completed");
+
+      // Step 5: Generate comprehensive report
+      console.log("[GraphCanvas] handleGenerateReport: Step 5 - Generating comprehensive report");
+      setReportProgress("Step 5/5: Creating final report...");
+
+      // Prepare data for comprehensive report
+      const reportData = {
+        nodes: nodes.map(node => ({
+          id: node.id,
+          text: node.data.text,
+          type: node.data.type,
+          evidenceIds: node.data.evidenceIds || []
+        })),
+        edges: edges.map(edge => ({
+          source: edge.source,
+          target: edge.target,
+          weight: edge.data?.confidence || 1.0
+        })),
+        evidence: evidenceCards,
+        supportingDocuments: supportingDocuments,
+        evidence_evaluation_results: evidenceResults,
+        edge_validation_results: edgeResults,
+        assumptions_results: assumptionResults,
+        critique_results: critiqueResults,
+        graph_title: title || "Argument Analysis",
+        analyst_name: `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || "IntelliProof AI",
+        analyst_contact: profile?.email || "ai@intelliproof.com"
+      };
+
+      console.log("[GraphCanvas] handleGenerateReport: Sending comprehensive report request");
+      const response = await fetch("/api/ai/generate-comprehensive-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reportData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Create a canvas from the ReactFlow element
-      const canvas = await html2canvas(element, {
-        backgroundColor: "#ffffff",
-      });
+      const reportContent = await response.json();
+      console.log("[GraphCanvas] handleGenerateReport: Received comprehensive report");
+      console.log("[GraphCanvas] handleGenerateReport: Report content keys:", Object.keys(reportContent));
+      console.log("[GraphCanvas] handleGenerateReport: Executive summary length:", reportContent.executive_summary?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Findings length:", reportContent.findings?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Analysis length:", reportContent.analysis?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Cover page length:", reportContent.cover_page?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Scope objectives length:", reportContent.scope_objectives?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Methodology length:", reportContent.methodology?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Conclusion length:", reportContent.conclusion?.length || 0);
+      console.log("[GraphCanvas] handleGenerateReport: Appendix length:", reportContent.appendix?.length || 0);
 
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [canvas.width, canvas.height],
-      });
+      // Generate PDF from report content
+      setReportProgress("Generating PDF...");
+      const pdf = new jsPDF();
 
-      // Add the canvas image to the PDF
-      const imgData = canvas.toDataURL("image/png");
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      // Helper function to add content with pagination
+      const addContentSection = (title: string, content: string, startY: number = 50) => {
+        pdf.setFontSize(16);
+        pdf.text(title, 20, 30);
+        pdf.setFontSize(10);
+
+        // Ensure content is a string and has meaningful content
+        const safeContent = content && typeof content === 'string' && content.trim().length > 0
+          ? content
+          : `No ${title.toLowerCase()} content available. This section would typically contain detailed analysis and findings.`;
+
+        const lines = pdf.splitTextToSize(safeContent, 170);
+        let currentY = startY;
+        let pageCount = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+          if (currentY > 270) { // Check if we need a new page
+            pdf.addPage();
+            pdf.setFontSize(16);
+            pdf.text(title + " (continued)", 20, 30);
+            pdf.setFontSize(10);
+            currentY = 50;
+            pageCount++;
+          }
+          pdf.text(lines[i], 20, currentY);
+          currentY += 7; // Line spacing
+        }
+
+        return pageCount;
+      };
+
+      // Add cover page
+      pdf.setFontSize(24);
+      pdf.text("IntelliProof Argument Analysis Report", 20, 40);
+      pdf.setFontSize(14);
+      pdf.text(`Case: ${reportContent.report_metadata?.title || "Argument Analysis"}`, 20, 60);
+      pdf.setFontSize(12);
+      pdf.text(`Date: ${reportContent.report_metadata?.date || new Date().toLocaleDateString()}`, 20, 80);
+      pdf.text(`Analyst: ${reportContent.report_metadata?.analyst || "IntelliProof AI"}`, 20, 90);
+      pdf.text(`Contact: ${reportContent.report_metadata?.contact || "ai@intelliproof.com"}`, 20, 100);
+
+      // Add cover page description if available
+      if (reportContent.cover_page) {
+        pdf.setFontSize(10);
+        const coverLines = pdf.splitTextToSize(reportContent.cover_page, 170);
+        pdf.text(coverLines, 20, 120);
+      }
+
+      // Add executive summary
+      pdf.addPage();
+      addContentSection("Executive Summary", reportContent.executive_summary || "No executive summary available.");
+
+      // Add scope and objectives
+      pdf.addPage();
+      addContentSection("Scope & Objectives", reportContent.scope_objectives || "No scope and objectives available.");
+
+      // Add methodology
+      pdf.addPage();
+      addContentSection("Methodology", reportContent.methodology || "No methodology available.");
+
+      // Add findings
+      pdf.addPage();
+      addContentSection("Findings", reportContent.findings || "No findings available.");
+
+      // Add analysis
+      pdf.addPage();
+      addContentSection("Analysis", reportContent.analysis || "No analysis available.");
+
+      // Add conclusion
+      pdf.addPage();
+      addContentSection("Conclusion", reportContent.conclusion || "No conclusion available.");
+
+      // Add appendix
+      pdf.addPage();
+      addContentSection("Appendix", reportContent.appendix || "No appendix available.");
 
       // Save the PDF
-      pdf.save(`${title || "graph"}-report.pdf`);
+      const fileName = `${title || "argument-analysis"}-comprehensive-report.pdf`;
+      pdf.save(fileName);
+
+      console.log("[GraphCanvas] handleGenerateReport: Report generation completed successfully");
+      setReportProgress("Report generated successfully!");
+
+      // Show success message
+      alert(`Comprehensive report generated successfully: ${fileName}`);
+
     } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF report. Please try again.");
+      console.error("[GraphCanvas] handleGenerateReport: Error:", error);
+      alert("Failed to generate comprehensive report. Please try again.");
+    } finally {
+      setIsGeneratingReport(false);
+      setReportProgress("");
+      setShowProgressToast(false);
     }
   };
 
@@ -1928,6 +2085,30 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       setModifiedNodes((prev) => new Set([...prev, nodeWithEvidence.id]));
     }
 
+    updateCredibilityScores();
+  };
+
+  const handleUnlinkEvidence = (evidenceId: string, nodeId: string) => {
+    // Remove the evidence ID from the node's evidenceIds array
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              evidenceIds: node.data.evidenceIds?.filter((id) => id !== evidenceId) || [],
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    // Mark the node as modified for credibility recalculation
+    setModifiedNodes((prev) => new Set([...prev, nodeId]));
+
+    // Update credibility scores
     updateCredibilityScores();
   };
 
@@ -4107,10 +4288,21 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 </button>
                 <button
                   onClick={handleGenerateReport}
-                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  title="Generate Report"
+                  disabled={isGeneratingReport}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isGeneratingReport
+                    ? "bg-blue-100 text-blue-600 cursor-not-allowed"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    }`}
+                  title={isGeneratingReport ? reportProgress : "Generate Report"}
                 >
-                  <DocumentIcon className="w-8 h-8" strokeWidth={2} />
+                  {isGeneratingReport ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="text-xs">Generating...</span>
+                    </div>
+                  ) : (
+                    <DocumentIcon className="w-8 h-8" strokeWidth={2} />
+                  )}
                 </button>
 
                 <div className="h-12 w-px bg-gray-200"></div>
@@ -4327,6 +4519,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     evidenceCards={evidenceCards}
                     supportingDocuments={supportingDocuments}
                     onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
+                    onUnlinkEvidence={handleUnlinkEvidence}
                     copilotOpen={isAICopilotOpen}
                     onClassifyClaimType={triggerClassifyClaimType}
                     onCloneEvidence={cloneEvidence}
@@ -4610,6 +4803,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         uploaderEmail={profile?.email || ""}
         onSuccess={handleUploadSuccess}
       />
+
+      {/* Progress Toast */}
+      {showProgressToast && (
+        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-lg max-w-md">
+          <div className="flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            <div>
+              <div className="font-medium">Generating Report</div>
+              <div className="text-sm opacity-90">{reportProgress}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -314,3 +314,43 @@ class CritiqueGraphResponse(BaseModel):
     pattern_matches: List[PatternMatch]
     overall_assessment: str  # General assessment of the graph's argument quality
     recommendations: List[str]  # Suggestions for improving the argument 
+
+
+class GenerateComprehensiveReportRequest(BaseModel):
+    """
+    Request model for generating a comprehensive argument analysis report.
+    
+    This endpoint combines multiple AI analyses into a single comprehensive report:
+    - Evidence evaluation results
+    - Edge validation results  
+    - Assumptions analysis
+    - Graph critique results
+    - Graph structure and content
+    """
+    nodes: List[NodeWithEvidenceModel]
+    edges: List[EdgeModel]
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+    evidence_evaluation_results: Optional[dict] = None
+    edge_validation_results: Optional[dict] = None
+    assumptions_results: Optional[dict] = None
+    critique_results: Optional[dict] = None
+    graph_title: Optional[str] = None
+    analyst_name: Optional[str] = None
+    analyst_contact: Optional[str] = None
+
+class GenerateComprehensiveReportResponse(BaseModel):
+    """
+    Response model for comprehensive report generation.
+    
+    Contains the complete report content structured for PDF generation.
+    """
+    cover_page: str
+    executive_summary: str
+    scope_objectives: str
+    methodology: str
+    findings: str
+    analysis: str
+    conclusion: str
+    appendix: str
+    report_metadata: dict 

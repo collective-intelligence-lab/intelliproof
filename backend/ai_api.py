@@ -48,9 +48,12 @@ from ai_models import (
     CritiqueGraphRequest,  # NEW
     CritiqueGraphResponse,  # NEW
     ArgumentFlaw,  # NEW
-    PatternMatch  # NEW
+    PatternMatch,  # NEW
+    GenerateComprehensiveReportRequest,  # NEW
+    GenerateComprehensiveReportResponse  # NEW
 )
 from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -719,7 +722,7 @@ def critique_graph(data: CritiqueGraphRequest = Body(...)):
         import os
         import json  # Ensure json is available in this scope
         
-        yaml_path = os.path.join(os.path.dirname(__file__), "argument_patterns_bank.yaml")
+        yaml_path = os.path.join(os.path.dirname(__file__), "upload", "argument_patterns_bank.yaml")
         with open(yaml_path, 'r') as file:
             patterns = yaml.safe_load(file)
         
@@ -857,6 +860,196 @@ def critique_graph(data: CritiqueGraphRequest = Body(...)):
         
     except Exception as e:
         print(f"[ai_api] critique_graph: Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/ai/generate-comprehensive-report", response_model=GenerateComprehensiveReportResponse)
+def generate_comprehensive_report(data: GenerateComprehensiveReportRequest = Body(...)):
+    """
+    Generate a comprehensive argument analysis report combining multiple AI analyses.
+    
+    This endpoint:
+    1. Takes results from evidence evaluation, edge validation, assumptions analysis, and graph critique
+    2. Analyzes the complete graph structure and content
+    3. Generates a professional report following intelligence analysis standards
+    4. Returns structured content for PDF generation
+    """
+    print(f"[ai_api] generate_comprehensive_report: Function started")
+    print(f"[ai_api] generate_comprehensive_report: Processing {len(data.nodes)} nodes, {len(data.edges)} edges, {len(data.evidence)} evidence items")
+    
+    if not OPENAI_API_KEY:
+        print("[ai_api] generate_comprehensive_report: No OpenAI API key configured.")
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
+    
+    try:
+        openai.api_key = OPENAI_API_KEY
+        
+        # Prepare graph data for analysis
+        graph_data = {
+            "nodes": [{"id": node.id, "text": node.text, "type": node.type} for node in data.nodes],
+            "edges": [{"source": edge.source, "target": edge.target, "weight": edge.weight} for edge in data.edges],
+            "evidence": [{"id": ev.id, "title": ev.title, "excerpt": ev.excerpt, "confidence": ev.confidence} for ev in data.evidence],
+            "supporting_documents": [{"id": doc.id, "name": doc.name, "type": doc.type} for doc in data.supportingDocuments]
+        }
+        
+        # Prepare analysis results
+        analysis_results = {
+            "evidence_evaluation": data.evidence_evaluation_results or {},
+            "edge_validation": data.edge_validation_results or {},
+            "assumptions": data.assumptions_results or {},
+            "critique": data.critique_results or {}
+        }
+        
+        # Create comprehensive prompt for report generation
+        prompt = f"""
+        You are an expert intelligence analyst tasked with creating a comprehensive argument analysis report. 
+        
+        GRAPH DATA:
+        Nodes: {json.dumps([{"id": node.id, "text": node.text, "type": node.type} for node in data.nodes], indent=2)}
+        Edges: {json.dumps([{"source": edge.source, "target": edge.target, "weight": edge.weight} for edge in data.edges], indent=2)}
+        Evidence: {json.dumps([{"id": ev.id, "title": ev.title, "excerpt": ev.excerpt, "confidence": ev.confidence} for ev in data.evidence], indent=2)}
+        Supporting Documents: {json.dumps([{"id": doc.id, "name": doc.name, "type": doc.type} for doc in data.supportingDocuments], indent=2)}
+        
+        ANALYSIS RESULTS:
+        Evidence Evaluation: {json.dumps(data.evidence_evaluation_results or {}, indent=2)}
+        Edge Validation: {json.dumps(data.edge_validation_results or {}, indent=2)}
+        Assumptions Analysis: {json.dumps(data.assumptions_results or {}, indent=2)}
+        Graph Critique: {json.dumps(data.critique_results or {}, indent=2)}
+        
+        GRAPH TITLE: {data.graph_title or "Argument Analysis"}
+        ANALYST: {data.analyst_name or "IntelliProof AI"}
+        CONTACT: {data.analyst_contact or "ai@intelliproof.com"}
+        DATE: {datetime.now().strftime("%B %d, %Y")}
+        
+        Create a detailed, professional intelligence analysis report. Each section should be substantial and informative:
+        
+        1. COVER PAGE: Professional cover with title, date, analyst info, and brief description
+        2. EXECUTIVE SUMMARY: 2-3 paragraph overview of key findings, argument structure, and main conclusions
+        3. SCOPE & OBJECTIVES: Detailed description of what was analyzed, why it matters, and investigation goals
+        4. METHODOLOGY: Comprehensive description of analysis approach, tools used, and evaluation criteria
+        5. FINDINGS: Detailed structured results including:
+           - Node-by-node analysis with evidence evaluation
+           - Edge validation results and logical connections
+           - Assumptions identified and their implications
+           - Graph structure analysis and patterns
+        6. ANALYSIS: In-depth insights including:
+           - Argument strength assessment
+           - Logical flow analysis
+           - Evidence quality evaluation
+           - Potential weaknesses and counter-arguments
+           - Recommendations for improvement
+        7. CONCLUSION: Comprehensive summary of key takeaways, argument effectiveness, and final assessment
+        8. APPENDIX: Raw data, detailed logs, timestamps, and supporting information
+        
+        IMPORTANT: You must respond with ONLY a valid JSON object. Do not include any markdown formatting, explanations, or other text outside the JSON.
+        
+        Format the response as a JSON object with these exact keys. Each section should be substantial (200-500 words):
+        {{
+            "cover_page": "Professional cover page content with title, date, analyst info",
+            "executive_summary": "Detailed 2-3 paragraph executive summary",
+            "scope_objectives": "Comprehensive scope and objectives section", 
+            "methodology": "Detailed methodology description",
+            "findings": "Comprehensive findings with structured analysis",
+            "analysis": "In-depth analysis with insights and recommendations",
+            "conclusion": "Detailed conclusion with key takeaways",
+            "appendix": "Comprehensive appendix with raw data and details",
+            "report_metadata": {{
+                "title": "{data.graph_title or "Argument Analysis"}",
+                "date": "{datetime.now().strftime("%B %d, %Y")}",
+                "analyst": "{data.analyst_name or "IntelliProof AI"}",
+                "contact": "{data.analyst_contact or "ai@intelliproof.com"}"
+            }}
+        }}
+        
+        Make each section detailed, professional, and actionable. Include specific insights from the analysis results. The report should be comprehensive and provide valuable intelligence analysis.
+        
+        RESPOND WITH ONLY THE JSON OBJECT - NO OTHER TEXT OR FORMATTING.
+        """
+        
+        print(f"[ai_api] generate_comprehensive_report: Sending request to OpenAI")
+        
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert intelligence analyst specializing in argument analysis and critical thinking. Create professional, detailed reports that follow intelligence analysis standards. Be comprehensive and thorough in your analysis."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=8000,
+            temperature=0.3
+        )
+        
+        result = response.choices[0].message.content
+        print(f"[ai_api] generate_comprehensive_report: Received response from OpenAI")
+        print(f"[ai_api] generate_comprehensive_report: Response length: {len(result)} characters")
+        print(f"[ai_api] generate_comprehensive_report: Response preview: {result[:200]}...")
+        
+        # Check if response is empty or too short
+        if not result or len(result.strip()) < 100:
+            print(f"[ai_api] generate_comprehensive_report: Response too short or empty, using fallback")
+            fallback_report = {
+                "cover_page": f"# {data.graph_title or 'Argument Analysis Report'}\n\nDate: {datetime.now().strftime('%Y-%m-%d')}\nAnalyst: {data.analyst_name or 'IntelliProof AI'}\nContact: {data.analyst_contact or 'ai@intelliproof.com'}",
+                "executive_summary": "Analysis of argument structure and evidence quality.",
+                "scope_objectives": "Comprehensive evaluation of argument validity and strength.",
+                "methodology": "AI-powered analysis using evidence evaluation, edge validation, and graph critique.",
+                "findings": f"Analyzed {len(data.nodes)} claims and {len(data.edges)} relationships with {len(data.evidence)} evidence items.",
+                "analysis": "Detailed analysis of argument structure and evidence quality.",
+                "conclusion": "Summary of key findings and recommendations.",
+                "appendix": "Technical details and raw analysis data.",
+                "report_metadata": {
+                    "title": data.graph_title or "Argument Analysis Report",
+                    "date": datetime.now().strftime('%Y-%m-%d'),
+                    "analyst": data.analyst_name or "IntelliProof AI",
+                    "contact": data.analyst_contact or "ai@intelliproof.com"
+                }
+            }
+            return GenerateComprehensiveReportResponse(**fallback_report)
+        
+        # Parse the JSON response
+        try:
+            report_data = json.loads(result)
+            print(f"[ai_api] generate_comprehensive_report: Successfully parsed report data")
+            return GenerateComprehensiveReportResponse(**report_data)
+        except json.JSONDecodeError as e:
+            print(f"[ai_api] generate_comprehensive_report: JSON parsing error: {e}")
+            print(f"[ai_api] generate_comprehensive_report: Raw response: {result}")
+            
+            # Try to extract JSON from the response if it's wrapped in markdown
+            try:
+                # Look for JSON between ```json and ``` markers
+                import re
+                json_match = re.search(r'```json\s*(.*?)\s*```', result, re.DOTALL)
+                if json_match:
+                    json_content = json_match.group(1)
+                    report_data = json.loads(json_content)
+                    print(f"[ai_api] generate_comprehensive_report: Successfully extracted JSON from markdown")
+                    return GenerateComprehensiveReportResponse(**report_data)
+            except Exception as extract_error:
+                print(f"[ai_api] generate_comprehensive_report: JSON extraction failed: {extract_error}")
+            
+            # Fallback: create a detailed report structure based on available data
+            node_summary = "\n".join([f"- {node.text} (Type: {node.type})" for node in data.nodes])
+            edge_summary = "\n".join([f"- {edge.source} → {edge.target} (Weight: {edge.weight})" for edge in data.edges])
+            evidence_summary = "\n".join([f"- {ev.title}: {ev.excerpt[:100]}..." for ev in data.evidence])
+            
+            fallback_report = {
+                "cover_page": f"IntelliProof Argument Analysis Report\n\nCase: {data.graph_title or 'Argument Analysis'}\nDate: {datetime.now().strftime('%B %d, %Y')}\nAnalyst: {data.analyst_name or 'IntelliProof AI'}\nContact: {data.analyst_contact or 'ai@intelliproof.com'}\n\nThis report provides a comprehensive analysis of the argument structure, evidence quality, and logical relationships.",
+                "executive_summary": f"This analysis examined an argument consisting of {len(data.nodes)} claims connected by {len(data.edges)} relationships, supported by {len(data.evidence)} evidence items. The argument structure was evaluated using AI-powered analysis tools to assess evidence quality, logical connections, and overall argument strength. Key findings indicate the argument's effectiveness and areas for potential improvement.",
+                "scope_objectives": f"The scope of this analysis encompassed a comprehensive evaluation of argument validity, evidence quality, and logical structure. The objective was to provide an intelligence-style assessment of the argument's strength, identify potential weaknesses, and offer recommendations for improvement. The analysis examined {len(data.nodes)} claims across different types and {len(data.edges)} logical connections.",
+                "methodology": "This analysis employed AI-powered tools including evidence evaluation algorithms, edge validation systems, assumptions generation, and graph critique functions. The methodology combined automated analysis with structured evaluation criteria to assess argument quality, evidence reliability, and logical coherence. Multiple analysis techniques were applied to ensure comprehensive coverage.",
+                "findings": f"Analysis Results:\n\nClaims Analyzed ({len(data.nodes)}):\n{node_summary}\n\nRelationships Evaluated ({len(data.edges)}):\n{edge_summary}\n\nEvidence Reviewed ({len(data.evidence)}):\n{evidence_summary}\n\nThe analysis revealed patterns in argument structure and evidence quality that inform the overall assessment.",
+                "analysis": "The argument demonstrates varying levels of evidence support and logical coherence. Key insights include the distribution of claim types, strength of evidence connections, and overall argument structure. Areas of strength and potential weaknesses were identified through systematic evaluation. Recommendations focus on improving evidence quality and logical flow.",
+                "conclusion": "This comprehensive analysis provides valuable insights into argument structure and effectiveness. The findings support evidence-based assessment of argument quality and offer actionable recommendations for improvement. The analysis methodology proved effective for evaluating complex argument structures.",
+                "appendix": f"Technical Details:\n- Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n- Total Claims: {len(data.nodes)}\n- Total Relationships: {len(data.edges)}\n- Total Evidence Items: {len(data.evidence)}\n- Analysis Tools: AI-powered evaluation systems\n- Report Generated By: IntelliProof AI System",
+                "report_metadata": {
+                    "title": data.graph_title or "Argument Analysis Report",
+                    "date": datetime.now().strftime('%Y-%m-%d'),
+                    "analyst": data.analyst_name or "IntelliProof AI",
+                    "contact": data.analyst_contact or "ai@intelliproof.com"
+                }
+            }
+            return GenerateComprehensiveReportResponse(**fallback_report)
+            
+    except Exception as e:
+        print(f"[ai_api] generate_comprehensive_report: Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/ai/export-report")

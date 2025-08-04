@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { ClaimNode, ClaimType } from "../../types/graph";
 import ContinueButton from "../ContinueButton";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 interface EvidenceCard {
   id: string;
@@ -29,6 +29,7 @@ interface NodePropertiesProps {
   evidenceCards: EvidenceCard[];
   supportingDocuments: SupportingDocument[];
   onUpdateEvidenceConfidence: (evidenceId: string, confidence: number) => void;
+  onUnlinkEvidence: (evidenceId: string, nodeId: string) => void;
   copilotOpen?: boolean;
   onClassifyClaimType?: (nodeId: string) => Promise<void>;
   onCloneEvidence: (originalEvidenceId: string, nodeId: string) => string;
@@ -51,6 +52,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   evidenceCards,
   supportingDocuments,
   onUpdateEvidenceConfidence,
+  onUnlinkEvidence,
   copilotOpen,
   onClassifyClaimType,
   onCloneEvidence,
@@ -355,6 +357,17 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                               : "Show analysis"}
                           </button>
                         )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to unlink this evidence from the claim? This action cannot be undone.")) {
+                              onUnlinkEvidence(eid, node.id);
+                            }
+                          }}
+                          className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1 mt-1"
+                        >
+                          <XMarkIcon className="w-3.5 h-3.5" />
+                          Unlink evidence
+                        </button>
                       </div>
                       {expandedEvidenceId === eid && (
                         <div className="text-xs bg-gray-50 p-3 rounded space-y-2">

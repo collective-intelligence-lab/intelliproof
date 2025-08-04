@@ -719,7 +719,7 @@ def critique_graph(data: CritiqueGraphRequest = Body(...)):
         import os
         import json  # Ensure json is available in this scope
         
-        yaml_path = os.path.join(os.path.dirname(__file__), "..", "spec", "argument_patterns_bank.yaml")
+        yaml_path = os.path.join(os.path.dirname(__file__), "argument_patterns_bank.yaml")
         with open(yaml_path, 'r') as file:
             patterns = yaml.safe_load(file)
         

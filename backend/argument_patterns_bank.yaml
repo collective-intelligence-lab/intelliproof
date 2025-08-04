@@ -1,0 +1,310 @@
+fallacious:
+  subtypes:
+    - name: Circular Reasoning
+      category: Structural
+      description: A proposition ultimately supports itself through a closed loop of premises.
+      graph_pattern: (A) supports (B), (B) supports (A)
+      graph_implication: Presence of a support cycle where conclusion is indirectly used to justify itself.
+
+    - name: Self-Attack
+      category: Structural
+      description: A node attacks itself, contradicting its own claim.
+      graph_pattern: (A) attacks (A)
+      graph_implication: Node has an edge directed to itself with type 'attack'.
+
+    - name: Unsupported Conclusion
+      category: Structural
+      description: A claim is asserted as a conclusion without any incoming support.
+      graph_pattern: Node with no incoming support edges
+      graph_implication: Sink node with no supporting premises.
+
+    - name: Redundancy
+      category: Structural
+      description: Two or more nodes make the same claim or premise unnecessarily.
+      graph_pattern: (A) supports (C), (A') supports (C) where A ≈ A'
+      graph_implication: Multiple edges from semantically equivalent nodes to the same target.
+
+    - name: Contradiction
+      category: Structural
+      description: The graph supports mutually exclusive claims.
+      graph_pattern: (A) supports (C), (¬A) supports (C)
+      graph_implication: Mutually exclusive nodes converge on the same conclusion.
+
+    - name: False Cause
+      category: Semantic
+      description: Assumes a causal relationship where only correlation exists.
+      graph_pattern: (A) supports (B)
+      graph_implication: Temporal or correlational link used to imply causation.
+
+    - name: Non Sequitur
+      category: Semantic
+      description: The conclusion does not logically follow from the premises.
+      graph_pattern: (A) supports (B) with no logical entailment
+      graph_implication: Weak or missing logical link between premise and conclusion.
+
+    - name: Begging the Question
+      category: Semantic
+      description: The conclusion is assumed within the premise.
+      graph_pattern: (A) supports (B), A and B are paraphrases
+      graph_implication: Near-duplicate claim nodes in a support relation.
+
+    - name: False Dichotomy
+      category: Semantic
+      description: Presents two options as exhaustive when more exist.
+      graph_pattern: (A) attacks (B), (¬A) supports (C)
+      graph_implication: Artificially binary framing of choices in attack/support edges.
+
+    - name: Hasty Generalization
+      category: Semantic
+      description: Broad conclusion drawn from too few examples.
+      graph_pattern: (A1) supports (B), (A2) supports (B), etc.
+      graph_implication: Too few premise nodes supporting a generalized claim node.
+
+    - name: Straw Man
+      category: Dialectical
+      description: Attacks a misrepresented version of the opponent’s claim.
+      graph_pattern: (B) attacks (A'), A' ≠ A (weaker version)
+      graph_implication: Attack edge targets a distorted node not equivalent to true claim.
+
+    - name: Ad Hominem
+      category: Dialectical
+      description: Attacks the speaker rather than the argument.
+      graph_pattern: (X is unreliable) attacks (A)
+      graph_implication: Attack from node representing source credibility rather than proposition content.
+
+    - name: Appeal to Authority
+      category: Dialectical
+      description: Uses authority as a substitute for evidence.
+      graph_pattern: (X said A) supports (A)
+      graph_implication: Support edge from a claim of authority to a proposition without independent backing.
+
+    - name: Tu Quoque
+      category: Dialectical
+      description: Counters a criticism by pointing out hypocrisy.
+      graph_pattern: (B did A too) attacks (A)
+      graph_implication: Attack node targets arguer’s consistency instead of proposition validity.
+
+    - name: Slippery Slope
+      category: Dialectical
+      description: Asserts a chain of consequences without evidence.
+      graph_pattern: (A) supports (B), (B) supports (C), ..., (Y) supports (Z)
+      graph_implication: Long linear chain with weak or implicit intermediate supports.
+
+    - name: Loaded Question
+      category: Substructural
+      description: A question that embeds a hidden presupposition.
+      graph_pattern: Node includes implicit premise (e.g., “Have you stopped...?”)
+      graph_implication: Single node contains bundled claims; missing premise not explicitly modeled.
+
+    - name: Presupposition Failure
+      category: Substructural
+      description: Argument assumes truth of an unverified background claim.
+      graph_pattern: (A) supports (B), A is unstated
+      graph_implication: Critical implicit node required for inferential link to hold.
+
+    - name: Unstated Warrant
+      category: Substructural
+      description: A hidden logical bridge is required for the inference but is not made explicit.
+      graph_pattern: (A) supports (C), missing (B) such that A → B → C
+      graph_implication: Logical intermediate not present in graph.
+
+    - name: Implicit Bias
+      category: Substructural
+      description: An argument relies on cultural or normative assumptions without acknowledgment.
+      graph_pattern: (A) supports (B), but A encodes bias
+      graph_implication: Node content depends on shared norms not modeled in graph.
+
+    - name: Appeal to Emotion
+      category: Dialectical
+      description: Tries to persuade by evoking feelings rather than logic.
+      graph_pattern: (Fear/sympathy) supports (Claim)
+      graph_implication: Emotional content node used in support edge.
+
+    - name: Equivocation
+      category: Semantic
+      description: A term is used ambiguously across multiple nodes.
+      graph_pattern: (A) supports (B), shared term shifts meaning
+      graph_implication: Semantic drift between nodes sharing terms.
+
+    - name: Bandwagon
+      category: Dialectical
+      description: Claims something is true because many people believe it.
+      graph_pattern: (Majority believes A) supports (A)
+      graph_implication: Crowd-opinion node used as support.
+
+    - name: Appeal to Tradition
+      category: Dialectical
+      description: Justifies a claim because it’s always been done that way.
+      graph_pattern: (Historical precedent) supports (A)
+      graph_implication: Normative support from tradition node without further justification.
+
+good_argument:
+  description: Arguments that are logically valid, epistemically grounded, persuasive, and fair in dialectical structure.
+  subtypes:
+    - name: Sound Deductive Argument
+      category: Logical
+      description: A logically valid structure with true premises and a conclusion that necessarily follows.
+      graph_pattern: (A1), (A2), (A3) → support → (C)
+      graph_implication: Premises form a tight support path with no ambiguity or reliance on external assumptions.
+
+    - name: Strong Inductive Argument
+      category: Empirical
+      description: Premises make the conclusion highly probable based on observable or measurable evidence.
+      graph_pattern: (Repeated observations) support (Generalization)
+      graph_implication: Multiple factual nodes converge to a value or policy node with credible support.
+
+    - name: Causally Coherent Argument
+      category: Causal
+      description: Demonstrates a clear and plausible causal mechanism with temporal and logical coherence.
+      graph_pattern: (A causes B), (B causes C)
+      graph_implication: Causal chain respects real-world dependencies and avoids false cause.
+
+    - name: Normatively Justified Argument
+      category: Ethical / Policy
+      description: Justifies a policy or value conclusion based on shared or defensible ethical premises.
+      graph_pattern: (Value premise) supports (Policy claim)
+      graph_implication: Normative claim is traceable to explicitly stated ethical values, not implicit bias.
+
+    - name: Fair Dialectical Argument
+      category: Dialogical
+      description: Engages opposing views respectfully and refutes them with evidence.
+      graph_pattern: (A1) supports (B), (¬A1) attacks (A1), (B) rebuts (¬A1)
+      graph_implication: Includes both attack and defense edges, showing reasoned engagement.
+
+    - name: Transparent Premise Argument
+      category: Epistemic
+      description: Clearly lays out all assumptions and does not rely on unstated warrants or presuppositions.
+      graph_pattern: "Premises fully specified, no implicit: true nodes"
+      graph_implication: All graph nodes are explicit and observable or definitional.
+
+    - name: Concise and Non-Redundant Argument
+      category: Structural
+      description: Avoids unnecessary repetition, irrelevant detours, or bloated reasoning.
+      graph_pattern: Minimal path to conclusion without redundant supports
+      graph_implication: "Graph has high support efficiency: few nodes, clear conclusion."
+
+    - name: Analogically Appropriate Argument
+      category: Analogical
+      description: Uses analogies that are structurally and contextually aligned with the target claim.
+      graph_pattern: (A is like B), (B has property C), thus (A has C)
+      graph_implication: Explicit analogy node, followed by justified transference to conclusion.
+
+    - name: Empirically Grounded Argument
+      category: Evidence-based
+      description: Cites reliable data, studies, or observations to support a claim.
+      graph_pattern: (Study/Data A) supports (Claim B)
+      graph_implication: Support from nodes labeled as sourced, observable, or evidentiary.
+
+    - name: Balanced Argument
+      category: Reasonableness
+      description: Acknowledges complexity and uncertainty without oversimplifying.
+      graph_pattern: (A) supports (B), (¬A) also acknowledged as possible
+      graph_implication: Competing claims shown without false dichotomy or dismissal.
+
+absurd:
+  description: Arguments that rely on wildly implausible, fantastical, or irrational premises or inferences.
+  subtypes:
+    - name: Magical Thinking
+      category: Semantic
+      description: Premises appeal to supernatural or impossible mechanisms without justification.
+      graph_pattern: (A) supports (B), where A relies on fictional forces
+      graph_implication: Nodes contain epistemically implausible premises.
+
+    - name: Science-Fiction Causality
+      category: Semantic
+      description: The causal reasoning relies on speculative or fantasy-world logic.
+      graph_pattern: (A) supports (B), but A references implausible scientific mechanisms
+      graph_implication: Support relation violates scientific plausibility.
+
+    - name: Layered Implausibility
+      category: Composite
+      description: Multiple individually implausible claims stacked into a single argument.
+      graph_pattern: Deep linear chain of support nodes
+      graph_implication: Reasoning depth increases, but credibility decreases.
+
+conspiratorial:
+  description: Arguments asserting covert, coordinated control by powerful actors, typically non-falsifiable and distrustful of all opposition.
+  subtypes:
+    - name: Deep State Narrative
+      category: Dialectical
+      description: Claim that a hidden group secretly controls institutions.
+      graph_pattern: (Unknown actor) supports (Event explanation)
+      graph_implication: Node attribution to unverifiable actors; edges often exclude external contradiction.
+
+    - name: Self-Sealing Belief
+      category: Semantic
+      description: Reinterprets counterevidence as further proof of the conspiracy.
+      graph_pattern: (A) supports (¬B), (¬B) attacks (A)
+      graph_implication: Reversal of logical refutation.
+
+    - name: Manufactured Crisis
+      category: Structural
+      description: Asserts major events are planned hoaxes or distractions.
+      graph_pattern: (X event) supports (Y conclusion), with no verifiable support
+      graph_implication: Unsupported claims about motive and orchestration.
+
+dogmatic:
+  description: Arguments that assert truths rigidly, often without support or allowing contradiction.
+  subtypes:
+    - name: Authoritarian Axiom
+      category: Structural
+      description: Uses position or ideology as justification.
+      graph_pattern: (X said A) supports (A)
+      graph_implication: Support edge from authority node without further justification.
+
+    - name: Refusal to Engage
+      category: Dialectical
+      description: Rejects counterclaims without refuting them.
+      graph_pattern: (A) attacks (B), B has no outgoing support
+      graph_implication: One-sided attack graph with no dialectical engagement.
+
+manipulative:
+  description: Arguments that rely on rhetorical force, emotion, or social pressure rather than reasoning.
+  subtypes:
+    - name: Emotional Slogan
+      category: Dialectical
+      description: A claim that uses charged language to bypass logic.
+      graph_pattern: (Emotionally loaded claim) supports (Conclusion)
+      graph_implication: Support edge from rhetorical node lacking evidentiary value.
+
+    - name: Tribal Appeal
+      category: Dialectical
+      description: Leverages group identity to assert claim validity.
+      graph_pattern: (We believe X) supports (X)
+      graph_implication: In-group justification without external reasoning.
+
+speculative:
+  description: Arguments built around ungrounded possibilities or imaginative what-if scenarios.
+  subtypes:
+    - name: Counterfactual Cascade
+      category: Semantic
+      description: Explores hypothetical chains of events without anchoring them to reality.
+      graph_pattern: (A) supports (B) supports (C) ...
+      graph_implication: Deep hypothetical chain with no initial grounding.
+
+satirical:
+  description: Arguments that mimic flawed logic or exaggerate absurdity to critique or amuse.
+  subtypes:
+    - name: Parodic Mimicry
+      category: Composite
+      description: Mimics conspiracy logic to expose its flaws.
+      graph_pattern: Identical to flawed graphs, but context reveals parody
+      graph_implication: Indistinguishable structure, but intent differs.
+
+mythological:
+  description: Arguments grounded in symbolic, religious, or allegorical storytelling rather than logic or evidence.
+  subtypes:
+    - name: Archetypal Justification
+      category: Value-based
+      description: Uses mythic patterns (e.g., hero's journey) as moral support.
+      graph_pattern: (Mythic event) supports (Modern conclusion)
+      graph_implication: Symbolic premises mapped onto empirical claims.
+
+troll:
+  description: Arguments constructed in bad faith to provoke, confuse, or derail.
+  subtypes:
+    - name: Baiting
+      category: Dialectical
+      description: Designed to incite strong response or derail discussion.
+      graph_pattern: (Inflammatory A) supports (Ridiculous B)
+      graph_implication: Graph appears nonsensical or offensive in structure.

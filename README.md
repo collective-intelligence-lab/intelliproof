@@ -312,25 +312,9 @@ PUSH MONDAY 21 JULY 2025 BUG FIXES TO REMEMMBER
 
 TO WORK ON: 
 
-  * Edge clarification with Kabir: EDGE MUST BE CHANGEABLE FROM SUPPORT TO ATTACK BY AI SO ...
-
-  * critique graph (G) --> argument_patterns_bank.yaml but wait for Kaveh confirmation that VALID 
-
-
-  * propagation function not updating confidence intervals
-  * report graph (G) -->
-
-  * generate assumptions() -->
-
-  * evaluate assumptions() -->
-
-
-  ? classify claim type --> ???? (maybe user doesnt know what their claim acutally is)
-
-
+  * Report Generation
 
   QUESTIONS: 
-
 
   -- storage of messages neccessary?
   -- purpose and domain of chatbox (AI custom messages)

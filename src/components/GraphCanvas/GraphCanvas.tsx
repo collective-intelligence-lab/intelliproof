@@ -397,13 +397,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           id: node.id,
           evidence:
             Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
+              node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                  const evidenceCard = evidenceCards.find(
-                    (card) => card.id === evId
-                  );
-                  return evidenceCard ? evidenceCard.confidence : 0;
-                })
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
               : [],
           evidence_min: -1.0,
           evidence_max: 1.0,
@@ -470,9 +470,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "system",
-          content: `Error: ${
-            error instanceof Error ? error.message : "Unknown error occurred"
-          }`,
+          content: `Error: ${error instanceof Error ? error.message : "Unknown error occurred"
+            }`,
         },
       ]);
     } finally {
@@ -985,7 +984,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     const hasEvidenceChange =
       updates.data?.evidenceIds !== undefined &&
       JSON.stringify(updates.data.evidenceIds) !==
-        JSON.stringify(node.data.evidenceIds);
+      JSON.stringify(node.data.evidenceIds);
 
     console.log(
       `[GraphCanvas] handleNodeUpdate: Change detection - content: ${hasContentChange}, type: ${hasTypeChange}, evidence: ${hasEvidenceChange}`
@@ -1014,12 +1013,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           const style =
             newType !== node.data.type
               ? {
-                  ...currentStyle,
-                  ...getNodeStyle(newType),
-                  // Keep existing width/height if they exist
-                  ...(currentStyle.width && { width: currentStyle.width }),
-                  ...(currentStyle.height && { height: currentStyle.height }),
-                }
+                ...currentStyle,
+                ...getNodeStyle(newType),
+                // Keep existing width/height if they exist
+                ...(currentStyle.width && { width: currentStyle.width }),
+                ...(currentStyle.height && { height: currentStyle.height }),
+              }
               : currentStyle;
           const updatedData = {
             ...node.data,
@@ -1532,14 +1531,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         id: node.id,
         evidence:
           Array.isArray(node.data.evidenceIds) &&
-          node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-                // Find the evidence card and use its confidence, or 0 if not found
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                return evidenceCard ? evidenceCard.confidence : 0;
-              })
+              // Find the evidence card and use its confidence, or 0 if not found
+              const evidenceCard = evidenceCards.find(
+                (card) => card.id === evId
+              );
+              return evidenceCard ? evidenceCard.confidence : 0;
+            })
             : [], // Empty array for no evidence instead of [0.5]
         evidence_min: -1.0,
         evidence_max: 1.0,
@@ -1673,13 +1672,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         type: node.data.type,
         evidence:
           Array.isArray(node.data.evidenceIds) &&
-          node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                return evidenceCard ? evidenceCard.confidence : 0;
-              })
+              const evidenceCard = evidenceCards.find(
+                (card) => card.id === evId
+              );
+              return evidenceCard ? evidenceCard.confidence : 0;
+            })
             : [],
         evidence_min: -1.0,
         evidence_max: 1.0,
@@ -1798,9 +1797,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "ai",
-          content: `<span style="color: red;">Error computing credibility for node ${nodeId}: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }</span>`,
+          content: `<span style="color: red;">Error computing credibility for node ${nodeId}: ${error instanceof Error ? error.message : "Unknown error"
+            }</span>`,
         },
       ]);
     } finally {
@@ -1840,7 +1838,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -2014,9 +2012,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               ...msgs,
               {
                 role: "ai",
-                content: `Error computing credibility scores for node ${nodeId}: ${
-                  error instanceof Error ? error.message : "Unknown error"
-                }`,
+                content: `Error computing credibility scores for node ${nodeId}: ${error instanceof Error ? error.message : "Unknown error"
+                  }`,
               },
             ]);
           }
@@ -2032,9 +2029,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "ai",
-              content: `Error checking evidence: ${
-                error instanceof Error ? error.message : "Unknown error"
-              }`,
+              content: `Error checking evidence: ${error instanceof Error ? error.message : "Unknown error"
+                }`,
             },
           ]);
         });
@@ -2086,7 +2082,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         console.error(
           `[GraphCanvas] triggerCheckNodeEvidence: API error: ${errorMsg}`
         );
@@ -2155,7 +2151,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const avgConfidence =
         updatedConfidences.length > 0
           ? updatedConfidences.reduce((a, b) => a + b, 0) /
-            updatedConfidences.length
+          updatedConfidences.length
           : 0;
 
       console.log(
@@ -2166,12 +2162,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         prevNodes.map((n) =>
           n.id === node.id
             ? {
-                ...n,
-                data: {
-                  ...n.data,
-                  belief: avgConfidence,
-                },
-              }
+              ...n,
+              data: {
+                ...n.data,
+                belief: avgConfidence,
+              },
+            }
             : n
         )
       );
@@ -2240,38 +2236,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           // Use updated confidences for this specific node
           nodeEvidence =
             Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
+              node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                  const updatedConfidence = updatedEvidenceMap.get(evId);
-                  if (updatedConfidence !== undefined) {
-                    console.log(
-                      `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using updated confidence ${updatedConfidence} for evidence ${evId}`
-                    );
-                    return updatedConfidence;
-                  }
-                  const evidenceCard = evidenceCards.find(
-                    (card) => card.id === evId
-                  );
-                  const fallbackConfidence = evidenceCard
-                    ? evidenceCard.confidence
-                    : 0;
+                const updatedConfidence = updatedEvidenceMap.get(evId);
+                if (updatedConfidence !== undefined) {
                   console.log(
-                    `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using fallback confidence ${fallbackConfidence} for evidence ${evId}`
+                    `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using updated confidence ${updatedConfidence} for evidence ${evId}`
                   );
-                  return fallbackConfidence;
-                })
+                  return updatedConfidence;
+                }
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                const fallbackConfidence = evidenceCard
+                  ? evidenceCard.confidence
+                  : 0;
+                console.log(
+                  `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using fallback confidence ${fallbackConfidence} for evidence ${evId}`
+                );
+                return fallbackConfidence;
+              })
               : [];
         } else {
           // Use state for other nodes
           nodeEvidence =
             Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
+              node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                  const evidenceCard = evidenceCards.find(
-                    (card) => card.id === evId
-                  );
-                  return evidenceCard ? evidenceCard.confidence : 0;
-                })
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
               : [];
         }
 
@@ -2479,7 +2475,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -2586,7 +2582,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             try {
               const errorData = await response.json();
               if (errorData.detail) errorMsg = errorData.detail;
-            } catch {}
+            } catch { }
             throw new Error(errorMsg);
           }
           const data = await response.json();
@@ -2617,9 +2613,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "assistant",
-              content: `<span class='text-red-600'>Error: ${
-                err instanceof Error ? err.message : err
-              }</span>`,
+              content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
+                }</span>`,
             },
           ]);
         }
@@ -2706,7 +2701,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -2737,9 +2732,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${
-            err instanceof Error ? err.message : err
-          }</span>`,
+          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
+            }</span>`,
         },
       ]);
     }
@@ -2843,7 +2837,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -2943,9 +2937,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           ...msgs,
           {
             role: "ai",
-            content: `--- Processing Edge ${i + 1}/${edges.length}: ${
-              sourceNode.data.text
-            } → ${targetNode.data.text} ---`,
+            content: `--- Processing Edge ${i + 1}/${edges.length}: ${sourceNode.data.text
+              } → ${targetNode.data.text} ---`,
           },
         ]);
 
@@ -2973,8 +2966,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         };
 
         console.log(
-          `[GraphCanvas] handleGenerateAllAssumptions: Processing edge ${
-            i + 1
+          `[GraphCanvas] handleGenerateAllAssumptions: Processing edge ${i + 1
           }/${edges.length}`
         );
 
@@ -2989,7 +2981,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           try {
             const errorData = await response.json();
             if (errorData.detail) errorMsg = errorData.detail;
-          } catch {}
+          } catch { }
 
           setCopilotMessages((msgs) => [
             ...msgs,
@@ -3000,8 +2992,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
         const data = await response.json();
         console.log(
-          `[GraphCanvas] handleGenerateAllAssumptions: Received response for edge ${
-            i + 1
+          `[GraphCanvas] handleGenerateAllAssumptions: Received response for edge ${i + 1
           }:`,
           data
         );
@@ -3128,7 +3119,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -3320,7 +3311,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -3356,13 +3347,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           prevNodes.map((n) =>
             n.id === node.id
               ? {
-                  ...n,
-                  data: {
-                    ...n.data,
-                    type: data.evaluation,
-                  },
-                  style: getNodeStyle(data.evaluation),
-                }
+                ...n,
+                data: {
+                  ...n.data,
+                  type: data.evaluation,
+                },
+                style: getNodeStyle(data.evaluation),
+              }
               : n
           )
         );
@@ -3582,12 +3573,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             {nodes.map((node) => (
                               <option key={node.id} value={node.id}>
                                 {node.data.text
-                                  ? `${node.data.text} (${
-                                      node.data.type || "unknown"
-                                    })`
-                                  : `Node ${node.id} (${
-                                      node.data.type || "unknown"
-                                    })`}
+                                  ? `${node.data.text} (${node.data.type || "unknown"
+                                  })`
+                                  : `Node ${node.id} (${node.data.type || "unknown"
+                                  })`}
                               </option>
                             ))}
                           </select>
@@ -3618,7 +3607,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   <PDFPreviewer
                                     ref={pdfPreviewerRef}
                                     url={doc.url}
-                                    onAddContent={() => {}}
+                                    onAddContent={() => { }}
                                     fixedWidth={350}
                                   />
                                 </div>
@@ -3704,20 +3693,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           return (
                             <div className="flex flex-row gap-4 items-stretch">
                               {/* Image Previewer on the left */}
-                              <div
-                                className="flex flex-col"
-                                style={{
-                                  width: 400,
-                                  minWidth: 400,
-                                  maxWidth: 400,
-                                }}
-                              >
+                              <div className="flex flex-col flex-1">
                                 <label className="block text-sm font-medium mb-0.5">
                                   Image Preview
                                 </label>
                                 <ImagePreviewer
                                   url={doc.url}
-                                  fixedWidth={400}
+                                  fixedWidth={350}
                                 />
                               </div>
                               {/* Centered Parse Text button */}
@@ -3828,7 +3810,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 )}
                               </div>
                               {/* Excerpt/Lines on the right */}
-                              <div className="w-1/2">
+                              <div className="flex-1">
                                 <label className="block text-sm font-medium mb-0.5">
                                   Excerpt / Lines
                                 </label>
@@ -4022,11 +4004,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   >
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
-                        isMenuOpen
-                          ? "bg-gray-100"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
+                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
+                        ? "bg-gray-100"
+                        : "text-gray-700 hover:bg-gray-100"
+                        }`}
                       title="Menu"
                     >
                       <EllipsisVerticalIcon
@@ -4071,11 +4052,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={undo}
                   disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    canUndo
-                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
+                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                    }`}
                   title="Undo"
                 >
                   <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
@@ -4083,11 +4063,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={redo}
                   disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    canRedo
-                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
+                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                    }`}
                   title="Redo"
                 >
                   <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
@@ -4118,6 +4097,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   title="Save"
                 >
                   <DocumentCheckIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+                <button
+                  onClick={handleCritiqueGraph}
+                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  title="Critique Graph"
+                >
+                  <DocumentMagnifyingGlassIcon className="w-8 h-8" strokeWidth={2} />
                 </button>
                 <button
                   onClick={handleGenerateReport}
@@ -4159,11 +4145,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="relative">
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
-                    isAddNodeOpen
-                      ? "bg-[#232F3E] text-white shadow-inner"
-                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    }`}
                   title="Add Claim"
                 >
                   <PlusIcon className="w-8 h-8" strokeWidth={2} />
@@ -4196,11 +4181,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={handleDeleteNode}
                 disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  selectedNode
-                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
+                  ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                  : "text-gray-300 cursor-not-allowed"
+                  }`}
                 title="Delete Claim"
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
@@ -4211,11 +4195,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Edge Type Buttons */}
               <button
                 onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "supporting"
-                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "supporting"
+                  ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="Supporting Edge"
               >
                 <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
@@ -4223,11 +4206,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <button
                 onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "attacking"
-                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "attacking"
+                  ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="Attacking Edge"
               >
                 <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
@@ -4238,11 +4220,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  isEvidencePanelOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
+                  ? "bg-[#232F3E] text-white shadow-inner"
+                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
                 title={
                   isEvidencePanelOpen
                     ? "Hide Evidence Panel"
@@ -4471,9 +4452,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
-                    className={`p-2 rounded-full transition-colors ${
-                      isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
-                    }`}
+                    className={`p-2 rounded-full transition-colors ${isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
+                      }`}
                     title={
                       isAICopilotFrozen
                         ? "Unfreeze Copilot Panel"
@@ -4490,9 +4470,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClick={() =>
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
-                    className={`p-2 hover:bg-white rounded-md transition-colors ${
-                      isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
-                    }`}
+                    className={`p-2 hover:bg-white rounded-md transition-colors ${isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
+                      }`}
                     aria-label="Close AI copilot"
                     disabled={isAICopilotFrozen}
                   >
@@ -4507,7 +4486,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   AI Copilot is ready to assist with your graph.
                 </div>
                 <CommandMessageBox
-                  title="Check Claim Evidence"
+                  title="Check All Claim Evidence"
                   content="Check evidence for each claim and evaluate relationship"
                   icon={<DocumentMagnifyingGlassIcon className="w-4 h-4" />}
                   onClick={handleCheckEvidence}
@@ -4529,6 +4508,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   disabled={copilotLoading}
                 />
                 <CommandMessageBox
+                  title="Validate All Edges"
+                  content="Checks all edges for support/attack/neutral and outputs reasoning for each."
+                  icon={<ArrowPathIcon className="w-4 h-4" />}
+                  onClick={validate_edges}
+                  disabled={copilotLoading}
+                />
+                <CommandMessageBox
                   title="Generate Assumptions"
                   content="Generates up to 5 assumptions required by the edge to be valid"
                   icon={<HandRaisedIcon className="w-4 h-4" />}
@@ -4540,20 +4526,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   content="Generates assumptions for all edges in the graph sequentially"
                   icon={<HandRaisedIcon className="w-4 h-4" />}
                   onClick={handleGenerateAllAssumptions}
-                  disabled={copilotLoading}
-                />
-                <CommandMessageBox
-                  title="Critique Graph"
-                  content="Analyzes the entire graph for argument flaws and pattern matches"
-                  icon={<DocumentMagnifyingGlassIcon className="w-4 h-4" />}
-                  onClick={handleCritiqueGraph}
-                  disabled={copilotLoading}
-                />
-                <CommandMessageBox
-                  title="Validate All Edges"
-                  content="Checks all edges for support/attack/neutral and outputs reasoning for each."
-                  icon={<ArrowPathIcon className="w-4 h-4" />}
-                  onClick={validate_edges}
                   disabled={copilotLoading}
                 />
                 <div className="mt-4 space-y-2">
@@ -4568,11 +4540,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         />
                       ) : (
                         <span
-                          className={`text-left text-sm ${
-                            msg.role === "system"
-                              ? "text-gray-500"
-                              : "text-black"
-                          }`}
+                          className={`text-left text-sm ${msg.role === "system"
+                            ? "text-gray-500"
+                            : "text-black"
+                            }`}
                         >
                           {msg.content}
                         </span>
@@ -4591,7 +4562,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               {/* Message Input */}
               <div className="border-t border-gray-200 p-4">
-                <div className="relative mb-6">
+                <div className="relative mb-2">
                   <input
                     type="text"
                     placeholder="Ask anything about your graph..."

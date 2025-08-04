@@ -1522,11 +1522,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       setReportProgress("Generating PDF...");
       const pdf = new jsPDF();
 
-      // Helper function to add content with pagination
+      // Helper function to add content with continuous flow
       const addContentSection = (title: string, content: string, startY: number = 50) => {
+        // Add section title
         pdf.setFontSize(16);
-        pdf.text(title, 20, 30);
-        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(title, 20, startY);
+        pdf.setFont('helvetica', 'normal');
+
+        // Add more spacing after title for better separation
+        let currentY = startY + 20;
 
         // Ensure content is a string and has meaningful content
         const safeContent = content && typeof content === 'string' && content.trim().length > 0
@@ -1534,69 +1539,123 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           : `No ${title.toLowerCase()} content available. This section would typically contain detailed analysis and findings.`;
 
         const lines = pdf.splitTextToSize(safeContent, 170);
-        let currentY = startY;
-        let pageCount = 0;
 
         for (let i = 0; i < lines.length; i++) {
           if (currentY > 270) { // Check if we need a new page
             pdf.addPage();
-            pdf.setFontSize(16);
-            pdf.text(title + " (continued)", 20, 30);
-            pdf.setFontSize(10);
-            currentY = 50;
-            pageCount++;
+            currentY = 30; // Start closer to top on new page
           }
           pdf.text(lines[i], 20, currentY);
           currentY += 7; // Line spacing
         }
 
-        return pageCount;
+        // Add more spacing after section for better separation
+        currentY += 25;
+
+        return currentY; // Return the final Y position for next section
       };
 
       // Add cover page
+      pdf.setFontSize(28);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("IntelliProof", 20, 40);
       pdf.setFontSize(24);
-      pdf.text("IntelliProof Argument Analysis Report", 20, 40);
+      pdf.text("Argument Analysis Report", 20, 60);
+      pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(14);
-      pdf.text(`Case: ${reportContent.report_metadata?.title || "Argument Analysis"}`, 20, 60);
+
+      // Add a line separator
+      pdf.line(20, 80, 190, 80);
+
+      pdf.text(`Case: ${reportContent.report_metadata?.title || "Argument Analysis"}`, 20, 100);
       pdf.setFontSize(12);
-      pdf.text(`Date: ${reportContent.report_metadata?.date || new Date().toLocaleDateString()}`, 20, 80);
-      pdf.text(`Analyst: ${reportContent.report_metadata?.analyst || "IntelliProof AI"}`, 20, 90);
-      pdf.text(`Contact: ${reportContent.report_metadata?.contact || "ai@intelliproof.com"}`, 20, 100);
+      pdf.text(`Date: ${reportContent.report_metadata?.date || new Date().toLocaleDateString()}`, 20, 120);
+      pdf.text(`Analyst: ${reportContent.report_metadata?.analyst || "IntelliProof AI"}`, 20, 135);
+      pdf.text(`Contact: ${reportContent.report_metadata?.contact || "ai@intelliproof.com"}`, 20, 150);
 
       // Add cover page description if available
       if (reportContent.cover_page) {
         pdf.setFontSize(10);
         const coverLines = pdf.splitTextToSize(reportContent.cover_page, 170);
-        pdf.text(coverLines, 20, 120);
+        pdf.text(coverLines, 20, 170);
       }
 
-      // Add executive summary
+      // Start content flow on page 2
       pdf.addPage();
-      addContentSection("Executive Summary", reportContent.executive_summary || "No executive summary available.");
 
-      // Add scope and objectives
-      pdf.addPage();
-      addContentSection("Scope & Objectives", reportContent.scope_objectives || "No scope and objectives available.");
+      // Add table of contents
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Table of Contents", 20, 30);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(12);
 
-      // Add methodology
-      pdf.addPage();
-      addContentSection("Methodology", reportContent.methodology || "No methodology available.");
+      let tocY = 50;
+      const sections = [
+        "Executive Summary",
+        "Scope & Objectives",
+        "Methodology",
+        "Findings",
+        "Analysis",
+        "Conclusion",
+        "Appendix"
+      ];
 
-      // Add findings
-      pdf.addPage();
-      addContentSection("Findings", reportContent.findings || "No findings available.");
+      sections.forEach((section, index) => {
+        pdf.text(`${index + 1}. ${section}`, 20, tocY);
+        tocY += 15;
+      });
 
-      // Add analysis
+      // Add a page break after table of contents to ensure clean separation
       pdf.addPage();
-      addContentSection("Analysis", reportContent.analysis || "No analysis available.");
 
-      // Add conclusion
-      pdf.addPage();
-      addContentSection("Conclusion", reportContent.conclusion || "No conclusion available.");
+      // Add sections continuously, flowing from one to the next
+      let currentY = 30; // Start position for first section on new page
 
-      // Add appendix
-      pdf.addPage();
-      addContentSection("Appendix", reportContent.appendix || "No appendix available.");
+      currentY = addContentSection("Executive Summary", reportContent.executive_summary || "No executive summary available.", currentY);
+
+      // Check if we need a new page before starting next section
+      if (currentY > 250) {
+        pdf.addPage();
+        currentY = 30;
+      }
+
+      currentY = addContentSection("Scope & Objectives", reportContent.scope_objectives || "No scope and objectives available.", currentY);
+
+      if (currentY > 250) {
+        pdf.addPage();
+        currentY = 30;
+      }
+
+      currentY = addContentSection("Methodology", reportContent.methodology || "No methodology available.", currentY);
+
+      if (currentY > 250) {
+        pdf.addPage();
+        currentY = 30;
+      }
+
+      currentY = addContentSection("Findings", reportContent.findings || "No findings available.", currentY);
+
+      if (currentY > 250) {
+        pdf.addPage();
+        currentY = 30;
+      }
+
+      currentY = addContentSection("Analysis", reportContent.analysis || "No analysis available.", currentY);
+
+      if (currentY > 250) {
+        pdf.addPage();
+        currentY = 30;
+      }
+
+      currentY = addContentSection("Conclusion", reportContent.conclusion || "No conclusion available.", currentY);
+
+      if (currentY > 250) {
+        pdf.addPage();
+        currentY = 30;
+      }
+
+      currentY = addContentSection("Appendix", reportContent.appendix || "No appendix available.", currentY);
 
       // Save the PDF
       const fileName = `${title || "argument-analysis"}-comprehensive-report.pdf`;

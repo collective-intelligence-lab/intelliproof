@@ -325,7 +325,6 @@ TO WORK ON:
   -- WAITING ON propagation function      FROM KAVEH  
 
 
-
   BUGS:
 
   * critique graph -> yaml identification not showing
@@ -358,6 +357,18 @@ FRONTEND BUGS
     --> when u add an edge, it is impossible to switch from attack or support
     --> NOT SERIOUS : easier way to change direction after adding edge
 
+    * Do we actually need the arrows that change edge from attatcking/defending
+        --> maybe the toggler can be added to edge edit modal 
+
+* Unlink Evidence not working
+
+    --> add evidence via the Edit Claim Modal, then try Unlink it
+    --> Need to update Redux via useEffect or useState update
+
+* Inability to delete evidence from evidence management section
+
+
+
 BACKEND BUGS
 
   * (DONE) argument_patterns_bank.yaml missing from the vercel deployment
@@ -367,55 +378,10 @@ BACKEND BUGS
     FIX --> copy .yaml file from ../spec to intelliproof/backend/upload
   * 
 
-## Enhanced Generate Report Functionality
+  * Report Generation 
 
-The Generate Report feature has been significantly enhanced to provide comprehensive argument analysis reports. The new functionality:
+          --> runs check_all, might be easier to collect info from console instead
+          --> Executive Summary Header overlapping with into section
 
-### What it does:
-1. **Runs multiple AI analyses in sequence:**
-   - Evidence evaluation for all nodes
-   - Edge validation for all connections  
-   - Assumptions generation and analysis
-   - Graph critique and pattern matching
-
-2. **Generates a professional report** following intelligence analysis standards with:
-   - Cover page with case title, date, and analyst info
-   - Executive summary overview
-   - Scope & objectives section
-   - Methodology description
-   - Structured findings with evidence links
-   - Analysis and insights
-   - Conclusions and recommendations
-   - Appendix with raw data
-
-3. **Provides real-time progress feedback** with:
-   - Loading indicators during generation
-   - Progress toast notifications
-   - Step-by-step status updates
-   - Error handling and recovery
-
-### Technical Implementation:
-
-#### Backend (`ai_api.py`):
-- New endpoint: `/api/ai/generate-comprehensive-report`
-- Combines results from multiple AI analyses
-- Generates structured report content
-- Returns PDF-ready data structure
-
-#### Frontend (`GraphCanvas.tsx`):
-- Enhanced `handleGenerateReport()` function
-- Progress tracking and UI feedback
-- Error handling and user notifications
-- Integration with existing AI analysis functions
-
-### Usage:
-1. Click the "Generate Report" button in the graph editor
-2. Watch the progress indicator as analyses run
-3. Download the comprehensive PDF report when complete
-
-### Debug Features:
-- Extensive console logging throughout the process
-- Step-by-step progress tracking
-- Error reporting and recovery
-- Performance monitoring
- 
+          --> graph information needs to be re-referenced with frontend to get 
+              claim text, claim type, edge type, evidence text information

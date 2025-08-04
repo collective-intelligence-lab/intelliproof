@@ -923,7 +923,7 @@ def generate_comprehensive_report(data: GenerateComprehensiveReportRequest = Bod
         Create a detailed, professional intelligence analysis report. Each section should be substantial and informative:
         
         1. COVER PAGE: Professional cover with title, date, analyst info, and brief description
-        2. EXECUTIVE SUMMARY: 2-3 paragraph overview of key findings, argument structure, and main conclusions
+        2. EXECUTIVE SUMMARY: 3-5 paragraph overview of key findings, argument structure, and main conclusions
         3. SCOPE & OBJECTIVES: Detailed description of what was analyzed, why it matters, and investigation goals
         4. METHODOLOGY: Comprehensive description of analysis approach, tools used, and evaluation criteria
         5. FINDINGS: Detailed structured results including:
@@ -942,15 +942,15 @@ def generate_comprehensive_report(data: GenerateComprehensiveReportRequest = Bod
         
         IMPORTANT: You must respond with ONLY a valid JSON object. Do not include any markdown formatting, explanations, or other text outside the JSON.
         
-        Format the response as a JSON object with these exact keys. Each section should be substantial (200-500 words):
+        Format the response as a JSON object with these exact keys. Each section should be substantial (400-800 words):
         {{
             "cover_page": "Professional cover page content with title, date, analyst info",
             "executive_summary": "Detailed 2-3 paragraph executive summary",
             "scope_objectives": "Comprehensive scope and objectives section", 
             "methodology": "Detailed methodology description",
-            "findings": "Comprehensive findings with structured analysis",
+            "findings": "Comprehensive findings with structured analysis. Include a summary of node arguments, evidence and relationships between nodes and edges",
             "analysis": "In-depth analysis with insights and recommendations",
-            "conclusion": "Detailed conclusion with key takeaways",
+            "conclusion": "Detailed conclusion with key takeaways. Include potential weaknesss, shortfalls and ways to improve the overall argument.",
             "appendix": "Comprehensive appendix with raw data and details",
             "report_metadata": {{
                 "title": "{data.graph_title or "Argument Analysis"}",

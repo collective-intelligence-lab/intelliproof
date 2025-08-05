@@ -152,6 +152,7 @@ const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
 const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localText, setLocalText] = useState(data.text);
+  const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const CHARACTER_LIMIT = 200;
 
@@ -219,6 +220,41 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
     e.stopPropagation();
   };
 
+  // Drag and drop handlers for evidence
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const evidenceId = e.dataTransfer.getData("application/x-evidence-id");
+    console.log(
+      `[CustomNode handleDrop] Evidence ID: ${evidenceId}, Node ID: ${id}`
+    );
+
+    if (!evidenceId) {
+      console.log(`[CustomNode handleDrop] No evidence ID found`);
+      return;
+    }
+
+    console.log(
+      `[CustomNode handleDrop] Calling onEvidenceDrop with evidenceId: ${evidenceId}`
+    );
+    // Call the onEvidenceDrop callback if it exists
+    data.onEvidenceDrop?.(evidenceId);
+  };
+
   useEffect(() => {
     if (isEditing) {
       inputRef.current?.focus();
@@ -246,7 +282,14 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
           boxShadow: "none",
         }}
       />
-      <div className="flex flex-col w-full p-0 m-0 group relative">
+      <div
+        className={`flex flex-col w-full p-0 m-0 group relative transition-all duration-200 ${
+          isDragOver ? "ring-2 ring-[#7283D9] ring-opacity-50 bg-[#F0F4FF]" : ""
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {/* Score circle in top right */}
         <div
           className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center z-10"
@@ -676,12 +719,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               },
               evidenceIds: nodeData.evidenceIds || [],
               onEvidenceDrop: (evidenceId: string) => {
-                handleNodeUpdate(node.id, {
-                  data: {
-                    ...nodeData,
-                    evidenceIds: [...(nodeData.evidenceIds || []), evidenceId],
-                  },
-                });
+                handleNodeEvidenceDrop(node.id, evidenceId);
               },
             },
             style: getNodeStyle(nodeData.type || node.type), // Always use getNodeStyle
@@ -781,6 +819,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           handleNodeUpdate(newNode.id, {
             data: { ...newNode.data, text: newText },
           });
+        },
+        onEvidenceDrop: (evidenceId: string) => {
+          handleNodeEvidenceDrop(newNode.id, evidenceId);
         },
       },
       style: getNodeStyle(type), // Explicitly set the style
@@ -1072,6 +1113,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 handleNodeUpdate(nodeId, {
                   data: { ...updatedData, text: newText },
                 });
+              },
+              onEvidenceDrop: (evidenceId: string) => {
+                handleNodeEvidenceDrop(nodeId, evidenceId);
               },
             },
             style: getNodeStyle(updates.data?.type || node.data.type), // Always use getNodeStyle
@@ -1400,13 +1444,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Drag start handler for evidence cards
   // Function to clone evidence when it's added to a node
   const cloneEvidence = (originalEvidenceId: string, nodeId: string) => {
+    console.log(
+      `[cloneEvidence] Cloning evidence ${originalEvidenceId} for node ${nodeId}`
+    );
+    console.log(
+      `[cloneEvidence] Current evidenceCards count:`,
+      evidenceCards.length
+    );
+
     const originalEvidence = evidenceCards.find(
       (card) => card.id === originalEvidenceId
     );
-    if (!originalEvidence) return originalEvidenceId; // Fallback to original if not found
+
+    if (!originalEvidence) {
+      console.log(
+        `[cloneEvidence] Original evidence not found: ${originalEvidenceId}`
+      );
+      return originalEvidenceId; // Fallback to original if not found
+    }
 
     // Create a new ID that combines original evidence ID and node ID
     const newEvidenceId = `${originalEvidenceId}_${nodeId}`;
+    console.log(`[cloneEvidence] New evidence ID: ${newEvidenceId}`);
 
     // Create the cloned evidence card
     const clonedEvidence = {
@@ -1415,8 +1474,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       confidence: originalEvidence.confidence, // Start with same confidence
     };
 
+    console.log(`[cloneEvidence] Cloned evidence:`, clonedEvidence);
+
     // Add the cloned evidence to evidenceCards
-    setEvidenceCards((prev) => [...prev, clonedEvidence]);
+    setEvidenceCards((prev) => {
+      console.log(
+        `[cloneEvidence] Adding to evidenceCards. Previous count: ${prev.length}`
+      );
+      const newArray = [...prev, clonedEvidence];
+      console.log(
+        `[cloneEvidence] New evidenceCards count: ${newArray.length}`
+      );
+      return newArray;
+    });
 
     return newEvidenceId;
   };
@@ -1425,6 +1495,83 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     event.dataTransfer.setData("application/x-evidence-id", cardId);
     event.dataTransfer.effectAllowed = "move";
   };
+
+  // Handle evidence drop on nodes with cloning logic
+  const handleNodeEvidenceDrop = useCallback(
+    (nodeId: string, evidenceId: string) => {
+      console.log(
+        `[handleNodeEvidenceDrop] Called with nodeId: ${nodeId}, evidenceId: ${evidenceId}`
+      );
+
+      // Clone the evidence first
+      const clonedEvidenceId = cloneEvidence(evidenceId, nodeId);
+      console.log(
+        `[handleNodeEvidenceDrop] Cloned evidence ID: ${clonedEvidenceId}`
+      );
+
+      // Use setNodes to get and update the current node state
+      setNodes((currentNodes) => {
+        console.log(
+          `[handleNodeEvidenceDrop] Available nodes:`,
+          currentNodes.map((n) => ({ id: n.id, text: n.data.text }))
+        );
+
+        const node = currentNodes.find((n) => n.id === nodeId);
+        if (!node) {
+          console.log(`[handleNodeEvidenceDrop] Node not found: ${nodeId}`);
+          console.log(
+            `[handleNodeEvidenceDrop] Available node IDs:`,
+            currentNodes.map((n) => n.id)
+          );
+          return currentNodes; // Return unchanged if node not found
+        }
+
+        const prevIds = Array.isArray(node.data.evidenceIds)
+          ? node.data.evidenceIds
+          : [];
+        console.log(`[handleNodeEvidenceDrop] Current evidenceIds:`, prevIds);
+
+        // Check if this original evidence is already attached (check for cloned versions)
+        const isAlreadyAttached = prevIds.some((id) =>
+          id.startsWith(`${evidenceId}_`)
+        );
+
+        if (!isAlreadyAttached) {
+          console.log(
+            `[handleNodeEvidenceDrop] Evidence not attached yet, updating node...`
+          );
+
+          const newEvidenceIds = [...prevIds, clonedEvidenceId];
+          console.log(
+            `[handleNodeEvidenceDrop] New evidenceIds:`,
+            newEvidenceIds
+          );
+
+          // Update the specific node
+          return currentNodes.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    evidenceIds: newEvidenceIds,
+                    // Preserve callbacks
+                    onChange: n.data.onChange,
+                    onEvidenceDrop: n.data.onEvidenceDrop,
+                  },
+                }
+              : n
+          );
+        } else {
+          console.log(
+            `[handleNodeEvidenceDrop] Evidence already attached, skipping`
+          );
+          return currentNodes; // Return unchanged
+        }
+      });
+    },
+    [cloneEvidence]
+  );
 
   const handleExport = () => {
     // Format the graph data according to the required structure

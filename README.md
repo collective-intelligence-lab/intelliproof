@@ -402,6 +402,7 @@ Features / bugs to fix:
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
+- deleting the left node is re-triggering check ev and get claim cred on right node, which is not needed
 - loading an existing graph starts in a state that is too zoomed out
 - when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it
 - Make edge toggle functional (user can pick support / attack edge)

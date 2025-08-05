@@ -151,30 +151,68 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
         # Only update target nodes
         for node_id in incoming_edges:
             if node_id not in source_nodes and incoming_edges[node_id]:
-                # Calculate new score for target node
-                Z = data.lambda_ * E[node_id]
-                print(f"DEBUG: Node {node_id} initial Z = {Z} (lambda={data.lambda_} * evidence={E[node.id]})")
+                # Check if there are any meaningful edge contributions
+                meaningful_edges = []
+                total_edge_contribution = 0.0
                 
-                # Add contributions from incoming edges
                 for edge in incoming_edges[node_id]:
-                    strength = abs(edge.weight or 1.0)
-                    is_support = (edge.weight or 1.0) > 0
-                    source_score = c_prev[edge.target]
+                    print(f"DEBUG: ===== EDGE CONTRIBUTION CALCULATION =====")
+                    print(f"DEBUG: Processing edge from {edge.target} to {node_id}")
+                    print(f"DEBUG: Raw edge weight: {edge.weight}")
                     
-                    if is_support:
-                        # For support edges, use raw source score
-                        edge_contribution = strength * source_score
+                    # Fix 1: Handle 0.0 weights properly
+                    if edge.weight == 0.0:
+                        print(f"DEBUG: Edge has 0.0 weight - treating as neutral (no contribution)")
+                        continue
                     else:
-                        # For attack edges, use absolute value of source score
-                        # A strong negative source with a strong negative edge should result in strong negative contribution
-                        source_strength = abs(source_score)
-                        edge_contribution = -strength * source_strength
+                        # Handle null/undefined weight as 1.0, but keep 0 as 0
+                        weight = 1.0 if edge.weight is None else edge.weight
+                        strength = abs(weight)
+                        is_support = weight > 0
+                        source_score = c_prev[edge.target]
+                        
+                        print(f"DEBUG: Processed weight: {weight}")
+                        print(f"DEBUG: Calculated strength: {strength}")
+                        print(f"DEBUG: Is support edge: {is_support}")
+                        print(f"DEBUG: Source node score: {source_score}")
+                        
+                        if is_support:
+                            # For support edges, use raw source score
+                            edge_contribution = strength * source_score
+                            print(f"DEBUG: SUPPORT edge calculation:")
+                            print(f"DEBUG:   edge_contribution = strength * source_score")
+                            print(f"DEBUG:   edge_contribution = {strength} * {source_score}")
+                            print(f"DEBUG:   edge_contribution = {edge_contribution}")
+                        else:
+                            # For attack edges, use absolute value of source score
+                            source_strength = abs(source_score)
+                            edge_contribution = -strength * source_strength
+                            print(f"DEBUG: ATTACK edge calculation:")
+                            print(f"DEBUG:   source_strength = abs({source_score}) = {source_strength}")
+                            print(f"DEBUG:   edge_contribution = -strength * source_strength")
+                            print(f"DEBUG:   edge_contribution = -{strength} * {source_strength}")
+                            print(f"DEBUG:   edge_contribution = {edge_contribution}")
                     
-                    Z += edge_contribution
-                    print(f"DEBUG: Edge from {edge.target} contributes {edge_contribution} (weight={edge.weight}, source_score={source_score})")
+                    total_edge_contribution += edge_contribution
+                    if abs(edge_contribution) > 0.001:  # Consider meaningful if > 0.001
+                        meaningful_edges.append(edge)
+                    
+                    print(f"DEBUG: Updated total_edge_contribution = {total_edge_contribution}")
+                    print(f"DEBUG: ===== END EDGE CONTRIBUTION =====")
+                    print(f"DEBUG: Edge from {edge.target} contributes {edge_contribution} (weight={edge.weight}, source_score={c_prev[edge.target]})")
                 
-                c_new[node_id] = math.tanh(Z)
-                print(f"DEBUG: Target node {node_id} final Z={Z}, new score={c_new[node_id]}")
+                # Fix 2: Only apply lambda reduction when there are meaningful edge contributions
+                if meaningful_edges:
+                    # Apply lambda to evidence when there are meaningful network influences
+                    Z = data.lambda_ * E[node_id] + total_edge_contribution
+                    print(f"DEBUG: Node {node_id} has meaningful edges - applying lambda reduction")
+                    print(f"DEBUG: Z = {data.lambda_} * {E[node_id]} + {total_edge_contribution} = {Z}")
+                    c_new[node_id] = math.tanh(Z)
+                    print(f"DEBUG: Target node {node_id} final Z={Z}, new score={c_new[node_id]}")
+                else:
+                    # No meaningful edges - keep the previous score unchanged
+                    print(f"DEBUG: Node {node_id} has no meaningful edges - keeping previous score {c_prev[node_id]}")
+                    c_new[node_id] = c_prev[node_id]
         
         iterations.append(c_new.copy())
         print(f"DEBUG: Iteration {iteration + 1} scores: {c_new}")

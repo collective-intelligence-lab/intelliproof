@@ -390,6 +390,7 @@ Features / bugs to fix:
 - Make sure save also saves the edge scores - (DONE)
 - Make sure a 0 scored edge does not affect the score at all
   - Walk through building 6 - 7 nodes, manually calculate score and compare with AI generated to ensure the calculation is as expected
+- Deleting a NODE that was connected to another node should re-trigger the automation for get claim cred. Right now if you delete the edge it does this, but not when u delete the node (which in turn deletes the edge)
 - Enter key should save content and trigger automation
   - ensure no other edge cases around this
 - Enable drag and drop of evidence onto nodes

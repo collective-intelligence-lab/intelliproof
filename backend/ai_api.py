@@ -494,8 +494,8 @@ Implicit Assumptions: Production safety requires absence of critical security vu
 
 Now analyze these claims:
 
-SOURCE CLAIM: {getattr(data.source_node, 'text', '')}
-TARGET CLAIM: {getattr(data.target_node, 'text', '')}
+SOURCE CLAIM: {getattr(data.target_node, 'text', '')}
+TARGET CLAIM: {getattr(data.source_node, 'text', '')}
 
 SCORING GUIDELINES:
 
@@ -545,7 +545,10 @@ Neutral (0):
 - Claims are logically independent
 - No meaningful inferential connection
 - Connection would require unreasonable assumptions
+- Claims address different subjects, time periods, or aspects
+- One claim being true/false has no bearing on the other, (ie both can be true simultaneously)
 - Example: "Coffee prices increased" → "Solar panels are efficient"
+- Example: "Messi won a world cup" → "Messi won a Ballon d'Or award"
 
 IMPORTANT SCORING PRINCIPLES:
 1. Logical Necessity: Higher scores (±0.9 to ±1.0) reserved for deductive relationships

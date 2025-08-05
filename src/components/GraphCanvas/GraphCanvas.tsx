@@ -2313,6 +2313,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         // First run check_evidence to update evidence confidences
         setApiQueue((q) => [...q, prevId]);
 
+        // Queue all connected edges for validation
+        const connectedEdges = getConnectedEdges(prevId);
+        if (connectedEdges.length > 0) {
+          console.log(
+            `Node ${prevId} has ${connectedEdges.length} connected edges, queuing for validation`
+          );
+          setEdgeApiQueue((q) => [...q, ...connectedEdges.map((e) => e.id)]);
+        }
+
         // Remove the node from modified set after triggering API calls
         setModifiedNodes((prev) => {
           const newSet = new Set(prev);
@@ -2986,18 +2995,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // --- Edge validation queue logic ---
   const [edgeApiQueue, setEdgeApiQueue] = useState<string[]>([]);
   const [isEdgeProcessing, setIsEdgeProcessing] = useState(false);
-  const prevSelectedEdgeRef = useRef<ClaimEdge | null>(null);
 
-  // Detect edge deselect and queue API call
-  useEffect(() => {
-    if (prevSelectedEdgeRef.current?.id && !selectedEdge) {
-      const prevId = prevSelectedEdgeRef.current.id;
-      if (prevId) {
-        setEdgeApiQueue((q) => [...q, prevId]);
-      }
-    }
-    prevSelectedEdgeRef.current = selectedEdge || null;
-  }, [selectedEdge]);
+  // Helper function to find all edges connected to a node
+  const getConnectedEdges = (nodeId: string) => {
+    return edges.filter(
+      (edge) => edge.source === nodeId || edge.target === nodeId
+    );
+  };
 
   // Queue processor effect for edge validation
   useEffect(() => {

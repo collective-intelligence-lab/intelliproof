@@ -390,15 +390,16 @@ Features / bugs to fix:
 - Make sure save also saves the edge scores - (DONE)
 - Make sure a 0 scored edge does not affect the score at all - (DONE)
 - Walk through building 6 - 7 nodes, manually calculate score and compare with AI generated to ensure the calculation is as expected - (DONE)
-- Evidence analysis / justification not updating when node is modified, only score gets updated
+- Evidence analysis / justification not updating when node is modified, only score gets updated - (DONE)
 - Deleting a NODE that was connected to another node should re-trigger the automation for get claim cred. Right now if you delete the edge it does this, but not when u delete the node (which in turn deletes the edge)
 - Swap target and source claim in validate edge function. - (DONE)
 - Enter key should save content and trigger automation
   - ensure no other edge cases around this
 - Enable drag and drop of evidence onto nodes
 - Make delete evidence / unlink evidence functional
-- Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
+- Style edge scores nicely
 - Fix fonts / styling in ALL modals
+- Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
 - loading an existing graph starts in a state that is too zoomed out
@@ -408,8 +409,8 @@ Features / bugs to fix:
 - Few shot learning for all prompts
 - Center score within mini circle (increase font size slightly)
 - remove buttons from copilot section
+- in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence.
 - Move generate assumptions onto the edge modal
-- Style edge scores nicely
 - Implement chat Q&A (With Kaveh help)
 - Helper / info box explaining the different functionality / features of graph
 - Position header section of nodes slightly more to left (there's a very small white gap)

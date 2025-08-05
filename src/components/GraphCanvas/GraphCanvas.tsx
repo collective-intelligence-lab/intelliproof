@@ -793,9 +793,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     );
   };
 
-  const onNodesChange: OnNodesChange = (changes) => {
-    setNodes((nds) => applyNodeChanges(changes, nds) as ClaimNode[]);
-  };
+  const onNodesChange: OnNodesChange = useCallback(
+    (changes) => {
+      // Check for node deletions and trigger credibility for affected nodes
+      changes.forEach((change) => {
+        if (change.type === "remove" && change.id) {
+          // Find all edges where the deleted node was the TARGET
+          // (i.e., edges pointing TO the deleted node)
+          const edgesToDeletedNode = edges.filter(
+            (edge) => edge.target === change.id
+          );
+
+          // Collect source nodes that were pointing to the deleted node
+          const affectedNodeIds = edgesToDeletedNode.map((edge) => edge.source);
+
+          // Queue affected nodes for credibility updates
+          if (affectedNodeIds.length > 0) {
+            console.log(
+              `[GraphCanvas] onNodesChange: Node ${change.id} deleted, triggering credibility for source nodes:`,
+              affectedNodeIds
+            );
+            setApiQueue((q) => [...q, ...affectedNodeIds]);
+          }
+
+          // Also remove the deleted node from the queue if it's already there
+          setApiQueue((q) => q.filter((id) => id !== change.id));
+        }
+      });
+
+      setNodes((nds) => applyNodeChanges(changes, nds) as ClaimNode[]);
+    },
+    [edges]
+  );
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {

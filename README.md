@@ -385,8 +385,8 @@ Features / bugs to fix:
 ### Debug Features / general features:
 
 - Don't trigger validate all edges upon loading graph - (DONE)
-- Trigger validate edge when claims are modified
-- Remove any involvement of evidence in validate edge function
+- Trigger validate edge when claims are modified - (DONE)
+- Remove any involvement of evidence in validate edge function - (DONE)
 - Make sure save also saves the edge scores
 - Make sure a 0 scored edge does not affect the score at all
   - Walk through building 6 - 7 nodes, manually calculate score and compare with AI generated to ensure the calculation is as expected
@@ -408,6 +408,7 @@ Features / bugs to fix:
 - Position header section of nodes slightly more to left (there's a very small white gap)
 - Extensive console logging throughout the process
   - change to be named console log, give it terminal like theme
+- Format console output slightly nicer, can still be raw but change things like "confidence" to "score"
 - Step-by-step progress tracking
 - Error reporting and recovery
 - Performance monitoring

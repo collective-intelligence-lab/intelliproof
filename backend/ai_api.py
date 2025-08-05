@@ -398,52 +398,136 @@ def validate_edge(data: ValidateEdgeRequest = Body(...)):
     Validate logical relationship between two nodes via an edge.
     Determines if the edge represents an attack or support, provides reasoning, and a confidence value in [-1, 1].
     """
-    def format_evidence(evidence_list):
-        if not evidence_list:
-            return "None"
-        # If evidence is a list of floats, just print the scores
-        if all(isinstance(ev, (int, float)) for ev in evidence_list):
-            return "Evidence scores: " + ", ".join([str(ev) for ev in evidence_list])
-        # Otherwise, assume it's a list of objects with title/excerpt
-        return "\n".join([
-            f"- Title: {getattr(ev, 'title', 'N/A')}\n  Excerpt: {getattr(ev, 'excerpt', str(ev))}" for ev in evidence_list
-        ])
+    # def format_evidence(evidence_list):
+    #     if not evidence_list:
+    #         return "None"
+    #     # If evidence is a list of floats, just print the scores
+    #     if all(isinstance(ev, (int, float)) for ev in evidence_list):
+    #         return "Evidence scores: " + ", ".join([str(ev) for ev in evidence_list])
+    #     # Otherwise, assume it's a list of objects with title/excerpt
+    #     return "\n".join([
+    #         f"- Title: {getattr(ev, 'title', 'N/A')}\n  Excerpt: {getattr(ev, 'excerpt', str(ev))}" for ev in evidence_list
+    #     ])
 
     # Edge weight is now optional and not required in the prompt
-    prompt = f"""
-You are an expert in argument analysis. Given the following two nodes and their connecting edge, determine whether the source node ATTACKS, SUPPORTS, or is NEUTRAL to the target node. 
+    prompt = f"""You are an expert in logical analysis. Your task is to determine how one claim logically relates to another claim, focusing ONLY on their content.
 
-- If you choose 'attack', it means the source claim attacks, contradicts, or undermines the target claim.
-- If you choose 'support', it means the source claim supports, strengthens, or provides evidence for the target claim.
-- If you choose 'neutral', it means there is no clear relation between the source and target claims.
+Here are examples of excellent logical relationship analyses:
 
-The output confidence value should match the evaluation:
-- -1 means strong attack
-- +1 means strong support
-- 0 means neutral or no relation
+EXAMPLE 1:
+Source Claim: "All birds have feathers"
+Target Claim: "Eagles have feathers"
+Evaluation: support
+Reasoning: The source claim makes a universal statement about birds having feathers. Since eagles are birds, the source claim logically necessitates the target claim. This is a deductive relationship - if the source is true, the target must be true.
+Score: 0.95
+Implicit Assumptions: Eagles are birds.
+
+EXAMPLE 2:
+Source Claim: "The city's population decreased by 5% in 2023"
+Target Claim: "The city experienced record population growth in 2023"
+Evaluation: attack
+Reasoning: These claims make directly contradictory statements about the same metric in the same time period. A decrease of 5% and record growth cannot both be true - they are logically incompatible.
+Score: -0.98
+Implicit Assumptions: Both claims refer to the same city and same measurement method.
+
+EXAMPLE 3:
+Source Claim: "Regular meditation reduces stress levels"
+Target Claim: "Exercise improves cardiovascular health"
+Evaluation: neutral
+Reasoning: While both claims relate to health benefits, they address entirely different aspects of health with no logical connection between them. One claim being true or false has no bearing on the other.
+Score: 0
+Implicit Assumptions: None needed - claims are logically independent.
+
+EXAMPLE 4:
+Source Claim: "Higher education leads to increased earning potential"
+Target Claim: "College graduates earn 50% more than non-graduates"
+Evaluation: support
+Reasoning: The source claim establishes a general relationship between education and earnings, while the target claim provides a specific quantification. The source claim provides strong logical support for the target's more specific assertion.
+Score: 0.75
+Implicit Assumptions: College education qualifies as higher education. The earnings comparison is measuring the relationship described in the source claim.
+
+EXAMPLE 5:
+Source Claim: "The software has critical security vulnerabilities"
+Target Claim: "The software is safe to use in production"
+Evaluation: attack
+Reasoning: Critical security vulnerabilities directly undermine the claim of production safety. The presence of critical vulnerabilities is incompatible with a system being safe for production use.
+Score: -0.85
+Implicit Assumptions: Production safety requires absence of critical security vulnerabilities.
+
+Now analyze these claims:
+
+SOURCE CLAIM: {getattr(data.source_node, 'text', '')}
+TARGET CLAIM: {getattr(data.target_node, 'text', '')}
+
+SCORING GUIDELINES:
+
+Support (+0.1 to +1.0):
++1.0 to +0.9: Deductive/Necessary Support
+- Source logically guarantees the target claim
+- If source is true, target MUST be true
+- Example: "All mammals are warm-blooded" → "Dogs are warm-blooded"
+
++0.8 to +0.6: Strong Support
+- Source provides direct, specific support for target
+- Very few assumptions needed to connect claims
+- Example: "90% of students passed the exam" → "Most students performed well on the test"
+
++0.5 to +0.3: Moderate Support
+- Source partially supports or makes target more likely
+- Requires some reasonable assumptions
+- Example: "The company's revenue grew 20%" → "The company had a successful year"
+
++0.2 to +0.1: Weak Support
+- Source provides indirect or partial support
+- Multiple assumptions needed
+- Example: "More people are working from home" → "Urban traffic will decrease"
+
+Attack (-0.1 to -1.0):
+-1.0 to -0.9: Direct Contradiction
+- Claims are logically incompatible
+- Both cannot be true simultaneously
+- Example: "It's raining" → "The sky is completely clear"
+
+-0.8 to -0.6: Strong Attack
+- Source strongly undermines target
+- Few assumptions needed to show conflict
+- Example: "The project is severely over budget" → "The project is well-managed"
+
+-0.5 to -0.3: Moderate Attack
+- Source partially contradicts or weakens target
+- Some assumptions needed to show conflict
+- Example: "User complaints increased" → "Customer satisfaction improved"
+
+-0.2 to -0.1: Weak Attack
+- Source slightly undermines target
+- Multiple assumptions needed to show conflict
+- Example: "Some employees are dissatisfied" → "The company has excellent morale"
+
+Neutral (0):
+- Claims are logically independent
+- No meaningful inferential connection
+- Connection would require unreasonable assumptions
+- Example: "Coffee prices increased" → "Solar panels are efficient"
+
+IMPORTANT SCORING PRINCIPLES:
+1. Logical Necessity: Higher scores (±0.9 to ±1.0) reserved for deductive relationships
+2. Directness: Fewer required assumptions = stronger score
+3. Specificity: More specific, relevant connections = stronger score
+4. Independence: Truly unrelated claims = exactly 0
+
+IMPORTANT:
+- Focus ONLY on the logical relationship between claim contents
+- Ignore any external evidence or context
+- Consider only what is explicitly stated or necessarily implied
+- Identify only the assumptions needed for the logical relationship
 
 Respond in this format:
 Evaluation: <attack|support|neutral>
-Reasoning: <3-5 sentences explaining your reasoning>
-Implicit Assumptions: <2-3 sentences explaining the most important necessary implicit assumptions underlying the argument>
-Confidence: <float between -1 and 1, matching the evaluation>
-
-Source Node:
-ID: {data.source_node.id}
-Text: {getattr(data.source_node, 'text', '')}
-Evidence:
-{format_evidence(getattr(data.source_node, 'evidence', None))}
-
-Target Node:
-ID: {data.target_node.id}
-Text: {getattr(data.target_node, 'text', '')}
-Evidence:
-{format_evidence(getattr(data.target_node, 'evidence', None))}
-
-Edge:
-Source: {data.edge.source}
-Target: {data.edge.target}
+Reasoning: <2-3 sentences explaining the LOGICAL relationship between the claims>
+Implicit Assumptions: <List 1-2 key assumptions needed for this logical relationship>
+Score: <float between -1 and 1, following the scoring guide above>
 """
+
     try:
         content = run_llm([
             {"role": "user", "content": prompt}
@@ -456,7 +540,7 @@ Target: {data.edge.target}
                 evaluation = line.split(":", 1)[1].strip().lower()
             if line.lower().startswith("reasoning:"):
                 reasoning = line.split(":", 1)[1].strip()
-            if line.lower().startswith("confidence:"):
+            if line.lower().startswith("score:"):
                 try:
                     confidence = float(line.split(":", 1)[1].strip())
                     confidence = min(max(confidence, -1.0), 1.0)

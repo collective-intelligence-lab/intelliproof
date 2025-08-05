@@ -397,13 +397,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           id: node.id,
           evidence:
             Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                return evidenceCard ? evidenceCard.confidence : 0;
-              })
+                  const evidenceCard = evidenceCards.find(
+                    (card) => card.id === evId
+                  );
+                  return evidenceCard ? evidenceCard.confidence : 0;
+                })
               : [],
           evidence_min: -1.0,
           evidence_max: 1.0,
@@ -470,8 +470,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "system",
-          content: `Error: ${error instanceof Error ? error.message : "Unknown error occurred"
-            }`,
+          content: `Error: ${
+            error instanceof Error ? error.message : "Unknown error occurred"
+          }`,
         },
       ]);
     } finally {
@@ -499,6 +500,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [isEvidencePanelOpen, setIsEvidencePanelOpen] = useState(true);
   const [nodes, setNodes] = useState<ClaimNode[]>([]);
   const [edges, setEdges] = useState<ClaimEdge[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isAddNodeOpen, setIsAddNodeOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<ClaimNode | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<ClaimEdge | null>(null);
@@ -984,7 +986,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     const hasEvidenceChange =
       updates.data?.evidenceIds !== undefined &&
       JSON.stringify(updates.data.evidenceIds) !==
-      JSON.stringify(node.data.evidenceIds);
+        JSON.stringify(node.data.evidenceIds);
 
     console.log(
       `[GraphCanvas] handleNodeUpdate: Change detection - content: ${hasContentChange}, type: ${hasTypeChange}, evidence: ${hasEvidenceChange}`
@@ -1013,12 +1015,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           const style =
             newType !== node.data.type
               ? {
-                ...currentStyle,
-                ...getNodeStyle(newType),
-                // Keep existing width/height if they exist
-                ...(currentStyle.width && { width: currentStyle.width }),
-                ...(currentStyle.height && { height: currentStyle.height }),
-              }
+                  ...currentStyle,
+                  ...getNodeStyle(newType),
+                  // Keep existing width/height if they exist
+                  ...(currentStyle.width && { width: currentStyle.width }),
+                  ...(currentStyle.height && { height: currentStyle.height }),
+                }
               : currentStyle;
           const updatedData = {
             ...node.data,
@@ -1435,52 +1437,72 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [showProgressToast, setShowProgressToast] = useState(false);
 
   const handleGenerateReport = async () => {
-    console.log("[GraphCanvas] handleGenerateReport: Starting comprehensive report generation");
+    console.log(
+      "[GraphCanvas] handleGenerateReport: Starting comprehensive report generation"
+    );
     setIsGeneratingReport(true);
     setReportProgress("Initializing report generation...");
     setShowProgressToast(true);
 
     try {
       // Step 1: Check all evidence
-      console.log("[GraphCanvas] handleGenerateReport: Step 1 - Checking all evidence");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Step 1 - Checking all evidence"
+      );
       setReportProgress("Step 1/5: Evaluating evidence quality...");
       const evidenceResults = await handleCheckEvidence();
-      console.log("[GraphCanvas] handleGenerateReport: Evidence evaluation completed");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Evidence evaluation completed"
+      );
 
       // Step 2: Validate all edges
-      console.log("[GraphCanvas] handleGenerateReport: Step 2 - Validating all edges");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Step 2 - Validating all edges"
+      );
       setReportProgress("Step 2/5: Validating argument relationships...");
       const edgeResults = await validate_edges();
-      console.log("[GraphCanvas] handleGenerateReport: Edge validation completed");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Edge validation completed"
+      );
 
       // Step 3: Generate all assumptions
-      console.log("[GraphCanvas] handleGenerateReport: Step 3 - Generating all assumptions");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Step 3 - Generating all assumptions"
+      );
       setReportProgress("Step 3/5: Identifying implicit assumptions...");
       const assumptionResults = await handleGenerateAllAssumptions();
-      console.log("[GraphCanvas] handleGenerateReport: Assumptions generation completed");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Assumptions generation completed"
+      );
 
       // Step 4: Critique graph
-      console.log("[GraphCanvas] handleGenerateReport: Step 4 - Critiquing graph");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Step 4 - Critiquing graph"
+      );
       setReportProgress("Step 4/5: Analyzing argument structure...");
       const critiqueResults = await handleCritiqueGraph();
-      console.log("[GraphCanvas] handleGenerateReport: Graph critique completed");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Graph critique completed"
+      );
 
       // Step 5: Generate comprehensive report
-      console.log("[GraphCanvas] handleGenerateReport: Step 5 - Generating comprehensive report");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Step 5 - Generating comprehensive report"
+      );
       setReportProgress("Step 5/5: Creating final report...");
 
       // Prepare data for comprehensive report
       const reportData = {
-        nodes: nodes.map(node => ({
+        nodes: nodes.map((node) => ({
           id: node.id,
           text: node.data.text,
           type: node.data.type,
-          evidenceIds: node.data.evidenceIds || []
+          evidenceIds: node.data.evidenceIds || [],
         })),
-        edges: edges.map(edge => ({
+        edges: edges.map((edge) => ({
           source: edge.source,
           target: edge.target,
-          weight: edge.data?.confidence || 1.0
+          weight: edge.data?.confidence || 1.0,
         })),
         evidence: evidenceCards,
         supportingDocuments: supportingDocuments,
@@ -1489,11 +1511,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         assumptions_results: assumptionResults,
         critique_results: critiqueResults,
         graph_title: title || "Argument Analysis",
-        analyst_name: `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || "IntelliProof AI",
-        analyst_contact: profile?.email || "ai@intelliproof.com"
+        analyst_name:
+          `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
+          "IntelliProof AI",
+        analyst_contact: profile?.email || "ai@intelliproof.com",
       };
 
-      console.log("[GraphCanvas] handleGenerateReport: Sending comprehensive report request");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Sending comprehensive report request"
+      );
       const response = await fetch("/api/ai/generate-comprehensive-report", {
         method: "POST",
         headers: {
@@ -1507,41 +1533,76 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       }
 
       const reportContent = await response.json();
-      console.log("[GraphCanvas] handleGenerateReport: Received comprehensive report");
-      console.log("[GraphCanvas] handleGenerateReport: Report content keys:", Object.keys(reportContent));
-      console.log("[GraphCanvas] handleGenerateReport: Executive summary length:", reportContent.executive_summary?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Findings length:", reportContent.findings?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Analysis length:", reportContent.analysis?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Cover page length:", reportContent.cover_page?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Scope objectives length:", reportContent.scope_objectives?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Methodology length:", reportContent.methodology?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Conclusion length:", reportContent.conclusion?.length || 0);
-      console.log("[GraphCanvas] handleGenerateReport: Appendix length:", reportContent.appendix?.length || 0);
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Received comprehensive report"
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Report content keys:",
+        Object.keys(reportContent)
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Executive summary length:",
+        reportContent.executive_summary?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Findings length:",
+        reportContent.findings?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Analysis length:",
+        reportContent.analysis?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Cover page length:",
+        reportContent.cover_page?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Scope objectives length:",
+        reportContent.scope_objectives?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Methodology length:",
+        reportContent.methodology?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Conclusion length:",
+        reportContent.conclusion?.length || 0
+      );
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Appendix length:",
+        reportContent.appendix?.length || 0
+      );
 
       // Generate PDF from report content
       setReportProgress("Generating PDF...");
       const pdf = new jsPDF();
 
       // Helper function to add content with continuous flow
-      const addContentSection = (title: string, content: string, startY: number = 50) => {
+      const addContentSection = (
+        title: string,
+        content: string,
+        startY: number = 50
+      ) => {
         // Add section title
         pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont("helvetica", "bold");
         pdf.text(title, 20, startY);
-        pdf.setFont('helvetica', 'normal');
+        pdf.setFont("helvetica", "normal");
 
         // Add more spacing after title for better separation
         let currentY = startY + 20;
 
         // Ensure content is a string and has meaningful content
-        const safeContent = content && typeof content === 'string' && content.trim().length > 0
-          ? content
-          : `No ${title.toLowerCase()} content available. This section would typically contain detailed analysis and findings.`;
+        const safeContent =
+          content && typeof content === "string" && content.trim().length > 0
+            ? content
+            : `No ${title.toLowerCase()} content available. This section would typically contain detailed analysis and findings.`;
 
         const lines = pdf.splitTextToSize(safeContent, 170);
 
         for (let i = 0; i < lines.length; i++) {
-          if (currentY > 270) { // Check if we need a new page
+          if (currentY > 270) {
+            // Check if we need a new page
             pdf.addPage();
             currentY = 30; // Start closer to top on new page
           }
@@ -1557,21 +1618,43 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       // Add cover page
       pdf.setFontSize(28);
-      pdf.setFont('helvetica', 'bold');
+      pdf.setFont("helvetica", "bold");
       pdf.text("IntelliProof", 20, 40);
       pdf.setFontSize(24);
       pdf.text("Argument Analysis Report", 20, 60);
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(14);
 
       // Add a line separator
       pdf.line(20, 80, 190, 80);
 
-      pdf.text(`Case: ${reportContent.report_metadata?.title || "Argument Analysis"}`, 20, 100);
+      pdf.text(
+        `Case: ${reportContent.report_metadata?.title || "Argument Analysis"}`,
+        20,
+        100
+      );
       pdf.setFontSize(12);
-      pdf.text(`Date: ${reportContent.report_metadata?.date || new Date().toLocaleDateString()}`, 20, 120);
-      pdf.text(`Analyst: ${reportContent.report_metadata?.analyst || "IntelliProof AI"}`, 20, 135);
-      pdf.text(`Contact: ${reportContent.report_metadata?.contact || "ai@intelliproof.com"}`, 20, 150);
+      pdf.text(
+        `Date: ${
+          reportContent.report_metadata?.date || new Date().toLocaleDateString()
+        }`,
+        20,
+        120
+      );
+      pdf.text(
+        `Analyst: ${
+          reportContent.report_metadata?.analyst || "IntelliProof AI"
+        }`,
+        20,
+        135
+      );
+      pdf.text(
+        `Contact: ${
+          reportContent.report_metadata?.contact || "ai@intelliproof.com"
+        }`,
+        20,
+        150
+      );
 
       // Add cover page description if available
       if (reportContent.cover_page) {
@@ -1585,9 +1668,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       // Add table of contents
       pdf.setFontSize(18);
-      pdf.setFont('helvetica', 'bold');
+      pdf.setFont("helvetica", "bold");
       pdf.text("Table of Contents", 20, 30);
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(12);
 
       let tocY = 50;
@@ -1598,7 +1681,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         "Findings",
         "Analysis",
         "Conclusion",
-        "Appendix"
+        "Appendix",
       ];
 
       sections.forEach((section, index) => {
@@ -1612,7 +1695,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       // Add sections continuously, flowing from one to the next
       let currentY = 30; // Start position for first section on new page
 
-      currentY = addContentSection("Executive Summary", reportContent.executive_summary || "No executive summary available.", currentY);
+      currentY = addContentSection(
+        "Executive Summary",
+        reportContent.executive_summary || "No executive summary available.",
+        currentY
+      );
 
       // Check if we need a new page before starting next section
       if (currentY > 250) {
@@ -1620,53 +1707,80 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         currentY = 30;
       }
 
-      currentY = addContentSection("Scope & Objectives", reportContent.scope_objectives || "No scope and objectives available.", currentY);
+      currentY = addContentSection(
+        "Scope & Objectives",
+        reportContent.scope_objectives || "No scope and objectives available.",
+        currentY
+      );
 
       if (currentY > 250) {
         pdf.addPage();
         currentY = 30;
       }
 
-      currentY = addContentSection("Methodology", reportContent.methodology || "No methodology available.", currentY);
+      currentY = addContentSection(
+        "Methodology",
+        reportContent.methodology || "No methodology available.",
+        currentY
+      );
 
       if (currentY > 250) {
         pdf.addPage();
         currentY = 30;
       }
 
-      currentY = addContentSection("Findings", reportContent.findings || "No findings available.", currentY);
+      currentY = addContentSection(
+        "Findings",
+        reportContent.findings || "No findings available.",
+        currentY
+      );
 
       if (currentY > 250) {
         pdf.addPage();
         currentY = 30;
       }
 
-      currentY = addContentSection("Analysis", reportContent.analysis || "No analysis available.", currentY);
+      currentY = addContentSection(
+        "Analysis",
+        reportContent.analysis || "No analysis available.",
+        currentY
+      );
 
       if (currentY > 250) {
         pdf.addPage();
         currentY = 30;
       }
 
-      currentY = addContentSection("Conclusion", reportContent.conclusion || "No conclusion available.", currentY);
+      currentY = addContentSection(
+        "Conclusion",
+        reportContent.conclusion || "No conclusion available.",
+        currentY
+      );
 
       if (currentY > 250) {
         pdf.addPage();
         currentY = 30;
       }
 
-      currentY = addContentSection("Appendix", reportContent.appendix || "No appendix available.", currentY);
+      currentY = addContentSection(
+        "Appendix",
+        reportContent.appendix || "No appendix available.",
+        currentY
+      );
 
       // Save the PDF
-      const fileName = `${title || "argument-analysis"}-comprehensive-report.pdf`;
+      const fileName = `${
+        title || "argument-analysis"
+      }-comprehensive-report.pdf`;
       pdf.save(fileName);
 
-      console.log("[GraphCanvas] handleGenerateReport: Report generation completed successfully");
+      console.log(
+        "[GraphCanvas] handleGenerateReport: Report generation completed successfully"
+      );
       setReportProgress("Report generated successfully!");
 
       // Show success message
       alert(`Comprehensive report generated successfully: ${fileName}`);
-
     } catch (error) {
       console.error("[GraphCanvas] handleGenerateReport: Error:", error);
       alert("Failed to generate comprehensive report. Please try again.");
@@ -1747,14 +1861,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         id: node.id,
         evidence:
           Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
+          node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-              // Find the evidence card and use its confidence, or 0 if not found
-              const evidenceCard = evidenceCards.find(
-                (card) => card.id === evId
-              );
-              return evidenceCard ? evidenceCard.confidence : 0;
-            })
+                // Find the evidence card and use its confidence, or 0 if not found
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
             : [], // Empty array for no evidence instead of [0.5]
         evidence_min: -1.0,
         evidence_max: 1.0,
@@ -1888,13 +2002,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         type: node.data.type,
         evidence:
           Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0
+          node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-              const evidenceCard = evidenceCards.find(
-                (card) => card.id === evId
-              );
-              return evidenceCard ? evidenceCard.confidence : 0;
-            })
+                const evidenceCard = evidenceCards.find(
+                  (card) => card.id === evId
+                );
+                return evidenceCard ? evidenceCard.confidence : 0;
+              })
             : [],
         evidence_min: -1.0,
         evidence_max: 1.0,
@@ -2013,8 +2127,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "ai",
-          content: `<span style="color: red;">Error computing credibility for node ${nodeId}: ${error instanceof Error ? error.message : "Unknown error"
-            }</span>`,
+          content: `<span style="color: red;">Error computing credibility for node ${nodeId}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }</span>`,
         },
       ]);
     } finally {
@@ -2054,7 +2169,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -2156,7 +2271,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...node,
             data: {
               ...node.data,
-              evidenceIds: node.data.evidenceIds?.filter((id) => id !== evidenceId) || [],
+              evidenceIds:
+                node.data.evidenceIds?.filter((id) => id !== evidenceId) || [],
             },
           };
         }
@@ -2252,8 +2368,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               ...msgs,
               {
                 role: "ai",
-                content: `Error computing credibility scores for node ${nodeId}: ${error instanceof Error ? error.message : "Unknown error"
-                  }`,
+                content: `Error computing credibility scores for node ${nodeId}: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
               },
             ]);
           }
@@ -2269,8 +2386,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "ai",
-              content: `Error checking evidence: ${error instanceof Error ? error.message : "Unknown error"
-                }`,
+              content: `Error checking evidence: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
             },
           ]);
         });
@@ -2322,7 +2440,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         console.error(
           `[GraphCanvas] triggerCheckNodeEvidence: API error: ${errorMsg}`
         );
@@ -2391,7 +2509,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const avgConfidence =
         updatedConfidences.length > 0
           ? updatedConfidences.reduce((a, b) => a + b, 0) /
-          updatedConfidences.length
+            updatedConfidences.length
           : 0;
 
       console.log(
@@ -2402,12 +2520,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         prevNodes.map((n) =>
           n.id === node.id
             ? {
-              ...n,
-              data: {
-                ...n.data,
-                belief: avgConfidence,
-              },
-            }
+                ...n,
+                data: {
+                  ...n.data,
+                  belief: avgConfidence,
+                },
+              }
             : n
         )
       );
@@ -2476,38 +2594,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           // Use updated confidences for this specific node
           nodeEvidence =
             Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                const updatedConfidence = updatedEvidenceMap.get(evId);
-                if (updatedConfidence !== undefined) {
-                  console.log(
-                    `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using updated confidence ${updatedConfidence} for evidence ${evId}`
+                  const updatedConfidence = updatedEvidenceMap.get(evId);
+                  if (updatedConfidence !== undefined) {
+                    console.log(
+                      `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using updated confidence ${updatedConfidence} for evidence ${evId}`
+                    );
+                    return updatedConfidence;
+                  }
+                  const evidenceCard = evidenceCards.find(
+                    (card) => card.id === evId
                   );
-                  return updatedConfidence;
-                }
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                const fallbackConfidence = evidenceCard
-                  ? evidenceCard.confidence
-                  : 0;
-                console.log(
-                  `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using fallback confidence ${fallbackConfidence} for evidence ${evId}`
-                );
-                return fallbackConfidence;
-              })
+                  const fallbackConfidence = evidenceCard
+                    ? evidenceCard.confidence
+                    : 0;
+                  console.log(
+                    `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using fallback confidence ${fallbackConfidence} for evidence ${evId}`
+                  );
+                  return fallbackConfidence;
+                })
               : [];
         } else {
           // Use state for other nodes
           nodeEvidence =
             Array.isArray(node.data.evidenceIds) &&
-              node.data.evidenceIds.length > 0
+            node.data.evidenceIds.length > 0
               ? node.data.evidenceIds.map((evId) => {
-                const evidenceCard = evidenceCards.find(
-                  (card) => card.id === evId
-                );
-                return evidenceCard ? evidenceCard.confidence : 0;
-              })
+                  const evidenceCard = evidenceCards.find(
+                    (card) => card.id === evId
+                  );
+                  return evidenceCard ? evidenceCard.confidence : 0;
+                })
               : [];
         }
 
@@ -2715,7 +2833,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
 
@@ -2822,7 +2940,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             try {
               const errorData = await response.json();
               if (errorData.detail) errorMsg = errorData.detail;
-            } catch { }
+            } catch {}
             throw new Error(errorMsg);
           }
           const data = await response.json();
@@ -2853,8 +2971,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "assistant",
-              content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
-                }</span>`,
+              content: `<span class='text-red-600'>Error: ${
+                err instanceof Error ? err.message : err
+              }</span>`,
             },
           ]);
         }
@@ -2941,7 +3060,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -2972,8 +3091,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         ...msgs,
         {
           role: "assistant",
-          content: `<span class='text-red-600'>Error: ${err instanceof Error ? err.message : err
-            }</span>`,
+          content: `<span class='text-red-600'>Error: ${
+            err instanceof Error ? err.message : err
+          }</span>`,
         },
       ]);
     }
@@ -2982,8 +3102,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Queue edge validation when a new edge is created
   const prevEdgesRef = useRef<ClaimEdge[]>([]);
   useEffect(() => {
+    // Skip during initial load
+    if (isInitialLoad) {
+      if (edges.length > 0) {
+        prevEdgesRef.current = edges;
+        setIsInitialLoad(false);
+      }
+      return;
+    }
+
     // Only run after initial mount
     if (edges.length === 0) return;
+
     // Find edges that are new (not in previous ref)
     const prevEdges = prevEdgesRef.current;
     const newEdges = edges.filter(
@@ -2993,7 +3123,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       setEdgeApiQueue((q) => [...q, ...newEdges.map((e) => e.id)]);
     }
     prevEdgesRef.current = edges;
-  }, [edges]);
+  }, [edges, isInitialLoad]);
 
   // Add this handler in GraphCanvasInner:
   const handleClearCopilotChat = () => {
@@ -3077,7 +3207,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
 
@@ -3177,8 +3307,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           ...msgs,
           {
             role: "ai",
-            content: `--- Processing Edge ${i + 1}/${edges.length}: ${sourceNode.data.text
-              } → ${targetNode.data.text} ---`,
+            content: `--- Processing Edge ${i + 1}/${edges.length}: ${
+              sourceNode.data.text
+            } → ${targetNode.data.text} ---`,
           },
         ]);
 
@@ -3206,7 +3337,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         };
 
         console.log(
-          `[GraphCanvas] handleGenerateAllAssumptions: Processing edge ${i + 1
+          `[GraphCanvas] handleGenerateAllAssumptions: Processing edge ${
+            i + 1
           }/${edges.length}`
         );
 
@@ -3221,7 +3353,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           try {
             const errorData = await response.json();
             if (errorData.detail) errorMsg = errorData.detail;
-          } catch { }
+          } catch {}
 
           setCopilotMessages((msgs) => [
             ...msgs,
@@ -3232,7 +3364,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
         const data = await response.json();
         console.log(
-          `[GraphCanvas] handleGenerateAllAssumptions: Received response for edge ${i + 1
+          `[GraphCanvas] handleGenerateAllAssumptions: Received response for edge ${
+            i + 1
           }:`,
           data
         );
@@ -3359,7 +3492,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
 
@@ -3551,7 +3684,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
 
@@ -3587,13 +3720,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           prevNodes.map((n) =>
             n.id === node.id
               ? {
-                ...n,
-                data: {
-                  ...n.data,
-                  type: data.evaluation,
-                },
-                style: getNodeStyle(data.evaluation),
-              }
+                  ...n,
+                  data: {
+                    ...n.data,
+                    type: data.evaluation,
+                  },
+                  style: getNodeStyle(data.evaluation),
+                }
               : n
           )
         );
@@ -3813,10 +3946,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             {nodes.map((node) => (
                               <option key={node.id} value={node.id}>
                                 {node.data.text
-                                  ? `${node.data.text} (${node.data.type || "unknown"
-                                  })`
-                                  : `Node ${node.id} (${node.data.type || "unknown"
-                                  })`}
+                                  ? `${node.data.text} (${
+                                      node.data.type || "unknown"
+                                    })`
+                                  : `Node ${node.id} (${
+                                      node.data.type || "unknown"
+                                    })`}
                               </option>
                             ))}
                           </select>
@@ -3847,7 +3982,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   <PDFPreviewer
                                     ref={pdfPreviewerRef}
                                     url={doc.url}
-                                    onAddContent={() => { }}
+                                    onAddContent={() => {}}
                                     fixedWidth={350}
                                   />
                                 </div>
@@ -4244,10 +4379,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   >
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
-                        ? "bg-gray-100"
-                        : "text-gray-700 hover:bg-gray-100"
-                        }`}
+                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${
+                        isMenuOpen
+                          ? "bg-gray-100"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
                       title="Menu"
                     >
                       <EllipsisVerticalIcon
@@ -4292,10 +4428,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={undo}
                   disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
-                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                    }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canUndo
+                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
                   title="Undo"
                 >
                   <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
@@ -4303,10 +4440,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={redo}
                   disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
-                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                    }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    canRedo
+                      ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
                   title="Redo"
                 >
                   <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
@@ -4343,16 +4481,22 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
                   title="Critique Graph"
                 >
-                  <DocumentMagnifyingGlassIcon className="w-8 h-8" strokeWidth={2} />
+                  <DocumentMagnifyingGlassIcon
+                    className="w-8 h-8"
+                    strokeWidth={2}
+                  />
                 </button>
                 <button
                   onClick={handleGenerateReport}
                   disabled={isGeneratingReport}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isGeneratingReport
-                    ? "bg-blue-100 text-blue-600 cursor-not-allowed"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    }`}
-                  title={isGeneratingReport ? reportProgress : "Generate Report"}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    isGeneratingReport
+                      ? "bg-blue-100 text-blue-600 cursor-not-allowed"
+                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
+                  title={
+                    isGeneratingReport ? reportProgress : "Generate Report"
+                  }
                 >
                   {isGeneratingReport ? (
                     <div className="flex items-center space-x-2">
@@ -4396,10 +4540,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="relative">
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
-                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    }`}
+                  className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${
+                    isAddNodeOpen
+                      ? "bg-[#232F3E] text-white shadow-inner"
+                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
                   title="Add Claim"
                 >
                   <PlusIcon className="w-8 h-8" strokeWidth={2} />
@@ -4432,10 +4577,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={handleDeleteNode}
                 disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
-                  ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
-                  : "text-gray-300 cursor-not-allowed"
-                  }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  selectedNode
+                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                    : "text-gray-300 cursor-not-allowed"
+                }`}
                 title="Delete Claim"
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
@@ -4446,10 +4592,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Edge Type Buttons */}
               <button
                 onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "supporting"
-                  ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                  : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "supporting"
+                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
                 title="Supporting Edge"
               >
                 <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
@@ -4457,10 +4604,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <button
                 onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${selectedEdgeType === "attacking"
-                  ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                  : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                  selectedEdgeType === "attacking"
+                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
                 title="Attacking Edge"
               >
                 <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
@@ -4471,10 +4619,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
-                  ? "bg-[#232F3E] text-white shadow-inner"
-                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  }`}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  isEvidencePanelOpen
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                }`}
                 title={
                   isEvidencePanelOpen
                     ? "Hide Evidence Panel"
@@ -4704,8 +4853,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
-                    className={`p-2 rounded-full transition-colors ${isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
-                      }`}
+                    className={`p-2 rounded-full transition-colors ${
+                      isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
+                    }`}
                     title={
                       isAICopilotFrozen
                         ? "Unfreeze Copilot Panel"
@@ -4722,8 +4872,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClick={() =>
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
-                    className={`p-2 hover:bg-white rounded-md transition-colors ${isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
+                    className={`p-2 hover:bg-white rounded-md transition-colors ${
+                      isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
+                    }`}
                     aria-label="Close AI copilot"
                     disabled={isAICopilotFrozen}
                   >
@@ -4792,10 +4943,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         />
                       ) : (
                         <span
-                          className={`text-left text-sm ${msg.role === "system"
-                            ? "text-gray-500"
-                            : "text-black"
-                            }`}
+                          className={`text-left text-sm ${
+                            msg.role === "system"
+                              ? "text-gray-500"
+                              : "text-black"
+                          }`}
                         >
                           {msg.content}
                         </span>

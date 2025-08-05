@@ -695,8 +695,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           let edgeType: EdgeType = "supporting";
           let confidence: number = 0;
           let edgeScore: number | undefined;
-          // If edge is a ClaimEdge (has 'data'), use its data
-          if ("data" in edge && edge.data) {
+
+          // Check if edge has saved validation data (from saved graph)
+          if ("edgeScore" in edge && edge.edgeScore !== undefined) {
+            edgeType = (edge as any).edgeType || "supporting";
+            confidence = (edge as any).confidence ?? 0;
+            edgeScore = (edge as any).edgeScore;
+          } else if ("data" in edge && edge.data) {
+            // If edge is a ClaimEdge (has 'data'), use its data
             edgeType = edge.data.edgeType || "supporting";
             confidence = edge.data.confidence ?? 0;
             edgeScore = edge.data.edgeScore ?? 0;
@@ -705,6 +711,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             confidence = edge.weight;
             edgeType = edge.weight >= 0 ? "supporting" : "attacking";
           }
+
           return {
             id: edge.id,
             source: edge.source,

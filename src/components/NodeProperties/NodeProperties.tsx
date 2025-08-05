@@ -10,6 +10,8 @@ interface EvidenceCard {
   supportingDocName: string;
   excerpt: string;
   confidence?: number;
+  evaluation?: string;
+  reasoning?: string;
 }
 
 interface SupportingDocument {
@@ -340,9 +342,7 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                         <span className="text-xs font-semibold">
                           {Math.round((card.confidence ?? 0.5) * 100)}%
                         </span>
-                        {evaluationMessages.some(
-                          (msg) => msg.content["Evidence ID"] === eid
-                        ) && (
+                        {card.evaluation && card.reasoning && (
                           <button
                             onClick={() =>
                               setExpandedEvidenceId(
@@ -359,7 +359,11 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                         )}
                         <button
                           onClick={() => {
-                            if (window.confirm("Are you sure you want to unlink this evidence from the claim? This action cannot be undone.")) {
+                            if (
+                              window.confirm(
+                                "Are you sure you want to unlink this evidence from the claim? This action cannot be undone."
+                              )
+                            ) {
                               onUnlinkEvidence(eid, node.id);
                             }
                           }}
@@ -371,27 +375,17 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                       </div>
                       {expandedEvidenceId === eid && (
                         <div className="text-xs bg-gray-50 p-3 rounded space-y-2">
-                          {evaluationMessages.find(
-                            (msg) => msg.content["Evidence ID"] === eid
-                          )?.content && (
+                          {card.evaluation && card.reasoning && (
                             <>
                               <div>
                                 <span className="font-medium">
                                   Evaluation:{" "}
                                 </span>
-                                {
-                                  evaluationMessages.find(
-                                    (msg) => msg.content["Evidence ID"] === eid
-                                  )?.content.Evaluation
-                                }
+                                {card.evaluation}
                               </div>
                               <div>
                                 <span className="font-medium">Reasoning: </span>
-                                {
-                                  evaluationMessages.find(
-                                    (msg) => msg.content["Evidence ID"] === eid
-                                  )?.content.Reasoning
-                                }
+                                {card.reasoning}
                               </div>
                             </>
                           )}

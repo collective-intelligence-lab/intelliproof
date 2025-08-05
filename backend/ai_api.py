@@ -1452,7 +1452,7 @@ IMPORTANT:
 - Focus solely on whether this evidence directly supports or contradicts the stated claim
 
 Respond in this exact format:
-Evaluation: <supports|contradicts|neutral|irrelevant|unsure>
+Evaluation: <Supports|Contradicts|Neutral|Irrelevant|Unsure>
 Reasoning: <your explanation. Keep it to 2-4 sentences, focusing specifically on how this evidence relates to the claim: "{node.text}">
 Score: <a precise number between -1.0 and 1.0 giving the evidence a score of how well the evidence supports or contradicts the claim. Use the full range with decimal precision. Examples: 0.8 (strongly supports), -0.3 (weakly contradicts), 0.0 (neutral), 0.45 (moderately supports), -0.9 (strongly contradicts).>
 """

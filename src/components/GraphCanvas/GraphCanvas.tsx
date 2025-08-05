@@ -2503,7 +2503,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             console.log(
               `[GraphCanvas] triggerCheckNodeEvidence: Updating evidence ${ev.id} confidence from ${ev.confidence} to ${found.confidence}`
             );
-            return { ...ev, confidence: found.confidence };
+            return {
+              ...ev,
+              confidence: found.confidence,
+              evaluation: found.evaluation,
+              reasoning: found.reasoning,
+            };
           }
           return ev;
         })

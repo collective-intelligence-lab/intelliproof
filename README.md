@@ -392,7 +392,6 @@ Features / bugs to fix:
 - Walk through building 6 - 7 nodes, manually calculate score and compare with AI generated to ensure the calculation is as expected - (DONE)
 - Evidence analysis / justification not updating when node is modified, only score gets updated - (DONE)
 - Deleting a NODE that was connected to another node should re-trigger the automation for get claim cred. Right now if you delete the edge it does this, but not when u delete the node (which in turn deletes the edge) - (DONE)
-
 - Swap target and source claim in validate edge function. - (DONE)
 - Enter key should save content and trigger automation
   - ensure no other edge cases around this
@@ -403,17 +402,18 @@ Features / bugs to fix:
 - Style edge scores nicely - (DONE)
 - Fix fonts / styling in ALL modals - (DONE)
 - Evidence averaging (0 should not contribute to average)
-- autosave functionality
-- share button not functional
-- undo / redo buttons not functional
 - change save buttons on graph manager modals from light blue to navy blue
-- Remove evidence and supporting docs from evidence panel feature
+- Remove evidence and supporting docs from evidence panel feature - (DONE)
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
 - deleting the left node is re-triggering check ev and get claim cred on right node, which is not needed
 - loading an existing graph starts in a state that is too zoomed out
 - when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it
+- autosave functionality
+- saving brings you to graph manager page
+- share button not functional
+- undo / redo buttons not functional
 - Make edge toggle functional (user can pick support / attack edge)
   - If AI returns a score that changes color, make sure the color change is reflected on graph - (DONE)
 - Few shot learning for all prompts

@@ -2061,6 +2061,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     { role: string; content: any; isStructured?: boolean }[]
   >([]);
   const [copilotLoading, setCopilotLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "console">("console");
 
   // Handler for Claim icon click
   const handleClaimCredibility = async () => {
@@ -5019,112 +5020,219 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 </div>
               </div>
 
-              {/* Chat Area */}
-              <div className="flex-1 overflow-auto p-4">
-                <div className="text-center text-gray-500 mt-2 mb-2">
-                  AI Copilot is ready to assist with your graph.
-                </div>
-                <CommandMessageBox
-                  title="Check All Claim Evidence"
-                  content="Check evidence for each claim and evaluate relationship"
-                  icon={<DocumentMagnifyingGlassIcon className="w-4 h-4" />}
-                  onClick={handleCheckEvidence}
-                  disabled={copilotLoading}
-                />
-                <CommandMessageBox
-                  title="Get Claim Credibility"
-                  content="Compute credibility scores for each node using internal evidence scores, and apply propagation algorithm."
-                  icon={<DocumentCheckIcon className="w-4 h-4" />}
-                  onClick={handleClaimCredibility}
-                  disabled={copilotLoading}
-                />
-                {/* New function chat boxes */}
-                <CommandMessageBox
-                  title="Validate Edge"
-                  content="Checks whether the support/attack is valid with reasoning"
-                  icon={<ArrowPathIcon className="w-4 h-4" />}
-                  onClick={handleValidateEdge}
-                  disabled={copilotLoading}
-                />
-                <CommandMessageBox
-                  title="Validate All Edges"
-                  content="Checks all edges for support/attack/neutral and outputs reasoning for each."
-                  icon={<ArrowPathIcon className="w-4 h-4" />}
-                  onClick={validate_edges}
-                  disabled={copilotLoading}
-                />
-                <CommandMessageBox
-                  title="Generate Assumptions"
-                  content="Generates up to 5 assumptions required by the edge to be valid"
-                  icon={<HandRaisedIcon className="w-4 h-4" />}
-                  onClick={handleGenerateAssumptions}
-                  disabled={copilotLoading}
-                />
-                <CommandMessageBox
-                  title="Generate All Assumptions"
-                  content="Generates assumptions for all edges in the graph sequentially"
-                  icon={<HandRaisedIcon className="w-4 h-4" />}
-                  onClick={handleGenerateAllAssumptions}
-                  disabled={copilotLoading}
-                />
-                <div className="mt-4 space-y-2">
-                  {copilotMessages.map((msg, idx) => (
-                    <ChatBox key={idx}>
-                      {msg.isStructured ? (
-                        <MessageBox message={msg.content} />
-                      ) : msg.role === "assistant" ? (
-                        <span
-                          className={`text-left text-sm text-blue-700`}
-                          dangerouslySetInnerHTML={{ __html: msg.content }}
-                        />
-                      ) : (
-                        <span
-                          className={`text-left text-sm ${
-                            msg.role === "system"
-                              ? "text-gray-500"
-                              : "text-black"
-                          }`}
-                        >
-                          {msg.content}
-                        </span>
-                      )}
-                    </ChatBox>
-                  ))}
-                  {copilotLoading && (
-                    <ChatBox>
-                      <span className="text-purple-500 text-sm">
-                        Analyzing claim credibility...
-                      </span>
-                    </ChatBox>
-                  )}
-                </div>
+              {/* Tab Navigation */}
+              <div className="flex border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab("chat")}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === "chat"
+                      ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  AI Copilot
+                </button>
+                <button
+                  onClick={() => setActiveTab("console")}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === "console"
+                      ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Console
+                </button>
               </div>
 
-              {/* Message Input */}
-              <div className="border-t border-gray-200 p-4">
-                <div className="relative mb-2">
-                  <input
-                    type="text"
-                    placeholder="Ask anything about your graph..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
-                  />
-                  <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
-                    <SparklesIcon className="w-5 h-5" />
-                  </button>
-                </div>
-                {/* AI Functionality Section */}
-                {/* ... existing code ... */}
-                <div className="flex justify-center mt-2">
-                  <button
-                    onClick={handleClearCopilotChat}
-                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
-                    type="button"
-                  >
-                    Clear Chat
-                  </button>
-                </div>
-                {/* ... existing code ... */}
-              </div>
+              {/* Tab Content */}
+              {activeTab === "chat" ? (
+                <>
+                  {/* Chat Area */}
+                  <div className="flex-1 overflow-auto p-4">
+                    <div className="text-center text-gray-500 mt-2 mb-4">
+                      Chat with AI Copilot about your graph
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <SparklesIcon className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
+                          <p className="text-sm text-gray-800">
+                            Hello! I'm your AI Copilot. I can help you analyze
+                            your argument graph, validate claims, check
+                            evidence, and much more. What would you like to work
+                            on?
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Example user message */}
+                      <div className="flex items-start gap-3 justify-end">
+                        <div className="bg-blue-500 rounded-lg p-3 max-w-[80%]">
+                          <p className="text-sm text-white">
+                            Can you help me validate the evidence for my claims?
+                          </p>
+                        </div>
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-xs font-medium">
+                            U
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Example AI response */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <SparklesIcon className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
+                          <p className="text-sm text-gray-800">
+                            Absolutely! I can help you validate evidence for
+                            your claims. You can use the "Check All Claim
+                            Evidence" function in the Console tab, or I can
+                            guide you through the process. Would you like me to
+                            explain how evidence validation works?
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chat Input */}
+                  <div className="border-t border-gray-200 p-4">
+                    <div className="relative mb-2">
+                      <input
+                        type="text"
+                        placeholder="Ask me anything about your graph..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
+                      />
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
+                        <SparklesIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex justify-center mt-2">
+                      <button
+                        onClick={() => {
+                          /* Clear chat logic */
+                        }}
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
+                        type="button"
+                      >
+                        Clear Chat
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Console Area - Keep existing functionality */}
+                  <div className="flex-1 overflow-auto p-4">
+                    <div className="text-center text-gray-500 mt-2 mb-2">
+                      AI Copilot is ready to assist with your graph.
+                    </div>
+                    <CommandMessageBox
+                      title="Check All Claim Evidence"
+                      content="Check evidence for each claim and evaluate relationship"
+                      icon={<DocumentMagnifyingGlassIcon className="w-4 h-4" />}
+                      onClick={handleCheckEvidence}
+                      disabled={copilotLoading}
+                    />
+                    <CommandMessageBox
+                      title="Get Claim Credibility"
+                      content="Compute credibility scores for each node using internal evidence scores, and apply propagation algorithm."
+                      icon={<DocumentCheckIcon className="w-4 h-4" />}
+                      onClick={handleClaimCredibility}
+                      disabled={copilotLoading}
+                    />
+                    {/* New function chat boxes */}
+                    <CommandMessageBox
+                      title="Validate Edge"
+                      content="Checks whether the support/attack is valid with reasoning"
+                      icon={<ArrowPathIcon className="w-4 h-4" />}
+                      onClick={handleValidateEdge}
+                      disabled={copilotLoading}
+                    />
+                    <CommandMessageBox
+                      title="Validate All Edges"
+                      content="Checks all edges for support/attack/neutral and outputs reasoning for each."
+                      icon={<ArrowPathIcon className="w-4 h-4" />}
+                      onClick={validate_edges}
+                      disabled={copilotLoading}
+                    />
+                    <CommandMessageBox
+                      title="Generate Assumptions"
+                      content="Generates up to 5 assumptions required by the edge to be valid"
+                      icon={<HandRaisedIcon className="w-4 h-4" />}
+                      onClick={handleGenerateAssumptions}
+                      disabled={copilotLoading}
+                    />
+                    <CommandMessageBox
+                      title="Generate All Assumptions"
+                      content="Generates assumptions for all edges in the graph sequentially"
+                      icon={<HandRaisedIcon className="w-4 h-4" />}
+                      onClick={handleGenerateAllAssumptions}
+                      disabled={copilotLoading}
+                    />
+                    <div className="mt-4 space-y-2">
+                      {copilotMessages.map((msg, idx) => (
+                        <ChatBox key={idx}>
+                          {msg.isStructured ? (
+                            <MessageBox message={msg.content} />
+                          ) : msg.role === "assistant" ? (
+                            <span
+                              className={`text-left text-sm text-blue-700`}
+                              dangerouslySetInnerHTML={{ __html: msg.content }}
+                            />
+                          ) : (
+                            <span
+                              className={`text-left text-sm ${
+                                msg.role === "system"
+                                  ? "text-gray-500"
+                                  : "text-black"
+                              }`}
+                            >
+                              {msg.content}
+                            </span>
+                          )}
+                        </ChatBox>
+                      ))}
+                      {copilotLoading && (
+                        <ChatBox>
+                          <span className="text-purple-500 text-sm">
+                            Analyzing claim credibility...
+                          </span>
+                        </ChatBox>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Console Controls */}
+                  <div className="border-t border-gray-200 p-4">
+                    <div className="relative mb-2">
+                      <input
+                        type="text"
+                        placeholder="Ask anything about your graph..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
+                      />
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
+                        <SparklesIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex justify-center mt-2">
+                      <button
+                        onClick={handleClearCopilotChat}
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
+                        type="button"
+                      >
+                        Clear Chat
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </Panel>
         )}

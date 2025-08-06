@@ -402,6 +402,8 @@ Features / bugs to fix:
   - Make it so that the moment you add / delete evidence the cred score is recalled, not when u deselect - (DONE)
 - Style edge scores nicely - (DONE)
 - Fix fonts / styling in ALL modals - (DONE)
+- Evidence averaging (0 should not contribute to average)
+- Remove evidence and supporting docs from evidence panel feature
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
@@ -414,6 +416,7 @@ Features / bugs to fix:
 - Center score within mini circle (increase font size slightly)
 - remove buttons from copilot section
 - in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence.
+
 - Move generate assumptions onto the edge modal
 - Implement chat Q&A (With Kaveh help)
 - make edges thinner

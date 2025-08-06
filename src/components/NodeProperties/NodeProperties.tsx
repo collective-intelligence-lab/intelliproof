@@ -358,15 +358,7 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                           </button>
                         )}
                         <button
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "Are you sure you want to unlink this evidence from the claim? This action cannot be undone."
-                              )
-                            ) {
-                              onUnlinkEvidence(eid, node.id);
-                            }
-                          }}
+                          onClick={() => onUnlinkEvidence(eid, node.id)}
                           className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1 mt-1"
                         >
                           <XMarkIcon className="w-3.5 h-3.5" />

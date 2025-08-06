@@ -391,12 +391,15 @@ Features / bugs to fix:
 - Make sure a 0 scored edge does not affect the score at all - (DONE)
 - Walk through building 6 - 7 nodes, manually calculate score and compare with AI generated to ensure the calculation is as expected - (DONE)
 - Evidence analysis / justification not updating when node is modified, only score gets updated - (DONE)
-- Deleting a NODE that was connected to another node should re-trigger the automation for get claim cred. Right now if you delete the edge it does this, but not when u delete the node (which in turn deletes the edge)
+- Deleting a NODE that was connected to another node should re-trigger the automation for get claim cred. Right now if you delete the edge it does this, but not when u delete the node (which in turn deletes the edge) - (DONE)
+
 - Swap target and source claim in validate edge function. - (DONE)
 - Enter key should save content and trigger automation
   - ensure no other edge cases around this
-- Enable drag and drop of evidence onto nodes
-- Make delete evidence / unlink evidence functional
+- Enable drag and drop of evidence onto nodes -(DONE )
+  - NOT ADDED -> need to click away and click again for modal to be updated...
+- Make delete evidence / unlink evidence functional - (DONE)
+  - Make it so that the moment you add / delete evidence the cred score is recalled, not when u deselect -> NOT DONE
 - Style edge scores nicely
 - Fix fonts / styling in ALL modals
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
@@ -428,3 +431,5 @@ IF there's TIME (low priority):
 - Enable drag and drop of supporting docs onto nodes
 - Reziseable nodes
 - Potential layout locks, snap to a left - right layout format
+
+TO DO:

@@ -1569,6 +1569,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           return currentNodes; // Return unchanged
         }
       });
+
+      // Immediately trigger evidence check and credibility update
+      setApiQueue((prev) => [...prev.filter((id) => id !== nodeId), nodeId]);
     },
     [cloneEvidence]
   );
@@ -2446,28 +2449,46 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleUnlinkEvidence = (evidenceId: string, nodeId: string) => {
+    console.log(
+      `[handleUnlinkEvidence] Unlinking evidence ${evidenceId} from node ${nodeId}`
+    );
+
     // Remove the evidence ID from the node's evidenceIds array
-    setNodes((prevNodes) =>
-      prevNodes.map((node) => {
+    setNodes((prevNodes) => {
+      const updatedNodes = prevNodes.map((node) => {
         if (node.id === nodeId) {
-          return {
+          const updatedNode = {
             ...node,
             data: {
               ...node.data,
               evidenceIds:
                 node.data.evidenceIds?.filter((id) => id !== evidenceId) || [],
+              // Preserve callbacks
+              onChange: node.data.onChange,
+              onEvidenceDrop: node.data.onEvidenceDrop,
             },
           };
+          return updatedNode;
         }
         return node;
-      })
-    );
+      });
 
-    // Mark the node as modified for credibility recalculation
-    setModifiedNodes((prev) => new Set([...prev, nodeId]));
+      // Update selectedNode if this is the currently selected node
+      if (selectedNode?.id === nodeId) {
+        const updatedSelectedNode = updatedNodes.find((n) => n.id === nodeId);
+        if (updatedSelectedNode) {
+          setSelectedNode(updatedSelectedNode);
+          console.log(
+            `[handleUnlinkEvidence] Updated selectedNode for immediate modal refresh`
+          );
+        }
+      }
 
-    // Update credibility scores
-    updateCredibilityScores();
+      return updatedNodes;
+    });
+
+    // Immediately trigger evidence check and credibility update
+    setApiQueue((prev) => [...prev.filter((id) => id !== nodeId), nodeId]);
   };
 
   const pdfPreviewerRef = useRef<PDFPreviewerHandle>(null);

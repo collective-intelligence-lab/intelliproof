@@ -403,6 +403,10 @@ Features / bugs to fix:
 - Style edge scores nicely - (DONE)
 - Fix fonts / styling in ALL modals - (DONE)
 - Evidence averaging (0 should not contribute to average)
+- autosave functionality
+- share button not functional
+- undo / redo buttons not functional
+- change save buttons on graph manager modals from light blue to navy blue
 - Remove evidence and supporting docs from evidence panel feature
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded

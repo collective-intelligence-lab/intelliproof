@@ -1528,6 +1528,31 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     event.dataTransfer.effectAllowed = "move";
   };
 
+  const handleDeleteEvidence = (evidenceId: string) => {
+    console.log(`[handleDeleteEvidence] Deleting evidence: ${evidenceId}`);
+
+    // Remove the evidence from evidenceCards
+    setEvidenceCards((prev) => prev.filter((card) => card.id !== evidenceId));
+
+    // Remove the evidence ID from all nodes that reference it
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => {
+        if (node.data.evidenceIds?.includes(evidenceId)) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              evidenceIds: node.data.evidenceIds.filter(
+                (id) => id !== evidenceId
+              ),
+            },
+          };
+        }
+        return node;
+      })
+    );
+  };
+
   // Handle evidence drop on nodes with cloning logic
   const handleNodeEvidenceDrop = useCallback(
     (nodeId: string, evidenceId: string) => {
@@ -4052,13 +4077,25 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         return (
                           <div
                             key={card.id}
-                            className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200 cursor-pointer"
+                            className="p-4 bg-[#FAFAFA] rounded-md hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200 cursor-pointer relative group"
                             onClick={() => setSelectedEvidenceCard(card)}
                             draggable
                             onDragStart={(e) =>
                               handleEvidenceDragStart(e, card.id)
                             }
                           >
+                            {/* Delete button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteEvidence(card.id);
+                              }}
+                              className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              aria-label="Delete evidence"
+                            >
+                              ×
+                            </button>
+
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
                                 <div className="flex flex-col gap-0.5">
@@ -4983,7 +5020,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="p-4 border-b border-black flex justify-between items-center bg-white relative">
                 <div className="flex items-center gap-3">
                   <SparklesIcon className="w-6 h-6 text-purple-500" />
-                  <h2 className="text-lg font-medium tracking-wide uppercase">
+                  <h2
+                    className="text-lg tracking-wide uppercase"
+                    style={{
+                      fontFamily: "DM Sans, sans-serif",
+                      fontWeight: "600",
+                    }}
+                  >
                     AI Copilot
                   </h2>
                 </div>
@@ -5024,21 +5067,29 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <div className="flex border-b border-gray-200">
                 <button
                   onClick={() => setActiveTab("chat")}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  className={`flex-1 px-4 py-3 text-sm transition-colors ${
                     activeTab === "chat"
                       ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
+                  style={{
+                    fontFamily: "DM Sans, sans-serif",
+                    fontWeight: "500",
+                  }}
                 >
                   AI Copilot
                 </button>
                 <button
                   onClick={() => setActiveTab("console")}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  className={`flex-1 px-4 py-3 text-sm transition-colors ${
                     activeTab === "console"
                       ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
+                  style={{
+                    fontFamily: "DM Sans, sans-serif",
+                    fontWeight: "500",
+                  }}
                 >
                   Console
                 </button>
@@ -5049,7 +5100,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <>
                   {/* Chat Area */}
                   <div className="flex-1 overflow-auto p-4">
-                    <div className="text-center text-gray-500 mt-2 mb-4">
+                    <div
+                      className="text-center text-gray-500 mt-2 mb-4"
+                      style={{
+                        fontFamily: "DM Sans, sans-serif",
+                        fontWeight: "500",
+                      }}
+                    >
                       Chat with AI Copilot about your graph
                     </div>
 
@@ -5060,7 +5117,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           <SparklesIcon className="w-4 h-4 text-white" />
                         </div>
                         <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
-                          <p className="text-sm text-gray-800">
+                          <p
+                            className="text-sm text-gray-800"
+                            style={{
+                              fontFamily: "DM Sans, sans-serif",
+                              fontWeight: "400",
+                              lineHeight: "1.5",
+                            }}
+                          >
                             Hello! I'm your AI Copilot. I can help you analyze
                             your argument graph, validate claims, check
                             evidence, and much more. What would you like to work
@@ -5072,7 +5136,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       {/* Example user message */}
                       <div className="flex items-start gap-3 justify-end">
                         <div className="bg-blue-500 rounded-lg p-3 max-w-[80%]">
-                          <p className="text-sm text-white">
+                          <p
+                            className="text-sm text-white"
+                            style={{
+                              fontFamily: "DM Sans, sans-serif",
+                              fontWeight: "400",
+                              lineHeight: "1.5",
+                            }}
+                          >
                             Can you help me validate the evidence for my claims?
                           </p>
                         </div>
@@ -5089,7 +5160,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           <SparklesIcon className="w-4 h-4 text-white" />
                         </div>
                         <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
-                          <p className="text-sm text-gray-800">
+                          <p
+                            className="text-sm text-gray-800"
+                            style={{
+                              fontFamily: "DM Sans, sans-serif",
+                              fontWeight: "400",
+                              lineHeight: "1.5",
+                            }}
+                          >
                             Absolutely! I can help you validate evidence for
                             your claims. You can use the "Check All Claim
                             Evidence" function in the Console tab, or I can
@@ -5108,6 +5186,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         type="text"
                         placeholder="Ask me anything about your graph..."
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontWeight: "400",
+                        }}
                       />
                       <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
                         <SparklesIcon className="w-5 h-5" />
@@ -5118,7 +5200,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         onClick={() => {
                           /* Clear chat logic */
                         }}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg shadow-sm border border-gray-300 transition-all"
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontWeight: "500",
+                        }}
                         type="button"
                       >
                         Clear Chat
@@ -5130,7 +5216,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <>
                   {/* Console Area - Keep existing functionality */}
                   <div className="flex-1 overflow-auto p-4">
-                    <div className="text-center text-gray-500 mt-2 mb-2">
+                    <div
+                      className="text-center text-gray-500 mt-2 mb-2"
+                      style={{
+                        fontFamily: "DM Sans, sans-serif",
+                        fontWeight: "500",
+                      }}
+                    >
                       AI Copilot is ready to assist with your graph.
                     </div>
                     <CommandMessageBox

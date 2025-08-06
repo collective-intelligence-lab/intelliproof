@@ -1154,12 +1154,31 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setEdges((eds) =>
       eds.map((e) => {
         if (e.id === edgeId) {
+          // Get the updated edge data
+          const updatedData = {
+            ...e.data,
+            ...updates.data,
+          };
+
+          // Determine edge color based on edgeScore
+          let edgeColor = "#166534"; // Default green for supporting
+          if (updatedData.edgeScore !== undefined) {
+            if (updatedData.edgeScore < 0) {
+              edgeColor = "#991B1B"; // Red for attacking
+            } else if (updatedData.edgeScore > 0) {
+              edgeColor = "#166534"; // Green for supporting
+            } else {
+              edgeColor = "#166534"; // Green for neutral (same as supporting)
+            }
+          }
+
           return {
             ...e,
             ...updates,
-            data: {
-              ...e.data,
-              ...updates.data,
+            data: updatedData,
+            markerStart: {
+              type: MarkerType.ArrowClosed,
+              color: edgeColor,
             },
           };
         }

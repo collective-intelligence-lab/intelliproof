@@ -29,7 +29,8 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   const handleConfidenceChange = (newConfidence: number) => {
     setConfidence(newConfidence);
     // Determine edge type based on confidence sign
-    const newEdgeType: EdgeType = newConfidence >= 0 ? "supporting" : "attacking";
+    const newEdgeType: EdgeType =
+      newConfidence >= 0 ? "supporting" : "attacking";
     onUpdate(edge.id, {
       data: {
         ...edge.data,
@@ -43,21 +44,26 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
     });
   };
 
-  // Helper function to get confidence display value
-  const getConfidenceDisplay = (conf: number) => {
-    const absValue = Math.abs(conf);
-    const sign = conf >= 0 ? "+" : "-";
-    return `${sign}${Math.round(absValue * 100)}%`;
+  // Helper function to get edge type and color based on confidence
+  const getEdgeTypeInfo = (conf: number) => {
+    if (conf > 0) return { type: "Supporting", color: "#166534" }; // Green for supporting
+    if (conf < 0) return { type: "Attacking", color: "#991B1B" }; // Red for attacking
+    return { type: "Neutral", color: "#2563EB" }; // Blue for neutral
   };
+
+  const edgeTypeInfo = getEdgeTypeInfo(confidence);
 
   return (
     <div
-      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50"
-      style={{ right: copilotOpen ? "27vw" : "1.5rem", transition: "right 0.3s" }}
+      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50 font-[DM Sans] font-normal"
+      style={{
+        right: copilotOpen ? "27vw" : "1.5rem",
+        transition: "right 0.3s",
+      }}
     >
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-medium">Edge Properties</h2>
+        <h2 className="text-lg font-semibold">Edge Properties</h2>
         <button
           onClick={onClose}
           className="text-2xl text-gray-500 hover:text-gray-700"
@@ -69,30 +75,30 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 
       {/* Content */}
       <div className="space-y-6">
-        {/* Confidence Slider */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-base font-medium">
-              Confidence Level
-            </label>
-            <span className="text-sm text-gray-500">
-              {getConfidenceDisplay(confidence)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="-1"
-            max="1"
-            step="0.01"
-            value={confidence}
-            onChange={(e) => handleConfidenceChange(parseFloat(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>Strong Attack (-100%)</span>
-            <span>Neutral (0%)</span>
-            <span>Strong Support (+100%)</span>
-          </div>
+        {/* Score */}
+        <div className="relative">
+          <label className="block text-base font-medium mb-2">
+            <div className="flex items-center gap-2">
+              <span>Score:</span>
+              <span style={{ color: edgeTypeInfo.color }}>
+                {typeof edge.data.edgeScore === "number"
+                  ? edge.data.edgeScore.toFixed(2)
+                  : "0.00"}
+              </span>
+            </div>
+          </label>
+        </div>
+
+        {/* Type */}
+        <div className="relative">
+          <label className="block text-base font-medium mb-2">
+            <div className="flex items-center gap-2">
+              <span>Type:</span>
+              <span style={{ color: edgeTypeInfo.color }}>
+                {edgeTypeInfo.type}
+              </span>
+            </div>
+          </label>
         </div>
       </div>
     </div>

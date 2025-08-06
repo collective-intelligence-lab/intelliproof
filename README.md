@@ -401,7 +401,7 @@ Features / bugs to fix:
 - Make delete evidence / unlink evidence functional - (DONE)
   - Make it so that the moment you add / delete evidence the cred score is recalled, not when u deselect - (DONE)
 - Style edge scores nicely - (DONE)
-- Fix fonts / styling in ALL modals
+- Fix fonts / styling in ALL modals - (DONE)
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)

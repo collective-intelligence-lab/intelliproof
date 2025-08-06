@@ -748,6 +748,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             // Legacy or exported edge
             confidence = edge.weight;
             edgeType = edge.weight >= 0 ? "supporting" : "attacking";
+            edgeScore = edge.weight; // Use weight as edgeScore for legacy edges
+          }
+
+          // Determine edge color based on edgeScore
+          let edgeColor = "#166534"; // Default green for supporting
+          if (edgeScore !== undefined) {
+            if (edgeScore < 0) {
+              edgeColor = "#991B1B"; // Red for attacking
+            } else if (edgeScore > 0) {
+              edgeColor = "#166534"; // Green for supporting
+            } else {
+              edgeColor = "#166534"; // Green for neutral (same as supporting)
+            }
           }
 
           return {
@@ -762,7 +775,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             },
             markerStart: {
               type: MarkerType.ArrowClosed,
-              color: edgeType === "supporting" ? "#166534" : "#991B1B",
+              color: edgeColor,
             },
           };
         }
@@ -913,7 +926,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
-          color: "#166534",
+          color: "#166534", // Green for neutral/supporting (edgeScore = 0)
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);

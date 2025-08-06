@@ -86,11 +86,17 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   markerStart,
   markerEnd,
 }) => {
-  const color = EDGE_COLORS[data?.edgeType || "supporting"];
-
-  // Debug logging
-  console.log(`Edge ${id} data:`, data);
-  console.log(`Edge ${id} edgeScore:`, data?.edgeScore);
+  // Determine edge color based on edgeScore
+  let color: string = EDGE_COLORS.supporting; // Default green for supporting
+  if (data?.edgeScore !== undefined) {
+    if (data.edgeScore < 0) {
+      color = EDGE_COLORS.attacking; // Red for attacking
+    } else if (data.edgeScore > 0) {
+      color = EDGE_COLORS.supporting; // Green for supporting
+    } else {
+      color = EDGE_COLORS.supporting; // Green for neutral (same as supporting)
+    }
+  }
 
   // Get the bezier path for the edge and label position
   const [edgePath, labelX, labelY] = getBezierPath({

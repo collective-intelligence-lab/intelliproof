@@ -4066,8 +4066,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Evidence Creation Modal */}
               {isAddEvidenceOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-                  <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-4 relative">
-                    <h2 className="text-lg font-semibold mb-3">Add Evidence</h2>
+                  <div
+                    className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-8 relative"
+                    style={{ fontFamily: "DM Sans, sans-serif" }}
+                  >
+                    <h2 className="text-2xl font-bold mb-2 text-black">
+                      Add Evidence
+                    </h2>
+                    <p className="text-black text-lg mb-6 font-normal">
+                      Create evidence from your supporting documents
+                    </p>
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -4088,16 +4096,21 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         ]);
                         closeEvidenceModal();
                       }}
-                      className="space-y-3"
+                      className="space-y-6"
                     >
                       {/* Title */}
-                      <div>
-                        <label className="block text-sm font-medium mb-0.5">
+                      <div className="flex flex-col gap-4">
+                        <label
+                          className="text-black text-base font-medium"
+                          htmlFor="title"
+                        >
                           Title
                         </label>
                         <input
+                          id="title"
                           type="text"
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] text-sm"
+                          className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          style={{ color: "#000000", fontWeight: 500 }}
                           value={newEvidence.title}
                           onChange={(e) =>
                             setNewEvidence((ev) => ({
@@ -4105,16 +4118,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               title: e.target.value,
                             }))
                           }
+                          placeholder="e.g. Research findings on climate change"
                           required
                         />
                       </div>
+
                       {/* Supporting Doc Select */}
-                      <div>
-                        <label className="block text-sm font-medium mb-0.5">
+                      <div className="flex flex-col gap-4">
+                        <label
+                          className="text-black text-base font-medium"
+                          htmlFor="supportingDoc"
+                        >
                           Supporting Document
                         </label>
                         <select
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] text-sm"
+                          id="supportingDoc"
+                          className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          style={{ color: "#000000", fontWeight: 500 }}
                           value={newEvidence.supportingDocId}
                           onChange={(e) =>
                             setNewEvidence((ev) => ({
@@ -4138,13 +4158,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
                       {/* Node Selection - only show when a document is selected */}
                       {newEvidence.supportingDocId && (
-                        <div>
-                          <label className="block text-sm font-medium mb-0.5">
+                        <div className="flex flex-col gap-4">
+                          <label
+                            className="text-black text-base font-medium"
+                            htmlFor="associatedNode"
+                          >
                             Associated Node (Optional but Required for AI
                             Suggestions)
                           </label>
                           <select
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] text-sm"
+                            id="associatedNode"
+                            className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            style={{ color: "#000000", fontWeight: 500 }}
                             value={newEvidence.selectedNodeId}
                             onChange={(e) =>
                               setNewEvidence((ev) => ({
@@ -4170,7 +4195,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           </select>
                         </div>
                       )}
-                      {/* Excerpt/Lines and PDF Preview side by side */}
+
+                      {/* Document Preview and Excerpt Section */}
                       {(() => {
                         const doc = supportingDocuments.find(
                           (d) => d.id === newEvidence.supportingDocId
@@ -4178,7 +4204,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         if (doc && doc.type === "document") {
                           const isPDF = doc.url.toLowerCase().endsWith(".pdf");
                           return (
-                            <div className="flex flex-row gap-4 items-stretch">
+                            <div className="flex flex-row gap-6 items-stretch">
                               {/* PDF Previewer on the left */}
                               {isPDF && (
                                 <div
@@ -4189,7 +4215,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     maxWidth: 350,
                                   }}
                                 >
-                                  <label className="block text-sm font-medium mb-0.5">
+                                  <label className="text-black text-base font-medium mb-2">
                                     Document Preview
                                   </label>
                                   <PDFPreviewer
@@ -4204,7 +4230,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               <div className="flex flex-col justify-center items-center px-2">
                                 <button
                                   type="button"
-                                  className="px-3 py-1.5 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330] text-sm font-medium transition-colors"
+                                  className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors"
                                   onClick={() => {
                                     const selectedText =
                                       pdfPreviewerRef.current?.getSelectedText() ||
@@ -4227,184 +4253,50 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 </button>
 
                                 {/* Document-specific buttons - only show when type is document */}
-                                <div className="flex flex-col gap-2 mt-3">
-                                  <button
-                                    type="button"
-                                    className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={handleSuggestContent}
-                                    disabled={
-                                      suggestLoading ||
-                                      !newEvidence.selectedNodeId
-                                    }
-                                  >
-                                    {suggestLoading
-                                      ? "Analyzing..."
-                                      : "Suggest Content"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="px-3 py-1.5 rounded-md bg-green-100 text-green-700 hover:bg-green-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={handleExtractAllText}
-                                    disabled={
-                                      extractLoading ||
-                                      !newEvidence.supportingDocId
-                                    }
-                                  >
-                                    {extractLoading
-                                      ? "Extracting..."
-                                      : "Select All"}
-                                  </button>
-                                </div>
-                              </div>
-                              {/* Excerpt/Lines on the right */}
-                              <div className="w-1/2">
-                                <label className="block text-sm font-medium mb-0.5">
-                                  Excerpt / Lines
-                                </label>
-                                <textarea
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] min-h-[450px] text-med"
-                                  placeholder="Paste or type the relevant excerpt or lines here... Alternatively, select text from the preview and click 'Add Content' to add it to the excerpt."
-                                  value={newEvidence.excerpt}
-                                  onChange={(e) =>
-                                    setNewEvidence((ev) => ({
-                                      ...ev,
-                                      excerpt: e.target.value,
-                                    }))
-                                  }
-                                  required
-                                />
-                              </div>
-                            </div>
-                          );
-                        }
-                        if (doc && doc.type === "image") {
-                          return (
-                            <div className="flex flex-row gap-4 items-stretch">
-                              {/* Image Previewer on the left */}
-                              <div className="flex flex-col flex-1">
-                                <label className="block text-sm font-medium mb-0.5">
-                                  Image Preview
-                                </label>
-                                <ImagePreviewer
-                                  url={doc.url}
-                                  fixedWidth={350}
-                                />
-                              </div>
-                              {/* Centered Parse Text button */}
-                              <div className="flex flex-col justify-center items-center px-2">
-                                <button
-                                  type="button"
-                                  className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330] text-base font-medium whitespace-pre-line text-center"
-                                  disabled={parseLoading}
-                                  onClick={async () => {
-                                    setParseError(null);
-                                    setParseLoading(true);
-                                    try {
-                                      console.log(
-                                        "[Parse Text] Starting OCR for image URL:",
-                                        doc.url
-                                      );
-                                      let text = "";
-                                      let response = await fetch(
-                                        "/api/ai/extract-text-from-image",
-                                        {
-                                          method: "POST",
-                                          headers: {
-                                            "Content-Type": "application/json",
-                                          },
-                                          body: JSON.stringify({
-                                            url: doc.url,
-                                          }),
-                                        }
-                                      );
-                                      console.log(
-                                        "[Parse Text] OCR response:",
-                                        response
-                                      );
-                                      if (!response.ok) {
-                                        const errText = await response.text();
-                                        console.error(
-                                          "[Parse Text] OCR failed:",
-                                          errText
-                                        );
-                                        throw new Error(
-                                          "Failed to extract text from image"
-                                        );
-                                      }
-                                      const data = await response.json();
-                                      text = data.text?.trim() || "";
-                                      // If no text detected, ask for a description
-                                      if (!text || text.length < 3) {
-                                        console.log(
-                                          "[Parse Text] No text detected, requesting image description for URL:",
-                                          doc.url
-                                        );
-                                        response = await fetch(
-                                          "/api/ai/extract-text-from-image?summarize=true",
-                                          {
-                                            method: "POST",
-                                            headers: {
-                                              "Content-Type":
-                                                "application/json",
-                                            },
-                                            body: JSON.stringify({
-                                              url: doc.url,
-                                            }),
-                                          }
-                                        );
-                                        console.log(
-                                          "[Parse Text] Description response:",
-                                          response
-                                        );
-                                        if (!response.ok) {
-                                          const errText = await response.text();
-                                          console.error(
-                                            "[Parse Text] Description failed:",
-                                            errText
-                                          );
-                                          throw new Error(
-                                            "Failed to get image description"
-                                          );
-                                        }
-                                        const descData = await response.json();
-                                        text =
-                                          descData.text?.trim() ||
-                                          "No text or description could be extracted.";
-                                      }
-                                      setNewEvidence((ev) => ({
-                                        ...ev,
-                                        excerpt: text,
-                                      }));
-                                      console.log(
-                                        "[Parse Text] Final extracted text/description:",
-                                        text
-                                      );
-                                    } catch (err: any) {
-                                      setParseError(
-                                        err.message || "Failed to parse image."
-                                      );
-                                      console.error("[Parse Text] Error:", err);
-                                    } finally {
-                                      setParseLoading(false);
-                                    }
-                                  }}
-                                >
-                                  {parseLoading ? "Parsing..." : `Parse\nText`}
-                                </button>
-                                {parseError && (
-                                  <div className="text-red-500 text-xs mt-2">
-                                    {parseError}
-                                  </div>
+                                {newEvidence.selectedNodeId && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors mt-2"
+                                      onClick={handleSuggestContent}
+                                      disabled={suggestLoading}
+                                    >
+                                      {suggestLoading
+                                        ? "Suggesting..."
+                                        : "AI Suggest Text"}
+                                    </button>
+                                    {suggestError && (
+                                      <div className="text-red-500 text-sm mt-2">
+                                        {suggestError}
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors mt-2"
+                                      onClick={handleExtractAllText}
+                                      disabled={extractLoading}
+                                    >
+                                      {extractLoading
+                                        ? "Extracting..."
+                                        : "Extract All Text"}
+                                    </button>
+                                    {extractError && (
+                                      <div className="text-red-500 text-sm mt-2">
+                                        {extractError}
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
-                              {/* Excerpt/Lines on the right */}
+
                               <div className="flex-1">
-                                <label className="block text-sm font-medium mb-0.5">
+                                <label className="text-black text-base font-medium mb-2">
                                   Excerpt / Lines
                                 </label>
                                 <textarea
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9] min-h-[450px] text-med"
-                                  placeholder="Paste or type the relevant excerpt or lines here..."
+                                  className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[450px]"
+                                  style={{ color: "#000000", fontWeight: 500 }}
+                                  placeholder="Paste or type the relevant excerpt or lines here... Alternatively, select text from the preview and click 'Add Content' to add it to the excerpt."
                                   value={newEvidence.excerpt}
                                   onChange={(e) =>
                                     setNewEvidence((ev) => ({
@@ -4420,20 +4312,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         }
                         return null;
                       })()}
+
                       {/* Actions */}
-                      <div className="flex justify-end gap-2 mt-3 items-center">
-                        <div className="flex-1"></div>
-                        {/* Add Content button will be rendered here if needed by PDFPreviewer */}
+                      <div className="flex gap-4 justify-end">
                         <button
                           type="button"
-                          className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium"
                           onClick={closeEvidenceModal}
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330]"
+                          className="px-4 py-2 bg-[#232F3E] text-white rounded-md hover:bg-[#1A2330] transition-colors font-medium"
                         >
                           Save
                         </button>

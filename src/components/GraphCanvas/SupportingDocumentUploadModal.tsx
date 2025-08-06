@@ -17,7 +17,7 @@ const SupportingDocumentUploadModal: React.FC<
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confidence, setConfidence] = useState(0.5);
+  // const [confidence, setConfidence] = useState(0.5);
 
   if (!open) return null;
 
@@ -60,7 +60,7 @@ const SupportingDocumentUploadModal: React.FC<
           type,
           url,
           uploader_email: uploaderEmail,
-          confidence,
+          // confidence,
         },
         {
           headers: {
@@ -82,30 +82,55 @@ const SupportingDocumentUploadModal: React.FC<
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-[18rem] p-6 relative">
-        <h2 className="text-lg font-semibold mb-4">
+      <div
+        className="bg-white rounded-lg shadow-lg w-full max-w-md p-8 relative"
+        style={{ fontFamily: "DM Sans, sans-serif" }}
+      >
+        <h2 className="text-2xl font-bold mb-2 text-black">
           Upload Supporting Document
         </h2>
+        <p className="text-black text-lg mb-6 font-normal">
+          Add a document or image
+        </p>
+
         {!isReady ? (
-          <div className="text-center text-gray-500 py-8">
-            Loading required information...
+          <div className="text-center text-gray-600 py-8">
+            <p className="text-lg font-normal">
+              Loading required information...
+            </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-base font-medium mb-1">Name</label>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex flex-col gap-4">
+              <label
+                className="text-black text-base font-medium"
+                htmlFor="name"
+              >
+                Name
+              </label>
               <input
+                id="name"
                 type="text"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{ color: "#000000", fontWeight: 500 }}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Research Paper"
                 required
               />
             </div>
-            <div>
-              <label className="block text-base font-medium mb-1">Type</label>
+
+            <div className="flex flex-col gap-4">
+              <label
+                className="text-black text-base font-medium"
+                htmlFor="type"
+              >
+                Type
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7283D9]"
+                id="type"
+                className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{ color: "#000000", fontWeight: 500 }}
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 required
@@ -114,11 +139,19 @@ const SupportingDocumentUploadModal: React.FC<
                 <option value="image">Image</option>
               </select>
             </div>
-            <div>
-              <label className="block text-base font-medium mb-1">File</label>
+
+            <div className="flex flex-col gap-4">
+              <label
+                className="text-black text-base font-medium"
+                htmlFor="file"
+              >
+                File
+              </label>
               <input
+                id="file"
                 type="file"
-                className="w-full"
+                className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{ color: "#000000", fontWeight: 500 }}
                 accept={
                   type === "image"
                     ? ".jpg,.jpeg,.png,.gif,.bmp,.webp,.tiff,.svg,image/*"
@@ -129,9 +162,24 @@ const SupportingDocumentUploadModal: React.FC<
                   setFile(selectedFile);
                   if (selectedFile) {
                     // Auto-detect type based on file extension/mimetype
-                    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
-                    const imageExts = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "svg"];
-                    if (selectedFile.type.startsWith("image/") || (ext && imageExts.includes(ext))) {
+                    const ext = selectedFile.name
+                      .split(".")
+                      .pop()
+                      ?.toLowerCase();
+                    const imageExts = [
+                      "jpg",
+                      "jpeg",
+                      "png",
+                      "gif",
+                      "bmp",
+                      "webp",
+                      "tiff",
+                      "svg",
+                    ];
+                    if (
+                      selectedFile.type.startsWith("image/") ||
+                      (ext && imageExts.includes(ext))
+                    ) {
                       setType("image");
                     } else {
                       setType("document");
@@ -141,27 +189,39 @@ const SupportingDocumentUploadModal: React.FC<
                 required
               />
             </div>
-            <div>
-              <label className="block text-base font-medium mb-1">Confidence</label>
+
+            {/* <div className="flex flex-col gap-4">
+              <label
+                className="text-black text-base font-medium"
+                htmlFor="confidence"
+              >
+                Confidence
+              </label>
               <div className="flex items-center gap-3">
                 <input
+                  id="confidence"
                   type="range"
                   min="0"
                   max="1"
                   step="0.01"
                   value={confidence}
-                  onChange={e => setConfidence(parseFloat(e.target.value))}
+                  onChange={(e) => setConfidence(parseFloat(e.target.value))}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7283D9]"
                 />
-                <span className="text-sm text-gray-500 w-12 text-right">{Math.round(confidence * 100)}%</span>
+                <span className="text-base text-gray-600 w-12 text-right font-medium">
+                  {Math.round(confidence * 100)}%
+                </span>
               </div>
-            </div>
+            </div> */}
 
-            {error && <div className="text-red-500 text-sm">{error}</div>}
-            <div className="flex justify-end gap-2 mt-4">
+            {error && (
+              <div className="text-red-500 text-sm font-medium">{error}</div>
+            )}
+
+            <div className="flex gap-4 justify-end">
               <button
                 type="button"
-                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium"
                 onClick={onClose}
                 disabled={loading}
               >
@@ -169,7 +229,7 @@ const SupportingDocumentUploadModal: React.FC<
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-md bg-[#232F3E] text-[#F3F4F6] hover:bg-[#1A2330]"
+                className="px-4 py-2 bg-[#232F3E] text-white rounded-md hover:bg-[#1A2330] transition-colors font-medium"
                 disabled={loading || !isReady}
               >
                 {loading ? "Uploading..." : "Save"}

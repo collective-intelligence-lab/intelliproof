@@ -417,6 +417,7 @@ Features / bugs to fix:
 - Move generate assumptions onto the edge modal
 - Implement chat Q&A (With Kaveh help)
 - make edges thinner
+- dark blue navbar on graph manager page must have consistent styling
 - Helper / info box explaining the different functionality / features of graph
 - Position header section of nodes slightly more to left (there's a very small white gap)
 - Extensive console logging throughout the process

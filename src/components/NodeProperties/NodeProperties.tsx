@@ -255,7 +255,7 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
             onClick={handleClassifyClaimType}
             loading={isClassifying}
             disabled={!node || !onClassifyClaimType}
-            className="w-full"
+            className="w-full !bg-[#232F3E] !text-white hover:!bg-[#1A2330]"
           >
             {isClassifying ? "Classifying..." : "Classify Claim Type"}
           </ContinueButton>

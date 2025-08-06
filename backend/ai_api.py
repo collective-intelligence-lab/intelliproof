@@ -598,37 +598,18 @@ Score: <float between -1 and 1, following the scoring guide above>
 @router.post("/api/ai/generate-assumptions", response_model=GenerateAssumptionsResponse)
 def generate_assumptions(data: GenerateAssumptionsRequest = Body(...)):
     """
-    Generate 3-5 implicit assumptions required by an edge relationship to be valid.
+    Generate 3 implicit assumptions that would strengthen the support relationship between two claims.
     
-    This endpoint analyzes the relationship between two nodes connected by an edge
-    and identifies the implicit assumptions that must be true for the relationship to be valid.
+    This endpoint analyzes what assumptions must be true for the target claim to provide
+    stronger support for the source claim. The assumptions are purely based on the logical
+    relationship between the claim contents, not on external evidence.
     
-    The function considers:
-    - Edge direction (support vs attack)
-    - Node content and evidence
-    - Logical relationships between claims
-    - Hidden premises that strengthen or weaken the connection
+    The function identifies hidden premises that, if true, would increase the strength
+    of the support relationship between the claims.
     """
     print(f"[ai_api] generate_assumptions: Function started for edge {data.edge.source} -> {data.edge.target}")
-    
-    def format_evidence_for_node(node: NodeWithEvidenceModel) -> str:
-        """Format evidence for a specific node."""
-        if not node.evidenceIds:
-            return "No evidence provided"
-        
-        evidence_texts = []
-        for eid in node.evidenceIds:
-            evidence = next((e for e in data.evidence if e.id == eid), None)
-            if evidence:
-                doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
-                doc_info = f" (from {doc.name})" if doc else ""
-                evidence_texts.append(f"- {evidence.title}: {evidence.excerpt}{doc_info}")
-        
-        return "\n".join(evidence_texts) if evidence_texts else "No evidence provided"
-    
-    # Format evidence for both nodes
-    source_evidence = format_evidence_for_node(data.source_node)
-    target_evidence = format_evidence_for_node(data.target_node)
+    print(f"[ai_api] generate_assumptions: Source claim (to be supported): {data.source_node.text}")
+    print(f"[ai_api] generate_assumptions: Target claim (providing support): {data.target_node.text}")
     
     # Determine edge type based on weight or default to support
     edge_type = "support"
@@ -640,29 +621,74 @@ def generate_assumptions(data: GenerateAssumptionsRequest = Body(...)):
         else:
             edge_type = "neutral"
     
-    # Build the prompt for assumption generation
+    # Build the improved prompt for assumption generation with few-shot learning
     prompt = f"""
-You are an expert in argument analysis. Identify 3-5 implicit assumptions required for this {edge_type} relationship to be valid.
+You are an expert in logical argument analysis. Your task is to identify exactly 3 implicit assumptions that, if true, would STRENGTHEN the support relationship between two claims.
 
-EDGE: {data.source_node.text} → {data.target_node.text}
-SOURCE: {data.source_node.text} (Type: {data.source_node.type})
-TARGET: {data.target_node.text} (Type: {data.target_node.type})
-EVIDENCE: {source_evidence[:500]}... (source) | {target_evidence[:500]}... (target)
+CLAIM TO BE SUPPORTED: {data.source_node.text}
+SUPPORTING CLAIM: {data.target_node.text}
 
-TASK: Generate 3-5 assumptions that must be true for this {edge_type} relationship.
+TASK: Identify assumptions "p" such that if "p" is true, then "{data.target_node.text}" provides STRONGER support for "{data.source_node.text}".
+
+EXAMPLES:
+
+Example 1:
+CLAIM TO BE SUPPORTED: "John should exercise regularly"
+SUPPORTING CLAIM: "Exercise reduces the risk of heart disease"
+
+Assumption 1: John wants to reduce his risk of heart disease
+Reasoning 1: Without this desire/goal, the health benefit doesn't provide a reason for John to exercise
+Importance 1: 0.9
+
+Assumption 2: John is capable of exercising regularly
+Reasoning 2: If John cannot exercise due to physical limitations, the benefit becomes irrelevant to him
+Importance 2: 0.7
+
+Assumption 3: The heart disease risk reduction applies to people like John
+Reasoning 3: The supporting claim is stronger if the research applies to John's demographic/health profile
+Importance 3: 0.6
+
+Example 2:
+CLAIM TO BE SUPPORTED: "The company should invest in renewable energy"
+SUPPORTING CLAIM: "Renewable energy costs have decreased significantly"
+
+Assumption 1: The company's goal includes cost reduction or financial efficiency
+Reasoning 1: Cost decreases only matter if the company cares about reducing expenses
+Importance 1: 0.8
+
+Assumption 2: The cost decreases apply to the scale and type of energy the company needs
+Reasoning 2: The supporting claim is stronger if the cost benefits are relevant to the company's specific energy requirements
+Importance 2: 0.7
+
+Assumption 3: The company has the capital and capability to make such investments
+Reasoning 3: Cost benefits are irrelevant if the company cannot actually make the investment
+Importance 3: 0.6
+
+Now analyze the given claims:
+
+IMPORTANT GUIDELINES:
+- Focus ONLY on the logical relationship between the claim contents
+- Do NOT consider external evidence or documentation
+- Each assumption should be a specific, testable statement
+- Higher importance = more critical for strengthening the support relationship
+- Generate exactly 3 assumptions
 
 Respond in this format:
-Relationship Type: <support|attack|neutral>
-Overall Confidence: <float 0.0-1.0>
+Relationship Type: {edge_type}
 
-Assumption 1: <specific assumption>
-Reasoning 1: <brief explanation>
-Importance 1: <float 0.0-1.0>
-Confidence 1: <float 0.0-1.0>
+Assumption 1: <specific assumption that would strengthen the support>
+Reasoning 1: <explain how this assumption strengthens the relationship>
+Importance 1: <float 0.0-1.0 - how critical is this for strengthening support>
 
-[Continue for 3-5 assumptions]
+Assumption 2: <specific assumption that would strengthen the support>
+Reasoning 2: <explain how this assumption strengthens the relationship>
+Importance 2: <float 0.0-1.0 - how critical is this for strengthening support>
 
-Summary: <2-3 sentences>
+Assumption 3: <specific assumption that would strengthen the support>
+Reasoning 3: <explain how this assumption strengthens the relationship>
+Importance 3: <float 0.0-1.0 - how critical is this for strengthening support>
+
+Summary: <2-3 sentences explaining what these assumptions collectively accomplish>
 """
     
     print(f"[ai_api] generate_assumptions: Calling LLM for assumption generation...")
@@ -690,7 +716,7 @@ Summary: <2-3 sentences>
         
         # Parse the response
         relationship_type = edge_type
-        overall_confidence = 0.5
+        overall_confidence = 0.8  # Fixed value since we're not using it
         assumptions = []
         summary = ""
         
@@ -698,19 +724,14 @@ Summary: <2-3 sentences>
         current_assumption = None
         current_reasoning = ""
         current_importance = 0.5
-        current_confidence = 0.5
+        current_confidence = 0.8  # Default confidence since we're not using it
         
         for line in lines:
             line_lower = line.lower().strip()
             
             if line_lower.startswith("relationship type:"):
                 relationship_type = line.split(":", 1)[1].strip().lower()
-            elif line_lower.startswith("overall confidence:"):
-                try:
-                    overall_confidence = float(line.split(":", 1)[1].strip())
-                    overall_confidence = min(max(overall_confidence, 0.0), 1.0)
-                except Exception:
-                    overall_confidence = 0.5
+            # Skip overall confidence parsing since we're not using it
             elif line_lower.startswith("assumption"):
                 # Save previous assumption if exists
                 if current_assumption:
@@ -752,22 +773,21 @@ Summary: <2-3 sentences>
                 confidence=current_confidence
             ))
         
-        # Ensure we have at least 3 assumptions
-        if len(assumptions) < 3:
-            print(f"[ai_api] generate_assumptions: Warning: Only {len(assumptions)} assumptions generated, adding default ones")
-            while len(assumptions) < 3:
-                assumptions.append(Assumption(
-                    assumption_text=f"Additional assumption needed for {edge_type} relationship",
-                    reasoning="This assumption is required to establish the logical connection between the claims.",
-                    importance=0.5,
-                    confidence=0.5
-                ))
+        # Ensure we have exactly 3 assumptions
+        if len(assumptions) != 3:
+            print(f"[ai_api] generate_assumptions: Warning: {len(assumptions)} assumptions generated, adjusting to exactly 3")
+            if len(assumptions) < 3:
+                while len(assumptions) < 3:
+                    assumptions.append(Assumption(
+                        assumption_text=f"Additional bridging assumption needed to strengthen the {edge_type} relationship",
+                        reasoning="This assumption would help establish a stronger logical connection between the supporting claim and the claim being supported.",
+                        importance=0.5,
+                        confidence=0.8
+                    ))
+            elif len(assumptions) > 3:
+                assumptions = assumptions[:3]
         
-        # Limit to 5 assumptions
-        if len(assumptions) > 5:
-            assumptions = assumptions[:5]
-        
-        print(f"[ai_api] generate_assumptions: Generated {len(assumptions)} assumptions")
+        print(f"[ai_api] generate_assumptions: Generated exactly 3 assumptions")
         
         response = GenerateAssumptionsResponse(
             edge_id=f"{data.edge.source}-{data.edge.target}",
@@ -778,7 +798,7 @@ Summary: <2-3 sentences>
             edge_type=edge_type,
             relationship_type=relationship_type,
             assumptions=assumptions,
-            summary=summary if summary else f"Generated {len(assumptions)} assumptions for {edge_type} relationship",
+            summary=summary if summary else f"Generated 3 assumptions that would strengthen how '{data.target_node.text}' supports '{data.source_node.text}'",
             overall_confidence=overall_confidence
         )
         

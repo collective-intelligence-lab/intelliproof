@@ -4935,6 +4935,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClose={() => setSelectedEdge(null)}
                     onUpdate={handleEdgeUpdate}
                     copilotOpen={isAICopilotOpen}
+                    nodes={nodes}
+                    evidenceCards={evidenceCards}
+                    supportingDocuments={supportingDocumentsRedux}
                   />
                 )}
               </div>
@@ -5254,13 +5257,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={validate_edges}
                       disabled={copilotLoading}
                     />
-                    <CommandMessageBox
-                      title="Generate Assumptions"
-                      content="Generates up to 5 assumptions required by the edge to be valid"
-                      icon={<HandRaisedIcon className="w-4 h-4" />}
-                      onClick={handleGenerateAssumptions}
-                      disabled={copilotLoading}
-                    />
+
                     <CommandMessageBox
                       title="Generate All Assumptions"
                       content="Generates assumptions for all edges in the graph sequentially"

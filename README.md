@@ -421,7 +421,7 @@ Features / bugs to fix:
 - remove buttons from copilot section
 - in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence.
 
-- Move generate assumptions onto the edge modal
+- Move generate assumptions onto the edge modal - (DONE)
 - Implement chat Q&A (With Kaveh help)
 - make edges thinner
 - dark blue navbar on graph manager page must have consistent styling

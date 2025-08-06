@@ -116,21 +116,41 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
         markerStart={markerStart}
         markerEnd={markerEnd}
       />
-      {/* Always show score display for debugging */}
-      <text
-        x={labelX}
-        y={labelY}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          fontSize: "12px",
-          fontFamily: "DM Sans, sans-serif",
-          fill: "red",
-          fontWeight: "bold",
-        }}
+      {/* Edge score label with theme-matching styling */}
+      <foreignObject
+        x={labelX - 12}
+        y={labelY - 6}
+        width="22"
+        height="11"
+        style={{ overflow: "visible" }}
       >
-        {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(2)}
-      </text>
+        <div
+          style={{
+            fontSize: "6px",
+            fontFamily: "DM Sans, sans-serif",
+            color: "#232F3E",
+            // fontWeight: "500",
+            fontWeight: "bold",
+            backgroundColor: "rgb(247, 245, 245)",
+            // border: "1px solid rgba(174, 174, 174, 0.3)",
+            borderRadius: "3px",
+            // padding: "2px",
+            textAlign: "center",
+            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            width: "100%",
+            lineHeight: "0.8",
+          }}
+        >
+          {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(
+            2
+          )}
+        </div>
+      </foreignObject>
     </>
   );
 };

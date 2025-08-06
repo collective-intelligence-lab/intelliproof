@@ -399,8 +399,8 @@ Features / bugs to fix:
 - Enable drag and drop of evidence onto nodes -(DONE )
   - NOT ADDED -> need to click away and click again for modal to be updated...
 - Make delete evidence / unlink evidence functional - (DONE)
-  - Make it so that the moment you add / delete evidence the cred score is recalled, not when u deselect -> NOT DONE
-- Style edge scores nicely
+  - Make it so that the moment you add / delete evidence the cred score is recalled, not when u deselect - (DONE)
+- Style edge scores nicely - (DONE)
 - Fix fonts / styling in ALL modals
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 - Claim modal overlaps with top right navbar when expanded
@@ -416,6 +416,7 @@ Features / bugs to fix:
 - in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence.
 - Move generate assumptions onto the edge modal
 - Implement chat Q&A (With Kaveh help)
+- make edges thinner
 - Helper / info box explaining the different functionality / features of graph
 - Position header section of nodes slightly more to left (there's a very small white gap)
 - Extensive console logging throughout the process

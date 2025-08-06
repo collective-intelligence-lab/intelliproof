@@ -409,7 +409,7 @@ Features / bugs to fix:
 - loading an existing graph starts in a state that is too zoomed out
 - when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it
 - Make edge toggle functional (user can pick support / attack edge)
-  - If AI returns a score that changes color, make sure the color change is reflected on graph
+  - If AI returns a score that changes color, make sure the color change is reflected on graph - (DONE)
 - Few shot learning for all prompts
 - Center score within mini circle (increase font size slightly)
 - remove buttons from copilot section

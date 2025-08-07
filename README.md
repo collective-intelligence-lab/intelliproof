@@ -401,7 +401,7 @@ Features / bugs to fix:
   - Make it so that the moment you add / delete evidence the cred score is recalled, not when u deselect - (DONE)
 - Style edge scores nicely - (DONE)
 - Fix fonts / styling in ALL modals - (DONE)
-- Evidence averaging (0 should not contribute to average)
+- change check_evidence to read all of the evidence as one rather than
 - change save buttons on graph manager modals from light blue to navy blue
 - Remove evidence and supporting docs from evidence panel feature - (DONE)
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active

@@ -2088,6 +2088,44 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "console">("console");
 
+  // Add state for chat input
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<
+    { role: "user" | "assistant"; content: string }[]
+  >([]);
+
+  // Handler for chat input changes
+  const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setChatInput(e.target.value);
+  };
+
+  // Handler for chat form submission
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    // Add user message
+    const userMessage = { role: "user" as const, content: chatInput };
+    setChatMessages((prev) => [...prev, userMessage]);
+
+    // Clear input
+    setChatInput("");
+
+    // Simulate AI response (dummy function)
+    setTimeout(() => {
+      const aiResponse = {
+        role: "assistant" as const,
+        content: `Hello! You said: "${chatInput}"`,
+      };
+      setChatMessages((prev) => [...prev, aiResponse]);
+    }, 500);
+  };
+
+  // Handler for chat clear
+  const handleClearChat = () => {
+    setChatMessages([]);
+  };
+
   // Handler for Claim icon click
   const handleClaimCredibility = async () => {
     setCopilotLoading(true);
@@ -5115,6 +5153,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
                     {/* Chat Messages */}
                     <div className="space-y-3 mb-4">
+                      {/* Welcome message */}
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                           <SparklesIcon className="w-4 h-4 text-white" />
@@ -5136,57 +5175,60 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         </div>
                       </div>
 
-                      {/* Example user message */}
-                      <div className="flex items-start gap-3 justify-end">
-                        <div className="bg-blue-500 rounded-lg p-3 max-w-[80%]">
-                          <p
-                            className="text-sm text-white"
-                            style={{
-                              fontFamily: "DM Sans, sans-serif",
-                              fontWeight: "400",
-                              lineHeight: "1.5",
-                            }}
-                          >
-                            Can you help me validate the evidence for my claims?
-                          </p>
+                      {/* Dynamic chat messages */}
+                      {chatMessages.map((msg, idx) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          {msg.role === "user" ? (
+                            <>
+                              <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-white text-xs font-medium">
+                                  U
+                                </span>
+                              </div>
+                              <div className="bg-gray-100 rounded-lg p-3 max-w-[80%] ml-auto">
+                                <p
+                                  className="text-sm text-gray-800"
+                                  style={{
+                                    fontFamily: "DM Sans, sans-serif",
+                                    fontWeight: "400",
+                                    lineHeight: "1.5",
+                                  }}
+                                >
+                                  {msg.content}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <SparklesIcon className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
+                                <p
+                                  className="text-sm text-gray-800"
+                                  style={{
+                                    fontFamily: "DM Sans, sans-serif",
+                                    fontWeight: "400",
+                                    lineHeight: "1.5",
+                                  }}
+                                >
+                                  {msg.content}
+                                </p>
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-xs font-medium">
-                            U
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Example AI response */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <SparklesIcon className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
-                          <p
-                            className="text-sm text-gray-800"
-                            style={{
-                              fontFamily: "DM Sans, sans-serif",
-                              fontWeight: "400",
-                              lineHeight: "1.5",
-                            }}
-                          >
-                            Absolutely! I can help you validate evidence for
-                            your claims. You can use the "Check All Claim
-                            Evidence" function in the Console tab, or I can
-                            guide you through the process. Would you like me to
-                            explain how evidence validation works?
-                          </p>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
 
                   {/* Chat Input */}
                   <div className="border-t border-gray-200 p-4">
-                    <div className="relative mb-2">
+                    <form onSubmit={handleChatSubmit} className="relative mb-2">
                       <input
                         type="text"
+                        value={chatInput}
+                        onChange={handleChatInputChange}
                         placeholder="Ask me anything about your graph..."
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
                         style={{
@@ -5194,15 +5236,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           fontWeight: "400",
                         }}
                       />
-                      <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
+                      <button
+                        type="submit"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"
+                        disabled={!chatInput.trim()}
+                      >
                         <SparklesIcon className="w-5 h-5" />
                       </button>
-                    </div>
+                    </form>
                     <div className="flex justify-center mt-2">
                       <button
-                        onClick={() => {
-                          /* Clear chat logic */
-                        }}
+                        onClick={handleClearChat}
                         className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg shadow-sm border border-gray-300 transition-all"
                         style={{
                           fontFamily: "DM Sans, sans-serif",

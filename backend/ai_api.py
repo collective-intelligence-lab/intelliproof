@@ -50,7 +50,10 @@ from ai_models import (
     ArgumentFlaw,  # NEW
     PatternMatch,  # NEW
     GenerateComprehensiveReportRequest,  # NEW
-    GenerateComprehensiveReportResponse  # NEW
+    GenerateComprehensiveReportResponse,  # NEW
+    ChatMessage,  # NEW
+    ChatRequest,  # NEW
+    ChatResponse  # NEW
 )
 from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol
 from datetime import datetime
@@ -1713,4 +1716,98 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
         initial_evidence=E,
         iterations=iterations,
         final_scores=c
-    ) 
+    )
+
+
+@router.post("/api/ai/chat", response_model=ChatResponse)
+def chat_about_graph(data: ChatRequest = Body(...)):
+    """
+    AI chat endpoint that answers questions about the graph.
+    
+    This endpoint allows users to ask natural language questions about their
+    argument graph and receive intelligent responses based on the graph structure,
+    evidence, and relationships.
+    """
+    try:
+        # Prepare context about the graph
+        nodes = data.graph_data.get("nodes", [])
+        edges = data.graph_data.get("edges", [])
+        evidence = data.graph_data.get("evidence", [])
+        documents = data.graph_data.get("supportingDocuments", [])
+        
+        # Create a comprehensive system prompt with few-shot learning
+        system_prompt = f"""You are an expert argument analyst with deep knowledge of logical reasoning, evidence evaluation, and argument structure. You provide intelligent, professional analysis while maintaining a conversational flow that weaves information naturally into prose rather than using lists or bullet points.
+
+You have access to their argument graph with this information:
+
+NODES ({len(nodes)} total):
+{chr(10).join([f"- {node.get('id', 'Unknown')}: {node.get('text', 'No text')} (Type: {node.get('type', 'Unknown')})" for node in nodes])}
+
+EDGES ({len(edges)} total):
+{chr(10).join([f"- {edge.get('source', 'Unknown')} → {edge.get('target', 'Unknown')} (Weight: {edge.get('weight', 0)})" for edge in edges])}
+
+EVIDENCE ({len(evidence)} total):
+{chr(10).join([f"- {ev.get('title', 'No title')}: {ev.get('excerpt', 'No excerpt')[:100]}..." for ev in evidence])}
+
+SUPPORTING DOCUMENTS ({len(documents)} total):
+{chr(10).join([f"- {doc.get('name', 'No name')} ({doc.get('type', 'Unknown type')})" for doc in documents])}
+
+**FEW-SHOT EXAMPLES - Learn from these response styles:**
+
+User: "What's the main argument here?"
+Assistant: "Your argument centers on the claim that renewable energy adoption is economically viable, supported by evidence demonstrating significant cost reductions in solar technology and substantial job creation in the green energy sector. The logical structure flows effectively from economic feasibility to broader policy implications, creating a coherent narrative that addresses both practical concerns and strategic benefits."
+
+User: "Are there any weaknesses in my argument?"
+Assistant: "While your argument demonstrates strong evidence for the economic benefits of renewable energy, there's a notable gap regarding transition costs and infrastructure requirements. The evidence you've presented focuses primarily on positive outcomes without adequately addressing the practical challenges of implementation. Incorporating claims about manageable transition costs or offsetting long-term benefits would strengthen your position against common counterarguments."
+
+User: "How do these claims relate to each other?"
+Assistant: "The relationship between your claims forms a logical progression from technological advancement to economic viability to policy justification. Your evidence about solar panel cost reductions directly supports the economic feasibility claim, which in turn strengthens the broader policy argument. The weight distribution in your edges suggests you've appropriately prioritized the most critical supporting evidence."
+
+**YOUR ROLE:**
+- Answer questions about their argument structure and logic
+- Identify gaps, weaknesses, and strengths
+- Suggest improvements and missing evidence
+- Explain how claims relate to each other
+- Give practical, actionable advice and information
+
+**RESPONSE STYLE:**
+- Be direct and to the point (2-3 sentences max)
+- Speak like an experienced consultant who is knowledgeable about the argument
+- Give specific, actionable insights and information
+- Be encouraging but honest about weaknesses
+- Use natural, flowing prose (no lists or bullet points)"""
+
+        # Prepare conversation history
+        messages = []
+        for msg in data.chat_history[-5:]:  # Keep last 5 messages for context
+            messages.append({"role": msg.role, "content": msg.content})
+        
+        # Add the current user message
+        messages.append({"role": "user", "content": data.user_message})
+        
+        # Create a specialized MCP for chat
+        chat_mcp = ModelControlProtocol(
+            model_name="gpt-4o-mini",
+            temperature=0.7,  # Increased for more conversational and varied responses
+            max_tokens=500,
+            system_prompt=system_prompt
+        )
+        
+        # Get AI response
+        response = run_llm(messages, chat_mcp)
+        
+        return ChatResponse(
+            assistant_message=response,
+            reasoning="Generated based on graph analysis",
+            confidence=0.8,
+            suggested_actions=[
+                "Check evidence for claims",
+                "Validate edge relationships", 
+                "Generate assumptions",
+                "Analyze argument structure"
+            ]
+        )
+        
+    except Exception as e:
+        print(f"Error in chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")

@@ -2100,7 +2100,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   // Handler for chat form submission
-  const handleChatSubmit = (e: React.FormEvent) => {
+  const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
@@ -2111,14 +2111,64 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     // Clear input
     setChatInput("");
 
-    // Simulate AI response (dummy function)
-    setTimeout(() => {
+    // Show loading state
+    setCopilotLoading(true);
+
+    try {
+      // Prepare graph data
+      const graphData = {
+        nodes: nodes.map((node) => ({
+          id: node.id,
+          text: node.data.text,
+          type: node.data.type,
+          evidenceIds: node.data.evidenceIds || [],
+        })),
+        edges: edges.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          weight: edge.data.confidence || 0,
+        })),
+        evidence: evidenceCards,
+        supportingDocuments: supportingDocuments,
+      };
+
+      // Call AI chat API
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_message: userMessage.content,
+          chat_history: chatMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          graph_data: graphData,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response");
+      }
+
+      const data = await response.json();
+
+      // Add AI response
       const aiResponse = {
         role: "assistant" as const,
-        content: `Hello! You said: "${chatInput}"`,
+        content: data.assistant_message,
       };
       setChatMessages((prev) => [...prev, aiResponse]);
-    }, 500);
+    } catch (error) {
+      console.error("Chat error:", error);
+      // Add error message
+      const errorResponse = {
+        role: "assistant" as const,
+        content: "Sorry, I encountered an error. Please try again.",
+      };
+      setChatMessages((prev) => [...prev, errorResponse]);
+    } finally {
+      setCopilotLoading(false);
+    }
   };
 
   // Handler for chat clear
@@ -5219,6 +5269,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           )}
                         </div>
                       ))}
+
+                      {/* Loading indicator */}
+                      {copilotLoading && (
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <SparklesIcon className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
+                              <span className="text-sm text-gray-600">
+                                Thinking...
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

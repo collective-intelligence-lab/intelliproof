@@ -354,3 +354,33 @@ class GenerateComprehensiveReportResponse(BaseModel):
     conclusion: str
     appendix: str
     report_metadata: dict 
+
+
+class ChatMessage(BaseModel):
+    """
+    Represents a single message in the chat conversation.
+    """
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: Optional[str] = None
+
+
+class ChatRequest(BaseModel):
+    """
+    Request model for AI chat about the graph.
+    """
+    user_message: str
+    chat_history: List[ChatMessage] = []
+    graph_data: Dict[str, Any] = Field(
+        description="Complete graph data including nodes, edges, evidence, and documents"
+    )
+
+
+class ChatResponse(BaseModel):
+    """
+    Response model for AI chat.
+    """
+    assistant_message: str
+    reasoning: Optional[str] = None
+    confidence: Optional[float] = None
+    suggested_actions: Optional[List[str]] = None

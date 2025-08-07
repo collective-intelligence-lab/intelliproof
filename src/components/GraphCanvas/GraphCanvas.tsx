@@ -63,6 +63,7 @@ import {
   ArrowPathIcon,
   ShareIcon,
   ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
   CheckIcon,
   CursorArrowRaysIcon,
   HandRaisedIcon,
@@ -1673,6 +1674,301 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const handleImport = () => {
+    // Prevent multiple imports
+    if (isImporting) return;
+
+    // Create a hidden file input
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".json";
+    fileInput.style.display = "none";
+
+    fileInput.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        // Clean up if no file selected
+        document.body.removeChild(fileInput);
+        return;
+      }
+
+      // Check file size (limit to 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setToast("File too large. Please select a file smaller than 10MB.");
+        setTimeout(() => setToast(null), 5000);
+        document.body.removeChild(fileInput);
+        return;
+      }
+
+      setIsImporting(true);
+
+      try {
+        // Show loading state
+        setToast("Reading file...");
+
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        console.log("Imported data:", data);
+
+        // Show validation state
+        setToast("Validating file format...");
+
+        // Validate the JSON structure
+        const validationResult = validateGraphData(data);
+        if (!validationResult.isValid) {
+          setToast(`Invalid file format: ${validationResult.error}`);
+          setTimeout(() => setToast(null), 5000);
+          return;
+        }
+
+        // Show import state
+        setToast("Importing graph...");
+
+        // Import the validated data
+        importGraphData(data);
+
+        // Show success message with statistics
+        const stats = {
+          evidence: data.evidence?.length || 0,
+          nodes: data.nodes?.length || 0,
+          edges: data.edges?.length || 0,
+        };
+        setToast(
+          `Graph imported successfully! (${stats.nodes} nodes, ${stats.edges} edges, ${stats.evidence} evidence)`
+        );
+        setTimeout(() => setToast(null), 4000);
+      } catch (error) {
+        console.error("Error reading file:", error);
+        if (error instanceof SyntaxError) {
+          setToast("Invalid JSON format. Please check your file.");
+        } else {
+          setToast("Error reading file. Please try again.");
+        }
+        setTimeout(() => setToast(null), 5000);
+      } finally {
+        setIsImporting(false);
+        // Clean up
+        document.body.removeChild(fileInput);
+      }
+    };
+
+    // Handle file dialog cancellation
+    fileInput.oncancel = () => {
+      document.body.removeChild(fileInput);
+    };
+
+    // Trigger file selection
+    document.body.appendChild(fileInput);
+    fileInput.click();
+  };
+
+  // Add validation function with detailed error messages
+  const validateGraphData = (
+    data: any
+  ): { isValid: boolean; error?: string } => {
+    // Check if data has the required structure
+    if (!data || typeof data !== "object") {
+      return { isValid: false, error: "Data is not a valid object" };
+    }
+
+    // Check for required arrays
+    if (!Array.isArray(data.evidence)) {
+      return { isValid: false, error: "Missing or invalid evidence array" };
+    }
+    if (!Array.isArray(data.nodes)) {
+      return { isValid: false, error: "Missing or invalid nodes array" };
+    }
+    if (!Array.isArray(data.edges)) {
+      return { isValid: false, error: "Missing or invalid edges array" };
+    }
+
+    // Check for reasonable array sizes (prevent extremely large files)
+    if (data.evidence.length > 1000) {
+      return { isValid: false, error: "Too many evidence items (max 1000)" };
+    }
+    if (data.nodes.length > 500) {
+      return { isValid: false, error: "Too many nodes (max 500)" };
+    }
+    if (data.edges.length > 1000) {
+      return { isValid: false, error: "Too many edges (max 1000)" };
+    }
+
+    // Validate evidence structure (checking only required fields, allowing extra fields)
+    for (let i = 0; i < data.evidence.length; i++) {
+      const evidence = data.evidence[i];
+      if (
+        !evidence.id ||
+        !evidence.title ||
+        !evidence.excerpt ||
+        !evidence.supportingDocId ||
+        !evidence.supportingDocName
+      ) {
+        return {
+          isValid: false,
+          error: `Evidence item ${i} is missing required fields (id, title, excerpt, supportingDocId, supportingDocName)`,
+        };
+      }
+      if (
+        typeof evidence.confidence !== "number" ||
+        evidence.confidence < -1 ||
+        evidence.confidence > 1
+      ) {
+        return {
+          isValid: false,
+          error: `Evidence item ${i} has invalid confidence value (must be a number between -1 and 1)`,
+        };
+      }
+    }
+
+    // Validate nodes structure
+    for (let i = 0; i < data.nodes.length; i++) {
+      const node = data.nodes[i];
+      if (!node.id || !node.text || !node.type) {
+        return {
+          isValid: false,
+          error: `Node ${i} is missing required fields (id, text, type)`,
+        };
+      }
+      if (
+        typeof node.belief !== "number" ||
+        node.belief < 0 ||
+        node.belief > 1
+      ) {
+        return {
+          isValid: false,
+          error: `Node ${i} has invalid belief value (must be a number between 0 and 1)`,
+        };
+      }
+      if (typeof node.credibilityScore !== "number") {
+        return {
+          isValid: false,
+          error: `Node ${i} has invalid credibilityScore (must be a number)`,
+        };
+      }
+      if (
+        !node.position ||
+        typeof node.position.x !== "number" ||
+        typeof node.position.y !== "number"
+      ) {
+        return {
+          isValid: false,
+          error: `Node ${i} has invalid position (must have x and y coordinates)`,
+        };
+      }
+      if (!node.created_on || typeof node.created_on !== "string") {
+        return {
+          isValid: false,
+          error: `Node ${i} has invalid created_on field (must be a string)`,
+        };
+      }
+      if (!Array.isArray(node.evidenceIds)) {
+        return {
+          isValid: false,
+          error: `Node ${i} has invalid evidenceIds (must be an array)`,
+        };
+      }
+    }
+
+    // Validate edges structure
+    for (let i = 0; i < data.edges.length; i++) {
+      const edge = data.edges[i];
+      if (!edge.id || !edge.source || !edge.target) {
+        return {
+          isValid: false,
+          error: `Edge ${i} is missing required fields (id, source, target)`,
+        };
+      }
+      if (
+        typeof edge.weight !== "number" ||
+        edge.weight < -1 ||
+        edge.weight > 1
+      ) {
+        return {
+          isValid: false,
+          error: `Edge ${i} has invalid weight value (must be a number between -1 and 1)`,
+        };
+      }
+    }
+
+    return { isValid: true };
+  };
+
+  // Import graph data function
+  const importGraphData = (data: ExportedGraphData) => {
+    try {
+      // Clear current graph
+      setNodes([]);
+      setEdges([]);
+      setEvidenceCards([]);
+
+      // Import evidence
+      setEvidenceCards(data.evidence || []);
+
+      // Import nodes
+      const importedNodes = (data.nodes || []).map((nodeData) => ({
+        id: nodeData.id,
+        type: "default" as const,
+        position: nodeData.position || { x: 0, y: 0 },
+        style: getNodeStyle(nodeData.type),
+        data: {
+          text: nodeData.text,
+          type: nodeData.type,
+          author: nodeData.author,
+          belief: nodeData.belief || 0.5,
+          credibilityScore: nodeData.credibilityScore || 0,
+          created_on: nodeData.created_on || new Date().toISOString(),
+          evidenceIds: nodeData.evidenceIds || [],
+        },
+      }));
+      setNodes(importedNodes);
+
+      // Create a set of valid node IDs for edge validation
+      const validNodeIds = new Set(importedNodes.map((node) => node.id));
+
+      // Import edges (filter out edges with invalid source/target)
+      const importedEdges = (data.edges || [])
+        .filter((edgeData) => {
+          const isValid =
+            validNodeIds.has(edgeData.source) &&
+            validNodeIds.has(edgeData.target);
+          if (!isValid) {
+            console.warn(
+              `Skipping edge ${edgeData.id}: invalid source or target node`
+            );
+          }
+          return isValid;
+        })
+        .map((edgeData) => ({
+          id: edgeData.id,
+          source: edgeData.source,
+          target: edgeData.target,
+          type: "custom" as const,
+          data: {
+            confidence: edgeData.weight || 0,
+            edgeType: "supporting" as const, // Default to supporting, can be enhanced later
+            edgeScore: 0, // Default value
+          },
+        }));
+      setEdges(importedEdges);
+
+      console.log("Graph imported successfully:", {
+        evidenceCount: data.evidence?.length || 0,
+        nodeCount: data.nodes?.length || 0,
+        edgeCount: importedEdges.length,
+        skippedEdges: (data.edges?.length || 0) - importedEdges.length,
+      });
+    } catch (error) {
+      console.error("Error during graph import:", error);
+      setToast("Error importing graph data. Please try again.");
+      setTimeout(() => setToast(null), 5000);
+      throw error; // Re-throw to be caught by the calling function
+    }
+  };
+
+  // State for import
+  const [isImporting, setIsImporting] = useState(false);
 
   // State for report generation
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -4714,7 +5010,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
                 <div className="h-12 w-px bg-gray-200"></div>
 
-                {/* Share, Export, Save, and Generate Report Buttons */}
+                {/* Share, Import, Export, Save, and Generate Report Buttons */}
                 <button
                   onClick={() => {
                     /* Add share functionality */
@@ -4723,6 +5019,25 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   title="Share"
                 >
                   <ShareIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={isImporting}
+                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    isImporting
+                      ? "bg-blue-100 text-blue-600 cursor-not-allowed"
+                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
+                  title={isImporting ? "Importing..." : "Import"}
+                >
+                  {isImporting ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="text-xs">Importing...</span>
+                    </div>
+                  ) : (
+                    <ArrowUpTrayIcon className="w-8 h-8" strokeWidth={2} />
+                  )}
                 </button>
                 <button
                   onClick={handleExport}

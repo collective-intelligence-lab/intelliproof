@@ -412,6 +412,7 @@ Features / bugs to fix:
 - when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it
 - autosave functionality
 - saving brings you to graph manager page
+- implement streaming in the chat
 - share button not functional
 - undo / redo buttons not functional
 - Make edge toggle functional (user can pick support / attack edge)
@@ -420,9 +421,9 @@ Features / bugs to fix:
 - Center score within mini circle (increase font size slightly)
 - remove buttons from copilot section
 - in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence.
-
+- Notes section
 - Move generate assumptions onto the edge modal - (DONE)
-- Implement chat Q&A (With Kaveh help)
+- Implement chat Q&A (With Kaveh help) - (DONE)
 - make edges thinner
 - dark blue navbar on graph manager page must have consistent styling
 - Helper / info box explaining the different functionality / features of graph
@@ -440,5 +441,8 @@ IF there's TIME (low priority):
 - Enable drag and drop of supporting docs onto nodes
 - Reziseable nodes
 - Potential layout locks, snap to a left - right layout format
+- Chat save functionality (low priority)
 
-TO DO:
+TO DO (Kabir):
+
+-

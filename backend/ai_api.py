@@ -1048,70 +1048,74 @@ def generate_comprehensive_report(data: GenerateComprehensiveReportRequest = Bod
         }
         
         # Create comprehensive prompt for report generation
-        prompt = f"""
-        You are an expert intelligence analyst tasked with creating a comprehensive argument analysis report. 
-        
-        GRAPH DATA:
-        Nodes: {json.dumps([{"id": node.id, "text": node.text, "type": node.type} for node in data.nodes], indent=2)}
-        Edges: {json.dumps([{"source": edge.source, "target": edge.target, "weight": edge.weight} for edge in data.edges], indent=2)}
-        Evidence: {json.dumps([{"id": ev.id, "title": ev.title, "excerpt": ev.excerpt, "confidence": ev.confidence} for ev in data.evidence], indent=2)}
-        Supporting Documents: {json.dumps([{"id": doc.id, "name": doc.name, "type": doc.type} for doc in data.supportingDocuments], indent=2)}
-        
-        ANALYSIS RESULTS:
-        Evidence Evaluation: {json.dumps(data.evidence_evaluation_results or {}, indent=2)}
-        Edge Validation: {json.dumps(data.edge_validation_results or {}, indent=2)}
-        Assumptions Analysis: {json.dumps(data.assumptions_results or {}, indent=2)}
-        Graph Critique: {json.dumps(data.critique_results or {}, indent=2)}
-        
-        GRAPH TITLE: {data.graph_title or "Argument Analysis"}
-        ANALYST: {data.analyst_name or "IntelliProof AI"}
-        CONTACT: {data.analyst_contact or "ai@intelliproof.com"}
-        DATE: {datetime.now().strftime("%B %d, %Y")}
-        
-        Create a detailed, professional intelligence analysis report. Each section should be substantial and informative:
-        
-        1. COVER PAGE: Professional cover with title, date, analyst info, and brief description
-        2. EXECUTIVE SUMMARY: 3-5 paragraph overview of key findings, argument structure, and main conclusions
-        3. SCOPE & OBJECTIVES: Detailed description of what was analyzed, why it matters, and investigation goals
-        4. METHODOLOGY: Comprehensive description of analysis approach, tools used, and evaluation criteria
-        5. FINDINGS: Detailed structured results including:
-           - Node-by-node analysis with evidence evaluation
-           - Edge validation results and logical connections
-           - Assumptions identified and their implications
-           - Graph structure analysis and patterns
-        6. ANALYSIS: In-depth insights including:
-           - Argument strength assessment
-           - Logical flow analysis
-           - Evidence quality evaluation
-           - Potential weaknesses and counter-arguments
-           - Recommendations for improvement
-        7. CONCLUSION: Comprehensive summary of key takeaways, argument effectiveness, and final assessment
-        8. APPENDIX: Raw data, detailed logs, timestamps, and supporting information
-        
-        IMPORTANT: You must respond with ONLY a valid JSON object. Do not include any markdown formatting, explanations, or other text outside the JSON.
-        
-        Format the response as a JSON object with these exact keys. Each section should be substantial (400-800 words):
-        {{
-            "cover_page": "Professional cover page content with title, date, analyst info",
-            "executive_summary": "Detailed 2-3 paragraph executive summary",
-            "scope_objectives": "Comprehensive scope and objectives section", 
-            "methodology": "Detailed methodology description",
-            "findings": "Comprehensive findings with structured analysis. Include a summary of node arguments, evidence and relationships between nodes and edges",
-            "analysis": "In-depth analysis with insights and recommendations",
-            "conclusion": "Detailed conclusion with key takeaways. Include potential weaknesss, shortfalls and ways to improve the overall argument.",
-            "appendix": "Comprehensive appendix with raw data and details",
-            "report_metadata": {{
-                "title": "{data.graph_title or "Argument Analysis"}",
-                "date": "{datetime.now().strftime("%B %d, %Y")}",
-                "analyst": "{data.analyst_name or "IntelliProof AI"}",
-                "contact": "{data.analyst_contact or "ai@intelliproof.com"}"
-            }}
-        }}
-        
-        Make each section detailed, professional, and actionable. Include specific insights from the analysis results. The report should be comprehensive and provide valuable intelligence analysis.
-        
-        RESPOND WITH ONLY THE JSON OBJECT - NO OTHER TEXT OR FORMATTING.
-        """
+       prompt = f"""
+You are an expert intelligence analyst tasked with writing a clear, reader‑friendly report that explains the argument conveyed by the provided materials.
+
+SOURCE MATERIALS (for your analysis only; do not reference this structure explicitly in the report):
+- Propositional content: {json.dumps([{"id": node.id, "text": node.text, "type": node.type} for node in data.nodes], indent=2)}
+- Connections among propositions: {json.dumps([{"source": edge.source, "target": edge.target, "weight": edge.weight} for edge in data.edges], indent=2)}
+- Evidence and sources: {json.dumps([{"id": ev.id, "title": ev.title, "excerpt": ev.excerpt, "confidence": ev.confidence} for ev in data.evidence], indent=2)}
+- Supporting documents: {json.dumps([{"id": doc.id, "name": doc.name, "type": doc.type} for doc in data.supportingDocuments], indent=2)}
+
+ANALYSIS RESULTS (for your use; synthesize into natural language):
+- Evidence evaluation: {json.dumps(data.evidence_evaluation_results or {}, indent=2)}
+- Connection validation: {json.dumps(data.edge_validation_results or {}, indent=2)}
+- Assumptions analysis: {json.dumps(data.assumptions_results or {}, indent=2)}
+- Argument critique: {json.dumps(data.critique_results or {}, indent=2)}
+
+REPORT CONTEXT:
+- Title: {data.graph_title or "Argument Analysis"}
+- Analyst: {data.analyst_name or "IntelliProof AI"}
+- Contact: {data.analyst_contact or "ai@intelliproof.com"}
+- Date: {datetime.now().strftime("%B %d, %Y")}
+
+WRITING REQUIREMENTS:
+- Write a coherent natural‑language report that someone can read to understand the argument expressed by the materials.
+- Do NOT mention or use the terms "graph", "node(s)", "edge(s)", "vertex/vertices", or "link(s)" anywhere in the report. Discuss the content and reasoning itself.
+- Explain the main claim, supporting reasons, how sources/evidence support or challenge those reasons, relevant counterpoints, and important assumptions.
+- Include a clearly labeled subsection “Limitations and Flaws” that candidly discusses gaps, weaknesses, uncertainties, potential biases, and scope constraints in the argument and evidence.
+- Convert the structured inputs above into readable prose; do not list raw identifiers. Refer to sources generically (e.g., “one source”, “a document”, “an article”) unless a specific title meaningfully improves clarity.
+
+SECTIONS TO PRODUCE (all must be substantial and informative):
+1. COVER PAGE: Title, date, analyst info, and a one‑paragraph abstract.
+2. EXECUTIVE SUMMARY: 3–5 paragraphs summarizing the overall argument, key support, major caveats, and headline conclusions.
+3. SCOPE & OBJECTIVES: What the analysis covers, why it matters, and the goals of the examination.
+4. METHODOLOGY: How you synthesized claims, connections among ideas, and evidence quality assessments into narrative form; criteria for judging credibility and coherence.
+5. FINDINGS: A narrative of the argument:
+   - Main claim and principal supporting reasons (in paragraphs, not lists of items).
+   - How the ideas reinforce or contradict one another described in plain language (e.g., supports, contradicts, qualifies, cause–effect).
+   - Evidence synthesis: what the sources collectively indicate; credibility and relevance in context.
+   - Important assumptions and uncertainties that affect interpretation.
+6. ANALYSIS: Deeper evaluation of argument strength and coherence:
+   - Overall soundness, consistency, and logical flow.
+   - Salient counterarguments and how well they are addressed.
+   - Limitations and Flaws (dedicated subsection): data gaps, ambiguous or contested points, potential biases, methodological limits, scope constraints, and where the argument is most vulnerable.
+7. CONCLUSION: Concise restatement of what the argument establishes (and what it does not), decision‑relevant takeaways, and prioritized recommendations for strengthening the argument or gathering further evidence.
+8. APPENDIX: A succinct, readable summary of sources consulted and analytical notes (no structural jargon; do not expose raw IDs).
+
+IMPORTANT OUTPUT RULES:
+- You must respond with ONLY a valid JSON object. No markdown, no extra text.
+- Each section should be substantial (approximately 400–800 words) and written for a general, non‑technical reader.
+- Maintain the exact JSON keys and structure below.
+
+Format your response exactly as:
+{{
+    "cover_page": "Professional cover page content with title, date, analyst info and a brief abstract",
+    "executive_summary": "3–5 paragraphs summarizing the argument, support, caveats, and conclusions",
+    "scope_objectives": "Comprehensive scope and objectives section",
+    "methodology": "Detailed narrative methodology description (how ideas and evidence were synthesized)",
+    "findings": "Narrative findings explaining the argument, relationships among ideas in plain language, and evidence synthesis",
+    "analysis": "In‑depth evaluation with insights, counterarguments, and a clearly labeled 'Limitations and Flaws' subsection",
+    "conclusion": "Concise, decisive summary with decision‑relevant takeaways and recommendations",
+    "appendix": "Readable appendix with summarized sources and notes (no structural jargon or raw IDs)",
+    "report_metadata": {{
+        "title": "{data.graph_title or "Argument Analysis"}",
+        "date": "{datetime.now().strftime("%B %d, %Y")}",
+        "analyst": "{data.analyst_name or "IntelliProof AI"}",
+        "contact": "{data.analyst_contact or "ai@intelliproof.com"}"
+    }}
+}}
+"""
         
         print(f"[ai_api] generate_comprehensive_report: Sending request to OpenAI")
         

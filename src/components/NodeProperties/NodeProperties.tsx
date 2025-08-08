@@ -72,7 +72,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
     if (node) {
       setText(node.data.text);
     }
-  }, [node]);
+  }, [node?.data.text]);
 
   if (!node) return null;
 
@@ -218,31 +218,28 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "factual"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
                   ? "bg-[#aeaeae] text-black"
                   : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
-              }`}
+                }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "value"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
                   ? "bg-[#94bc84] text-black"
                   : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
-              }`}
+                }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "policy"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
                   ? "bg-[#91A4C2] text-black"
                   : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
-              }`}
+                }`}
             >
               Policy
             </button>
@@ -296,7 +293,7 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0 ? (
+              node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;

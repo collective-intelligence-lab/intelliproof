@@ -851,17 +851,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             edgeScore = edge.weight; // Use weight as edgeScore for legacy edges
           }
 
-          // Determine edge color based on edgeScore
-          let edgeColor = "#166534"; // Default green for supporting
-          if (edgeScore !== undefined) {
-            if (edgeScore < 0) {
-              edgeColor = "#991B1B"; // Red for attacking
-            } else if (edgeScore > 0) {
-              edgeColor = "#166534"; // Green for supporting
-            } else {
-              edgeColor = "#166534"; // Green for neutral (same as supporting)
-            }
-          }
+          // Determine edge color based on current edge type (visual only)
+          let edgeColor = edgeType === "attacking" ? "#991B1B" : "#166534";
 
           return {
             id: edge.id,
@@ -1298,6 +1289,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setSelectedEdge(edge as ClaimEdge);
   };
 
+  const handleDeleteEdge = useCallback(() => {
+    if (!selectedEdge) return;
+    const edgeToDelete = selectedEdge;
+    setEdges((eds) => eds.filter((e) => e.id !== edgeToDelete.id));
+    setSelectedEdge(null);
+    // Trigger credibility recalculation for the edge's target node
+    if (edgeToDelete.target) {
+      setApiQueue((q) => [...q, edgeToDelete.target]);
+    }
+  }, [selectedEdge]);
+
   const handleEdgeUpdate = (edgeId: string, updates: Partial<ClaimEdge>) => {
     // Find the edge to get source and target nodes
     const edge = edges.find((e) => e.id === edgeId);
@@ -1311,17 +1313,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...updates.data,
           };
 
-          // Determine edge color based on edgeScore
-          let edgeColor = "#166534"; // Default green for supporting
-          if (updatedData.edgeScore !== undefined) {
-            if (updatedData.edgeScore < 0) {
-              edgeColor = "#991B1B"; // Red for attacking
-            } else if (updatedData.edgeScore > 0) {
-              edgeColor = "#166534"; // Green for supporting
-            } else {
-              edgeColor = "#166534"; // Green for neutral (same as supporting)
-            }
-          }
+          // Determine edge color based on selected edge type (visual only)
+          let edgeColor = updatedData.edgeType === "attacking" ? "#991B1B" : "#166534";
 
           const updatedEdge = {
             ...e,
@@ -1364,8 +1357,32 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       // Delete the node
       setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
       setSelectedNode(null);
+      setSelectedEdge(null);
     }
   }, [selectedNode]);
+
+  // Global keyboard handler: Backspace/Delete deletes selected edge first, then node
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Backspace" && e.key !== "Delete") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable =
+        !!target &&
+        ((target as any).isContentEditable || tag === "input" || tag === "textarea");
+      if (isEditable) return; // don't interfere with typing
+
+      if (selectedEdge) {
+        e.preventDefault();
+        handleDeleteEdge();
+      } else if (selectedNode) {
+        e.preventDefault();
+        handleDeleteNode();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedEdge, selectedNode, handleDeleteEdge, handleDeleteNode]);
 
   const clamp = (val: number, min: number, max: number) =>
     Math.max(min, Math.min(max, val));
@@ -3629,6 +3646,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           confidence: data.confidence,
           edgeScore: data.confidence, // Set edgeScore from validation result
           reasoning: data.reasoning,
+          recommendedEdgeType: (() => {
+            const ev = (data.evaluation || "").toString().toLowerCase();
+            if (ev.includes("attack")) return "attacking" as const;
+            if (ev.includes("support")) return "supporting" as const;
+            return undefined;
+          })(),
         },
       });
 
@@ -5255,15 +5278,21 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 )}
               </div>
 
-              {/* Delete Node Button */}
+              {/* Delete Button (works for node or edge) */}
               <button
-                onClick={handleDeleteNode}
-                disabled={!selectedNode}
-                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode
+                onClick={() => {
+                  if (selectedEdge) {
+                    handleDeleteEdge();
+                  } else if (selectedNode) {
+                    handleDeleteNode();
+                  }
+                }}
+                disabled={!selectedNode && !selectedEdge}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode || selectedEdge
                   ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
                   : "text-gray-300 cursor-not-allowed"
                   }`}
-                title="Delete Claim"
+                title={selectedEdge ? "Delete Edge" : "Delete Claim"}
               >
                 <TrashIcon className="w-8 h-8" strokeWidth={2} />
               </button>
@@ -5454,6 +5483,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     nodes={nodes}
                     evidenceCards={evidenceCards}
                     supportingDocuments={supportingDocumentsRedux}
+                    onValidateEdge={handleValidateEdge}
                     edgeReasoning={(() => {
                       // Fallback: derive the most recent reasoning for this edge from copilot messages
                       try {
@@ -5819,14 +5849,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={handleClaimCredibility}
                       disabled={copilotLoading}
                     />
-                    {/* New function chat boxes */}
-                    <CommandMessageBox
-                      title="Validate Edge"
-                      content="Checks whether the support/attack is valid with reasoning"
-                      icon={<ArrowPathIcon className="w-4 h-4" />}
-                      onClick={handleValidateEdge}
-                      disabled={copilotLoading}
-                    />
+                    {/* New function chat boxes (Validate Edge button moved to Edge Properties panel) */}
                     <CommandMessageBox
                       title="Validate All Edges"
                       content="Checks all edges for support/attack/neutral and outputs reasoning for each."

@@ -20,6 +20,12 @@ export interface ClaimEdge {
      * Optional: present only after validation has been run.
      */
     reasoning?: string;
+    /**
+     * Optional recommendation returned by edge validation API indicating whether
+     * the relationship should be supporting or attacking. Used only for UI
+     * display; does not affect scores or logic unless the user changes type.
+     */
+    recommendedEdgeType?: EdgeType;
   };
   markerStart?: {
     type: MarkerType;

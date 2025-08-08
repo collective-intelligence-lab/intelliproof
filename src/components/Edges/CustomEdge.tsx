@@ -86,16 +86,12 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   markerStart,
   markerEnd,
 }) => {
-  // Determine edge color based on edgeScore
-  let color: string = EDGE_COLORS.supporting; // Default green for supporting
-  if (data?.edgeScore !== undefined) {
-    if (data.edgeScore < 0) {
-      color = EDGE_COLORS.attacking; // Red for attacking
-    } else if (data.edgeScore > 0) {
-      color = EDGE_COLORS.supporting; // Green for supporting
-    } else {
-      color = EDGE_COLORS.supporting; // Green for neutral (same as supporting)
-    }
+  // Determine edge color based on explicit edge type selection (do not change scores)
+  let color: string = EDGE_COLORS.supporting;
+  if (data?.edgeType === "attacking") {
+    color = EDGE_COLORS.attacking;
+  } else if (data?.edgeType === "supporting") {
+    color = EDGE_COLORS.supporting;
   }
 
   // Get the bezier path for the edge and label position
@@ -123,24 +119,15 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
         markerEnd={markerEnd}
       />
       {/* Edge score label with theme-matching styling */}
-      <foreignObject
-        x={labelX - 12}
-        y={labelY - 6}
-        width="22"
-        height="11"
-        style={{ overflow: "visible" }}
-      >
+      <foreignObject x={labelX - 12} y={labelY - 6} width="22" height="11" style={{ overflow: "visible" }}>
         <div
           style={{
             fontSize: "6px",
             fontFamily: "DM Sans, sans-serif",
             color: "#232F3E",
-            // fontWeight: "500",
             fontWeight: "bold",
             backgroundColor: "rgb(247, 245, 245)",
-            // border: "1px solid rgba(174, 174, 174, 0.3)",
             borderRadius: "3px",
-            // padding: "2px",
             textAlign: "center",
             boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
             backdropFilter: "blur(2px)",
@@ -152,9 +139,7 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
             lineHeight: "0.8",
           }}
         >
-          {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(
-            2
-          )}
+          {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(2)}
         </div>
       </foreignObject>
     </>

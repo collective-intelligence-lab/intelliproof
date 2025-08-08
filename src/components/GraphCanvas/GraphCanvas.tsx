@@ -4444,10 +4444,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   return (
     <div className="w-full h-full relative font-[DM Sans]">
-      <PanelGroup direction="horizontal">
+      <PanelGroup direction="horizontal" autoSaveId="graph-editor-panels-v1">
         {/* Evidence Panel Container */}
         {isEvidencePanelOpen && (
-          <Panel defaultSize={20} minSize={15} maxSize={40}>
+          <Panel defaultSize={22} minSize={12} maxSize={30}>
             <div className="h-full bg-white border-r border-black flex flex-col">
               {/* Evidence Header */}
               <div className="p-4 border-b border-black flex justify-between items-center bg-white relative">
@@ -4911,237 +4911,244 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         )}
 
         {/* Graph Area */}
-        <Panel>
+        <Panel minSize={40}>
           <div className="relative h-full">
-            {/* Floating Top Left Navbar */}
+            {/* Top Navigation Bars Container */}
             {!hideNavbar && (
-              <div className="absolute top-6 left-6 z-10 bg-white rounded-lg shadow-lg p-2 pl-3">
-                <div className="flex items-center gap-3">
-                  {/* Logo and Text */}
-                  <div className="flex items-center gap-2">
-                    <Image
-                      src="/logo.png"
-                      alt="intelliProof Logo"
-                      width={44}
-                      height={44}
-                    />
-                    <span className="text-2xl font-bold tracking-tight text-[#232F3E]">
-                      Intelli<span className="text-[#232F3E]">Proof</span>
-                    </span>
-                  </div>
-
-                  <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
-
-                  {/* Editable Title */}
-                  <div className="min-w-[100px] flex items-center justify-center">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        onKeyDown={handleTitleChange}
-                        onBlur={() => setIsEditing(false)}
-                        className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 text-lg text-center w-full"
-                        style={{
-                          fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "500",
-                        }}
-                        autoFocus
+              <div className={`absolute top-6 z-10 ${isEvidencePanelOpen && isAICopilotOpen
+                ? 'left-6 flex flex-col items-start gap-2' // stacked: content width only, left aligned
+                : 'left-6 right-6 flex justify-between'    // single row: keep original behavior
+                }`}>
+                {/* Floating Top Left Navbar */}
+                <div className="bg-white rounded-lg shadow-lg px-3 py-1.5 w-fit">
+                  <div className="flex items-center gap-3">
+                    {/* Logo and Text */}
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src="/logo.png"
+                        alt="intelliProof Logo"
+                        width={44}
+                        height={44}
                       />
-                    ) : (
-                      <span
-                        onClick={() => setIsEditing(true)}
-                        className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
-                        style={{
-                          fontFamily: "DM Sans, sans-serif",
-                          fontWeight: "500",
-                        }}
-                      >
-                        {title}
+                      <span className="text-2xl font-bold tracking-tight text-[#232F3E]">
+                        Intelli<span className="text-[#232F3E]">Proof</span>
                       </span>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
+                    <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
 
-                  {/* Menu Button */}
-                  <div
-                    className="relative flex items-center -ml-4"
-                    ref={menuRef}
-                  >
-                    <button
-                      onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
-                        ? "bg-gray-100"
-                        : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                      title="Menu"
+                    {/* Editable Title */}
+                    <div className="min-w-[100px] flex items-center justify-center">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          onKeyDown={handleTitleChange}
+                          onBlur={() => setIsEditing(false)}
+                          className="bg-transparent border-b border-gray-300 focus:border-[#7283D9] outline-none px-0.5 text-lg text-center w-full"
+                          style={{
+                            fontFamily: "DM Sans, sans-serif",
+                            fontWeight: "500",
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <span
+                          onClick={() => setIsEditing(true)}
+                          className="cursor-pointer hover:bg-gray-100 px-0.5 py-0 rounded text-lg text-center w-full"
+                          style={{
+                            fontFamily: "DM Sans, sans-serif",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {title}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
+
+                    {/* Menu Button */}
+                    <div
+                      className="relative flex items-center -ml-4"
+                      ref={menuRef}
                     >
-                      <EllipsisVerticalIcon
-                        className="w-9 h-9"
-                        strokeWidth={2.5}
+                      <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
+                          ? "bg-gray-100"
+                          : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        title="Menu"
+                      >
+                        <EllipsisVerticalIcon
+                          className="w-9 h-9"
+                          strokeWidth={2.5}
+                        />
+                      </button>
+                      {isMenuOpen && (
+                        <div className="absolute right-0 mt-2 top-full bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-10">
+                          <button
+                            onClick={() => {
+                              router.push("/graph-manager");
+                              setIsMenuOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                          >
+                            <ArrowUturnLeftIcon className="w-5 h-5" />
+                            Back to Graph Manager
+                          </button>
+                          <div className="w-full h-px bg-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              handleLogout();
+                              setIsMenuOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                          >
+                            <ArrowUturnRightIcon className="w-5 h-5" />
+                            Log Out
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating Top Right Navbar */}
+                <div className="bg-white rounded-lg shadow-md px-2 py-1 w-fit self-start">
+                  <div className="flex items-center gap-3">
+                    {/* Undo/Redo Buttons */}
+                    <button
+                      onClick={undo}
+                      disabled={!canUndo}
+                      className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
+                        ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                        : "text-gray-300 cursor-not-allowed"
+                        }`}
+                      title="Undo"
+                    >
+                      <ArrowUturnLeftIcon className="w-7 h-7" strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={redo}
+                      disabled={!canRedo}
+                      className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
+                        ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                        : "text-gray-300 cursor-not-allowed"
+                        }`}
+                      title="Redo"
+                    >
+                      <ArrowUturnRightIcon className="w-7 h-7" strokeWidth={2} />
+                    </button>
+
+                    <div className="h-10 w-px bg-gray-200"></div>
+
+                    {/* Share, Import, Export, Save, and Generate Report Buttons */}
+                    <button
+                      onClick={() => {
+                        /* Add share functionality */
+                      }}
+                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      title="Share"
+                    >
+                      <ShareIcon className="w-7 h-7" strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={handleImport}
+                      disabled={isImporting}
+                      className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isImporting
+                        ? "bg-blue-100 text-blue-600 cursor-not-allowed"
+                        : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                        }`}
+                      title={isImporting ? "Importing..." : "Import"}
+                    >
+                      {isImporting ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                          <span className="text-xs">Importing...</span>
+                        </div>
+                      ) : (
+                        <ArrowUpTrayIcon className="w-7 h-7" strokeWidth={2} />
+                      )}
+                    </button>
+                    <button
+                      onClick={handleExport}
+                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      title="Export"
+                    >
+                      <ArrowDownTrayIcon className="w-7 h-7" strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      title="Save"
+                    >
+                      <DocumentCheckIcon className="w-7 h-7" strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={handleCritiqueGraph}
+                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      title="Critique Graph"
+                    >
+                      <DocumentMagnifyingGlassIcon
+                        className="w-7 h-7"
+                        strokeWidth={2}
                       />
                     </button>
-                    {isMenuOpen && (
-                      <div className="absolute right-0 mt-2 top-full bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-10">
-                        <button
-                          onClick={() => {
-                            router.push("/graph-manager");
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
-                        >
-                          <ArrowUturnLeftIcon className="w-5 h-5" />
-                          Back to Graph Manager
-                        </button>
-                        <div className="w-full h-px bg-gray-200 my-1"></div>
-                        <button
-                          onClick={() => {
-                            handleLogout();
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-                        >
-                          <ArrowUturnRightIcon className="w-5 h-5" />
-                          Log Out
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      onClick={handleGenerateReport}
+                      disabled={isGeneratingReport}
+                      className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isGeneratingReport
+                        ? "bg-blue-100 text-blue-600 cursor-not-allowed"
+                        : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                        }`}
+                      title={
+                        isGeneratingReport ? reportProgress : "Generate Report"
+                      }
+                    >
+                      {isGeneratingReport ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                          <span className="text-xs">Generating...</span>
+                        </div>
+                      ) : (
+                        <DocumentIcon className="w-7 h-7" strokeWidth={2} />
+                      )}
+                    </button>
+
+                    <div className="h-10 w-px bg-gray-200"></div>
+
+                    {/* Profile Icon and Dropdown */}
+                    <div className="relative" ref={profileRef}>
+                      <button
+                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                        className="w-10 h-10 rounded-full bg-[#232F3E] text-white flex items-center justify-center text-lg font-semibold hover:bg-[#2d3b4d] transition-colors"
+                      >
+                        <span className="pt-0.5">{profile?.first_name?.[0]}</span>
+                      </button>
+                      {isProfileOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                          <div className="px-4 py-2 text-sm text-gray-700">
+                            <div className="font-medium">
+                              {profile?.first_name} {profile?.last_name}
+                            </div>
+                            <div className="text-gray-500 truncate">
+                              {profile?.email}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Floating Top Right Navbar */}
-            <div className="absolute top-6 right-6 z-10 bg-white rounded-lg shadow-lg p-2">
-              <div className="flex items-center gap-4">
-                {/* Undo/Redo Buttons */}
-                <button
-                  onClick={undo}
-                  disabled={!canUndo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
-                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                    }`}
-                  title="Undo"
-                >
-                  <ArrowUturnLeftIcon className="w-8 h-8" strokeWidth={2} />
-                </button>
-                <button
-                  onClick={redo}
-                  disabled={!canRedo}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
-                    ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
-                    }`}
-                  title="Redo"
-                >
-                  <ArrowUturnRightIcon className="w-8 h-8" strokeWidth={2} />
-                </button>
-
-                <div className="h-12 w-px bg-gray-200"></div>
-
-                {/* Share, Import, Export, Save, and Generate Report Buttons */}
-                <button
-                  onClick={() => {
-                    /* Add share functionality */
-                  }}
-                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  title="Share"
-                >
-                  <ShareIcon className="w-8 h-8" strokeWidth={2} />
-                </button>
-                <button
-                  onClick={handleImport}
-                  disabled={isImporting}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isImporting
-                    ? "bg-blue-100 text-blue-600 cursor-not-allowed"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    }`}
-                  title={isImporting ? "Importing..." : "Import"}
-                >
-                  {isImporting ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <span className="text-xs">Importing...</span>
-                    </div>
-                  ) : (
-                    <ArrowUpTrayIcon className="w-8 h-8" strokeWidth={2} />
-                  )}
-                </button>
-                <button
-                  onClick={handleExport}
-                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  title="Export"
-                >
-                  <ArrowDownTrayIcon className="w-8 h-8" strokeWidth={2} />
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  title="Save"
-                >
-                  <DocumentCheckIcon className="w-8 h-8" strokeWidth={2} />
-                </button>
-                <button
-                  onClick={handleCritiqueGraph}
-                  className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                  title="Critique Graph"
-                >
-                  <DocumentMagnifyingGlassIcon
-                    className="w-8 h-8"
-                    strokeWidth={2}
-                  />
-                </button>
-                <button
-                  onClick={handleGenerateReport}
-                  disabled={isGeneratingReport}
-                  className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isGeneratingReport
-                    ? "bg-blue-100 text-blue-600 cursor-not-allowed"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                    }`}
-                  title={
-                    isGeneratingReport ? reportProgress : "Generate Report"
-                  }
-                >
-                  {isGeneratingReport ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <span className="text-xs">Generating...</span>
-                    </div>
-                  ) : (
-                    <DocumentIcon className="w-8 h-8" strokeWidth={2} />
-                  )}
-                </button>
-
-                <div className="h-12 w-px bg-gray-200"></div>
-
-                {/* Profile Icon and Dropdown */}
-                <div className="relative" ref={profileRef}>
-                  <button
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="w-12 h-12 rounded-full bg-[#232F3E] text-white flex items-center justify-center text-xl font-semibold hover:bg-[#2d3b4d] transition-colors"
-                  >
-                    <span className="pt-0.5">{profile?.first_name?.[0]}</span>
-                  </button>
-                  {isProfileOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-                      <div className="px-4 py-2 text-sm text-gray-700">
-                        <div className="font-medium">
-                          {profile?.first_name} {profile?.last_name}
-                        </div>
-                        <div className="text-gray-500 truncate">
-                          {profile?.email}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Tools Navbar */}
-            <div className="absolute left-6 top-24 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-4 w-[60px]">
+            <div className={`absolute left-6 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-4 w-[60px] ${isEvidencePanelOpen && isAICopilotOpen && !hideNavbar ? 'top-36' : 'top-24'
+              }`}>
               {/* Add Node Button */}
               <div className="relative">
                 <button
@@ -5486,7 +5493,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         )}
 
         {isAICopilotOpen && (
-          <Panel defaultSize={25} minSize={20} maxSize={40}>
+          <Panel defaultSize={24} minSize={12} maxSize={30}>
             <div className="h-full bg-white border-l border-black flex flex-col">
               {/* AI Copilot Header */}
               <div className="p-4 border-b border-black flex justify-between items-center bg-white relative">

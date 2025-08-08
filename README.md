@@ -342,7 +342,7 @@ BUGS:
 
 FRONTEND BUGS
 
-- Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
+- (DONE) Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
 
   --> open graphcanvas, pin the AI copilot and Evidence Navbars
   --> observe the Intelliproof toolbar and the graph save/crititque/report toolbar
@@ -355,7 +355,7 @@ FRONTEND BUGS
   - Do we actually need the arrows that change edge from attatcking/defending
     --> maybe the toggler can be added to edge edit modal
 
-- Unlink Evidence not working
+- (DONE) Unlink Evidence not working
 
   --> add evidence via the Edit Claim Modal, then try Unlink it
   --> Need to update Redux via useEffect or useState update
@@ -394,7 +394,7 @@ Features / bugs to fix:
 - Deleting a NODE that was connected to another node should re-trigger the automation for get claim cred. Right now if you delete the edge it does this, but not when u delete the node (which in turn deletes the edge) - (DONE)
 - Swap target and source claim in validate edge function. - (DONE)
 - Enter key should save content and trigger automation
-  - ensure no other edge cases around this
+  - ensure no other edge cases around this (DONE)
 - Enable drag and drop of evidence onto nodes -(DONE )
   - NOT ADDED -> need to click away and click again for modal to be updated...
 - Make delete evidence / unlink evidence functional - (DONE)

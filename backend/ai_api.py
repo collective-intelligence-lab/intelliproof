@@ -1048,20 +1048,48 @@ def generate_comprehensive_report(data: GenerateComprehensiveReportRequest = Bod
         }
         
         # Create comprehensive prompt for report generation
-       prompt = f"""
+        # Summarize the data to reduce token usage
+        node_summaries = []
+        for node in data.nodes:
+            node_summaries.append(f"• {node.text} (Type: {node.type})")
+        
+        edge_summaries = []
+        for edge in data.edges:
+            # Find source and target node texts
+            source_text = next((n.text for n in data.nodes if n.id == edge.source), "Unknown")
+            target_text = next((n.text for n in data.nodes if n.id == edge.target), "Unknown")
+            edge_summaries.append(f"• {source_text} → {target_text} (Weight: {edge.weight})")
+        
+        evidence_summaries = []
+        for ev in data.evidence:
+            evidence_summaries.append(f"• {ev.title}: {ev.excerpt[:100]}... (Confidence: {ev.confidence})")
+        
+        doc_summaries = []
+        for doc in data.supportingDocuments:
+            doc_summaries.append(f"• {doc.name} ({doc.type})")
+        
+        # Create a more concise prompt
+        prompt = f"""
 You are an expert intelligence analyst tasked with writing a clear, reader‑friendly report that explains the argument conveyed by the provided materials.
 
-SOURCE MATERIALS (for your analysis only; do not reference this structure explicitly in the report):
-- Propositional content: {json.dumps([{"id": node.id, "text": node.text, "type": node.type} for node in data.nodes], indent=2)}
-- Connections among propositions: {json.dumps([{"source": edge.source, "target": edge.target, "weight": edge.weight} for edge in data.edges], indent=2)}
-- Evidence and sources: {json.dumps([{"id": ev.id, "title": ev.title, "excerpt": ev.excerpt, "confidence": ev.confidence} for ev in data.evidence], indent=2)}
-- Supporting documents: {json.dumps([{"id": doc.id, "name": doc.name, "type": doc.type} for doc in data.supportingDocuments], indent=2)}
+SOURCE MATERIALS SUMMARY:
+- Claims/Propositions ({len(data.nodes)} total):
+{chr(10).join(node_summaries)}
 
-ANALYSIS RESULTS (for your use; synthesize into natural language):
-- Evidence evaluation: {json.dumps(data.evidence_evaluation_results or {}, indent=2)}
-- Connection validation: {json.dumps(data.edge_validation_results or {}, indent=2)}
-- Assumptions analysis: {json.dumps(data.assumptions_results or {}, indent=2)}
-- Argument critique: {json.dumps(data.critique_results or {}, indent=2)}
+- Logical Connections ({len(data.edges)} total):
+{chr(10).join(edge_summaries)}
+
+- Evidence Items ({len(data.evidence)} total):
+{chr(10).join(evidence_summaries)}
+
+- Supporting Documents ({len(data.supportingDocuments)} total):
+{chr(10).join(doc_summaries)}
+
+ANALYSIS RESULTS SUMMARY:
+- Evidence evaluation: {len(data.evidence_evaluation_results or {})} evaluations
+- Connection validation: {len(data.edge_validation_results or {})} validations  
+- Assumptions analysis: {len(data.assumptions_results or {})} assumptions
+- Argument critique: {len(data.critique_results or {})} critique points
 
 REPORT CONTEXT:
 - Title: {data.graph_title or "Argument Analysis"}
@@ -1073,8 +1101,8 @@ WRITING REQUIREMENTS:
 - Write a coherent natural‑language report that someone can read to understand the argument expressed by the materials.
 - Do NOT mention or use the terms "graph", "node(s)", "edge(s)", "vertex/vertices", or "link(s)" anywhere in the report. Discuss the content and reasoning itself.
 - Explain the main claim, supporting reasons, how sources/evidence support or challenge those reasons, relevant counterpoints, and important assumptions.
-- Include a clearly labeled subsection “Limitations and Flaws” that candidly discusses gaps, weaknesses, uncertainties, potential biases, and scope constraints in the argument and evidence.
-- Convert the structured inputs above into readable prose; do not list raw identifiers. Refer to sources generically (e.g., “one source”, “a document”, “an article”) unless a specific title meaningfully improves clarity.
+- Include a clearly labeled subsection "Limitations and Flaws" that candidly discusses gaps, weaknesses, uncertainties, potential biases, and scope constraints in the argument and evidence.
+- Convert the structured inputs above into readable prose; do not list raw identifiers. Refer to sources generically (e.g., "one source", "a document", "an article") unless a specific title meaningfully improves clarity.
 
 SECTIONS TO PRODUCE (all must be substantial and informative):
 1. COVER PAGE: Title, date, analyst info, and a one‑paragraph abstract.
@@ -1094,12 +1122,15 @@ SECTIONS TO PRODUCE (all must be substantial and informative):
 8. APPENDIX: A succinct, readable summary of sources consulted and analytical notes (no structural jargon; do not expose raw IDs).
 
 IMPORTANT OUTPUT RULES:
-- You must respond with ONLY a valid JSON object. No markdown, no extra text.
+- You must respond with ONLY a valid JSON object. No markdown formatting, no code blocks, no extra text.
+- Do NOT wrap your response in ```json or any other markdown formatting.
 - Each section should be substantial (approximately 400–800 words) and written for a general, non‑technical reader.
 - Maintain the exact JSON keys and structure below.
 
+CRITICAL: Respond with ONLY the JSON object, nothing else. No markdown, no explanations, no code blocks.
+
 Format your response exactly as:
-{{
+{{{{
     "cover_page": "Professional cover page content with title, date, analyst info and a brief abstract",
     "executive_summary": "3–5 paragraphs summarizing the argument, support, caveats, and conclusions",
     "scope_objectives": "Comprehensive scope and objectives section",
@@ -1108,13 +1139,13 @@ Format your response exactly as:
     "analysis": "In‑depth evaluation with insights, counterarguments, and a clearly labeled 'Limitations and Flaws' subsection",
     "conclusion": "Concise, decisive summary with decision‑relevant takeaways and recommendations",
     "appendix": "Readable appendix with summarized sources and notes (no structural jargon or raw IDs)",
-    "report_metadata": {{
+    "report_metadata": {{{{
         "title": "{data.graph_title or "Argument Analysis"}",
         "date": "{datetime.now().strftime("%B %d, %Y")}",
         "analyst": "{data.analyst_name or "IntelliProof AI"}",
         "contact": "{data.analyst_contact or "ai@intelliproof.com"}"
-    }}
-}}
+    }}}}
+}}}}
 """
         
         print(f"[ai_api] generate_comprehensive_report: Sending request to OpenAI")
@@ -1125,7 +1156,7 @@ Format your response exactly as:
                 {"role": "system", "content": "You are an expert intelligence analyst specializing in argument analysis and critical thinking. Create professional, detailed reports that follow intelligence analysis standards. Be comprehensive and thorough in your analysis."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=8000,
+            max_tokens=16384,
             temperature=0.3
         )
         
@@ -1166,16 +1197,52 @@ Format your response exactly as:
             
             # Try to extract JSON from the response if it's wrapped in markdown
             try:
-                # Look for JSON between ```json and ``` markers
                 import re
-                json_match = re.search(r'```json\s*(.*?)\s*```', result, re.DOTALL)
-                if json_match:
-                    json_content = json_match.group(1)
+                
+                # Try multiple patterns for JSON extraction
+                patterns = [
+                    r'```json\s*(.*?)\s*```',  # ```json ... ```
+                    r'```\s*(.*?)\s*```',      # ``` ... ``` (any language)
+                    r'`(.*?)`',                 # ` ... ` (inline code)
+                ]
+                
+                json_content = None
+                for pattern in patterns:
+                    json_match = re.search(pattern, result, re.DOTALL)
+                    if json_match:
+                        potential_json = json_match.group(1).strip()
+                        # Try to parse it as JSON
+                        try:
+                            json.loads(potential_json)
+                            json_content = potential_json
+                            print(f"[ai_api] generate_comprehensive_report: Found valid JSON with pattern: {pattern}")
+                            break
+                        except json.JSONDecodeError:
+                            continue
+                
+                if json_content:
+                    print(f"[ai_api] generate_comprehensive_report: Extracted JSON content: {json_content[:200]}...")
                     report_data = json.loads(json_content)
                     print(f"[ai_api] generate_comprehensive_report: Successfully extracted JSON from markdown")
                     return GenerateComprehensiveReportResponse(**report_data)
+                else:
+                    print(f"[ai_api] generate_comprehensive_report: No valid JSON found in any code blocks")
+                    
+                    # Try to find JSON-like content without code blocks
+                    try:
+                        # Look for content that starts with { and ends with }
+                        json_match = re.search(r'\{.*\}', result, re.DOTALL)
+                        if json_match:
+                            potential_json = json_match.group(0)
+                            report_data = json.loads(potential_json)
+                            print(f"[ai_api] generate_comprehensive_report: Successfully extracted JSON from raw content")
+                            return GenerateComprehensiveReportResponse(**report_data)
+                    except Exception as raw_extract_error:
+                        print(f"[ai_api] generate_comprehensive_report: Raw JSON extraction failed: {raw_extract_error}")
+                        
             except Exception as extract_error:
                 print(f"[ai_api] generate_comprehensive_report: JSON extraction failed: {extract_error}")
+                print(f"[ai_api] generate_comprehensive_report: Full response for debugging: {result}")
             
             # Fallback: create a detailed report structure based on available data
             node_summary = "\n".join([f"- {node.text} (Type: {node.type})" for node in data.nodes])

@@ -18,6 +18,17 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Vercel-specific optimizations
+  experimental: {
+    serverComponentsExternalPackages: [],
+  },
+  // Configure server timeout
+  serverRuntimeConfig: {
+    apiTimeout: 30000, // 30 seconds
+  },
+  // Vercel deployment optimizations
+  output: 'standalone',
+  poweredByHeader: false,
 };
 
 module.exports = nextConfig; 

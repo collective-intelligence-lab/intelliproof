@@ -87,6 +87,7 @@ import {
   ArrowTrendingDownIcon,
   ArrowPathRoundedSquareIcon,
   ArrowsPointingOutIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { fetchUserData } from "../../store/slices/userSlice";
 import html2canvas from "html2canvas";
@@ -99,6 +100,8 @@ import CommandMessageBox from "./CommandMessageBox";
 import PDFPreviewer from "./PDFPreviewer";
 import type { PDFPreviewerHandle } from "./PDFPreviewer";
 import ImagePreviewer from "./ImagePreviewer";
+import NotesManagerModal, { Note } from "./NotesManagerModal";
+import NoteEditorModal from "./NoteEditorModal";
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const getColors = (type: string) => {
@@ -596,6 +599,91 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
   const [isAICopilotFrozen, setIsAICopilotFrozen] = useState(false);
+
+  // Notes state
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+  const fetchNotes = useCallback(async (graphIdParam?: string) => {
+    const gid = graphIdParam || currentGraphId;
+    if (!gid) return;
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+      const res = await fetch(`/api/notes?graph_id=${gid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotes(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch notes", e);
+    }
+  }, [currentGraphId]);
+
+  useEffect(() => { if (currentGraphId) fetchNotes(currentGraphId); }, [currentGraphId, fetchNotes]);
+
+  const openNotesManager = () => {
+    setIsNotesOpen(true);
+    fetchNotes();
+  };
+
+  const handleCreateNote = () => {
+    setEditingNote(null);
+    setIsNoteEditorOpen(true);
+  };
+
+  const handleEditNote = (n: Note) => {
+    setEditingNote(n);
+    setIsNoteEditorOpen(true);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+      const res = await fetch(`/api/notes/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (e) {
+      console.error("Delete note failed", e);
+    }
+  };
+
+  const handleSaveNote = async ({ title, text, url }: { title: string; text: string; url?: string }) => {
+    const token = localStorage.getItem("access_token");
+    if (!token || !currentGraphId) return;
+    try {
+      if (editingNote) {
+        const res = await fetch(`/api/notes/${editingNote.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ title, text, url }),
+        });
+        if (res.ok) {
+          const { note } = await res.json();
+          setNotes((prev) => prev.map((n) => (n.id === editingNote.id ? note : n)));
+        }
+      } else {
+        const res = await fetch(`/api/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ graph_id: currentGraphId, title, text, url }),
+        });
+        if (res.ok) {
+          const { note } = await res.json();
+          setNotes((prev) => [note, ...prev]);
+        }
+      }
+    } catch (e) {
+      console.error("Save note failed", e);
+    }
+  };
 
   // Add state for loading OCR
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -5225,6 +5313,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <div className="w-full h-px bg-gray-200"></div>
 
+              {/* Notes Manager Toggle */}
+              <button
+                onClick={openNotesManager}
+                className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isNotesOpen
+                  ? "bg-[#232F3E] text-white shadow-inner"
+                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  }`}
+                title="Notes"
+              >
+                <ClipboardDocumentListIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+
               {/* Evidence Panel Toggle */}
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
@@ -5840,6 +5940,22 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         graphId={currentGraphId || ""}
         uploaderEmail={profile?.email || ""}
         onSuccess={handleUploadSuccess}
+      />
+
+      {/* Notes Modals */}
+      <NotesManagerModal
+        open={isNotesOpen}
+        onClose={() => setIsNotesOpen(false)}
+        notes={notes}
+        onCreate={handleCreateNote}
+        onEdit={(n) => { setIsNotesOpen(false); handleEditNote(n); }}
+        onDelete={handleDeleteNote}
+      />
+      <NoteEditorModal
+        open={isNoteEditorOpen}
+        onClose={() => setIsNoteEditorOpen(false)}
+        initialNote={editingNote}
+        onSave={handleSaveNote}
       />
 
       {/* Progress Toast */}

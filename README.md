@@ -164,6 +164,31 @@ FOR SELECT
 TO authenticated
 USING (true);
 
+-- Notes table (supports optional external link)
+create table if not exists notes (
+  id uuid primary key default gen_random_uuid(),
+  graph_id uuid references graphs(id) on delete cascade,
+  owner_email text references profiles(email) on delete set null,
+  title text not null,
+  text text not null,
+  link text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Indexes for performance
+create index if not exists idx_notes_graph_id on notes(graph_id);
+create index if not exists idx_notes_owner on notes(owner_email);
+
+-- Enable RLS on notes
+alter table notes enable row level security;
+
+-- Basic policies (frontend authorizes with JWT owner_email)
+create policy if not exists "Authenticated select notes" on notes for select to authenticated using (true);
+create policy if not exists "Authenticated insert notes" on notes for insert to authenticated with check (true);
+create policy if not exists "Authenticated update own notes" on notes for update to authenticated using (true) with check (true);
+create policy if not exists "Authenticated delete own notes" on notes for delete to authenticated using (true);
+
 Backend Server
 
 Create a file named .env in the backend directory with the following content:
@@ -346,6 +371,12 @@ FRONTEND BUGS
 
   --> open graphcanvas, pin the AI copilot and Evidence Navbars
   --> observe the Intelliproof toolbar and the graph save/crititque/report toolbar
+
+  FIX
+
+  -->
+
+  -->
 
 - Inability to change edge from attatcking and supporting
 

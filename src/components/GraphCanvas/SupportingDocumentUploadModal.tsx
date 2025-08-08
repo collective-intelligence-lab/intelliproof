@@ -7,11 +7,12 @@ interface SupportingDocumentUploadModalProps {
   graphId: string;
   uploaderEmail: string;
   onSuccess: (doc: any) => void;
+  onUploadStart?: () => void;
 }
 
 const SupportingDocumentUploadModal: React.FC<
   SupportingDocumentUploadModalProps
-> = ({ open, onClose, graphId, uploaderEmail, onSuccess }) => {
+> = ({ open, onClose, graphId, uploaderEmail, onSuccess, onUploadStart }) => {
   const [name, setName] = useState("");
   const [type, setType] = useState("document");
   const [file, setFile] = useState<File | null>(null);
@@ -40,6 +41,10 @@ const SupportingDocumentUploadModal: React.FC<
       if (!accessToken) {
         throw new Error("No access token found");
       }
+
+      // Notify parent that upload is starting (right before the actual API call)
+      onUploadStart?.();
+
       const uploadRes = await axios.post(
         "/api/supporting-documents/upload",
         formData,
@@ -68,11 +73,14 @@ const SupportingDocumentUploadModal: React.FC<
           },
         }
       );
-      onSuccess(metaRes.data.document);
-      setName("");
-      setType("document");
-      setFile(null);
-      onClose();
+      // Delay the success callback to ensure upload is actually complete
+      setTimeout(() => {
+        onSuccess(metaRes.data.document);
+        setName("");
+        setType("document");
+        setFile(null);
+        onClose();
+      }, 7000);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Upload failed");
     } finally {

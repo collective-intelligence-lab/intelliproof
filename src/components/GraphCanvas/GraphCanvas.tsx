@@ -102,6 +102,7 @@ import type { PDFPreviewerHandle } from "./PDFPreviewer";
 import ImagePreviewer from "./ImagePreviewer";
 import NotesManagerModal, { Note } from "./NotesManagerModal";
 import NoteEditorModal from "./NoteEditorModal";
+import LoadingSuccessButton, { LoadingSuccessButtonRef } from "./LoadingSuccessButton";
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const getColors = (type: string) => {
@@ -605,6 +606,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+  // Import button ref
+  const importButtonRef = useRef<LoadingSuccessButtonRef>(null);
+  // Upload button ref
+  const uploadButtonRef = useRef<LoadingSuccessButtonRef>(null);
+
+
 
   const fetchNotes = useCallback(async (graphIdParam?: string) => {
     const gid = graphIdParam || currentGraphId;
@@ -1363,80 +1371,65 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     Math.max(min, Math.min(max, val));
 
   const handleSave = async () => {
-    try {
-      // Add debug logging
-      console.log("Current graph ID:", currentGraphId);
-      console.log("Current graph:", currentGraph);
+    // Add debug logging
+    console.log("Current graph ID:", currentGraphId);
+    console.log("Current graph:", currentGraph);
 
-      // Get the graph ID from either source
-      const graphId = currentGraphId || currentGraph?.id;
+    // Get the graph ID from either source
+    const graphId = currentGraphId || currentGraph?.id;
 
-      if (!graphId) {
-        console.error("No graph ID found for saving");
-        alert(
-          "Cannot save: No graph ID found. Please try refreshing the page."
-        );
-        return;
-      }
+    if (!graphId) {
+      console.error("No graph ID found for saving");
+      throw new Error("Cannot save: No graph ID found");
+    }
 
-      // Format the graph data according to the required structure
-      const graphData = {
-        evidence: evidenceCards,
-        nodes: nodes.map((node) => ({
-          id: node.id,
-          text: node.data.text,
-          type: node.data.type,
-          author: node.data.author,
-          credibilityScore: node.data.credibilityScore,
-          belief: clamp(node.data.belief ?? 0.5, 0, 1),
-          position: node.position,
-          created_on: node.data.created_on || new Date().toISOString(),
-          evidenceIds: node.data.evidenceIds || [],
-        })),
-        edges: edges.map((edge) => ({
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          weight: clamp(edge.data.confidence, -1, 1),
-          // Save edge validation data
-          edgeType: edge.data.edgeType,
-          confidence: edge.data.confidence,
-          edgeScore: edge.data.edgeScore,
-        })),
-      };
+    // Format the graph data according to the required structure
+    const graphData = {
+      evidence: evidenceCards,
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        text: node.data.text,
+        type: node.data.type,
+        author: node.data.author,
+        credibilityScore: node.data.credibilityScore,
+        belief: clamp(node.data.belief ?? 0.5, 0, 1),
+        position: node.position,
+        created_on: node.data.created_on || new Date().toISOString(),
+        evidenceIds: node.data.evidenceIds || [],
+      })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        weight: clamp(edge.data.confidence, -1, 1),
+        // Save edge validation data
+        edgeType: edge.data.edgeType,
+        confidence: edge.data.confidence,
+        edgeScore: edge.data.edgeScore,
+      })),
+    };
 
-      console.log("Saving graph with ID:", graphId);
-      console.log("Graph data:", graphData);
+    console.log("Saving graph with ID:", graphId);
+    console.log("Graph data:", graphData);
 
-      // Save the graph with the current ID
-      const saveResult = await dispatch(
-        saveGraph({
-          id: graphId,
-          graphData,
-          graphName: title,
-        }) as any
-      );
+    // Save the graph with the current ID
+    const saveResult = await dispatch(
+      saveGraph({
+        id: graphId,
+        graphData,
+        graphName: title,
+      }) as any
+    );
 
-      console.log("Save result:", saveResult);
+    console.log("Save result:", saveResult);
 
-      // Check if the save was rejected
-      if (saveResult.meta.requestStatus === "rejected") {
-        const errorMessage =
-          saveResult.error?.message ||
-          saveResult.payload?.error ||
-          "Failed to save graph";
-        throw new Error(errorMessage);
-      }
-
-      // Navigate back to graph manager
-      router.push("/graph-manager");
-    } catch (error) {
-      console.error("Error saving graph:", error);
+    // Check if the save was rejected
+    if (saveResult.meta.requestStatus === "rejected") {
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to save graph. Please try again.";
-      alert(errorMessage);
+        saveResult.error?.message ||
+        saveResult.payload?.error ||
+        "Failed to save graph";
+      throw new Error(errorMessage);
     }
   };
 
@@ -1446,8 +1439,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       dispatch(fetchSupportingDocuments(currentGraphId));
     }
     setIsUploadModalOpen(false);
-    setToast("Document uploaded!");
-    setTimeout(() => setToast(null), 2000);
+
+    // Delay success state by 7 seconds to ensure upload is actually complete
+    setTimeout(() => {
+      uploadButtonRef.current?.setSuccess(true);
+    }, 7000);
+  };
+
+  const handleUpload = async () => {
+    setIsUploadModalOpen(true);
   };
 
   const handleDeleteDocument = async (id: string) => {
@@ -1768,7 +1768,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     [cloneEvidence]
   );
 
-  const handleExport = () => {
+  const handleExport = async () => {
     // Format the graph data according to the required structure
     const graphData: ExportedGraphData = {
       evidence: evidenceCards || [],
@@ -1809,10 +1809,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = () => {
-    // Prevent multiple imports
-    if (isImporting) return;
-
+  const handleImport = async () => {
     // Create a hidden file input
     const fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1835,30 +1832,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         return;
       }
 
-      setIsImporting(true);
+      // Start loading animation after file is selected
+      importButtonRef.current?.startLoading();
 
       try {
-        // Show loading state
-        setToast("Reading file...");
-
         const text = await file.text();
         const data = JSON.parse(text);
 
         console.log("Imported data:", data);
-
-        // Show validation state
-        setToast("Validating file format...");
 
         // Validate the JSON structure
         const validationResult = validateGraphData(data);
         if (!validationResult.isValid) {
           setToast(`Invalid file format: ${validationResult.error}`);
           setTimeout(() => setToast(null), 5000);
+          importButtonRef.current?.setSuccess(false);
           return;
         }
-
-        // Show import state
-        setToast("Importing graph...");
 
         // Import the validated data
         importGraphData(data);
@@ -1873,6 +1863,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           `Graph imported successfully! (${stats.nodes} nodes, ${stats.edges} edges, ${stats.evidence} evidence)`
         );
         setTimeout(() => setToast(null), 4000);
+
+        // Show success state
+        importButtonRef.current?.setSuccess(true);
       } catch (error) {
         console.error("Error reading file:", error);
         if (error instanceof SyntaxError) {
@@ -1881,8 +1874,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           setToast("Error reading file. Please try again.");
         }
         setTimeout(() => setToast(null), 5000);
+
+        // Show failure state
+        importButtonRef.current?.setSuccess(false);
       } finally {
-        setIsImporting(false);
         // Clean up
         document.body.removeChild(fileInput);
       }
@@ -1893,7 +1888,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       document.body.removeChild(fileInput);
     };
 
-    // Trigger file selection
+    // Trigger file dialog
     document.body.appendChild(fileInput);
     fileInput.click();
   };
@@ -4921,16 +4916,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       <h3 className="text-base font-medium tracking-wide uppercase">
                         Supporting Documents
                       </h3>
-                      <button
+                      <LoadingSuccessButton
+                        ref={uploadButtonRef}
+                        onClick={handleUpload}
+                        icon={ArrowUpTrayIcon}
+                        title="Upload"
+                        loadingText="Uploading..."
+                        successText="Uploaded"
+                        showLoadingImmediately={false}
                         className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm cursor-pointer font-[DM Sans] font-normal"
-                        onClick={() => {
-                          console.log("Upload button clicked");
-                          setIsUploadModalOpen(true);
-                        }}
-                        type="button"
-                      >
-                        Upload
-                      </button>
+                      />
                     </div>
                     {/* Documents List */}
                     <div className="space-y-3">
@@ -5143,68 +5138,44 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     >
                       <ShareIcon className="w-7 h-7" strokeWidth={2} />
                     </button>
-                    <button
+                    <LoadingSuccessButton
+                      ref={importButtonRef}
                       onClick={handleImport}
-                      disabled={isImporting}
-                      className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isImporting
-                        ? "bg-blue-100 text-blue-600 cursor-not-allowed"
-                        : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                        }`}
-                      title={isImporting ? "Importing..." : "Import"}
-                    >
-                      {isImporting ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                          <span className="text-xs">Importing...</span>
-                        </div>
-                      ) : (
-                        <ArrowUpTrayIcon className="w-7 h-7" strokeWidth={2} />
-                      )}
-                    </button>
-                    <button
+                      icon={ArrowUpTrayIcon}
+                      title="Import"
+                      loadingText="Importing..."
+                      successText="Imported"
+                      showLoadingImmediately={false}
+                    />
+                    <LoadingSuccessButton
                       onClick={handleExport}
-                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      icon={ArrowDownTrayIcon}
                       title="Export"
-                    >
-                      <ArrowDownTrayIcon className="w-7 h-7" strokeWidth={2} />
-                    </button>
-                    <button
+                      loadingText="Exporting..."
+                      successText="Exported"
+                    />
+                    <LoadingSuccessButton
                       onClick={handleSave}
-                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      icon={DocumentCheckIcon}
                       title="Save"
-                    >
-                      <DocumentCheckIcon className="w-7 h-7" strokeWidth={2} />
-                    </button>
-                    <button
+                      loadingText="Saving..."
+                      successText="Saved"
+                    />
+                    <LoadingSuccessButton
                       onClick={handleCritiqueGraph}
-                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                      icon={DocumentMagnifyingGlassIcon}
                       title="Critique Graph"
-                    >
-                      <DocumentMagnifyingGlassIcon
-                        className="w-7 h-7"
-                        strokeWidth={2}
-                      />
-                    </button>
-                    <button
+                      loadingText="Critiquing..."
+                      successText="Critiqued"
+                    />
+                    <LoadingSuccessButton
                       onClick={handleGenerateReport}
+                      icon={DocumentIcon}
+                      title="Generate Report"
+                      loadingText="Generating..."
+                      successText="Generated"
                       disabled={isGeneratingReport}
-                      className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isGeneratingReport
-                        ? "bg-blue-100 text-blue-600 cursor-not-allowed"
-                        : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                        }`}
-                      title={
-                        isGeneratingReport ? reportProgress : "Generate Report"
-                      }
-                    >
-                      {isGeneratingReport ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                          <span className="text-xs">Generating...</span>
-                        </div>
-                      ) : (
-                        <DocumentIcon className="w-7 h-7" strokeWidth={2} />
-                      )}
-                    </button>
+                    />
 
                     <div className="h-10 w-px bg-gray-200"></div>
 
@@ -5226,6 +5197,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               {profile?.email}
                             </div>
                           </div>
+                          <div className="w-full h-px bg-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              handleLogout();
+                              setIsProfileOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 text-sm"
+                          >
+                            <ArrowUturnRightIcon className="w-4 h-4" />
+                            Log Out
+                          </button>
                         </div>
                       )}
                     </div>
@@ -5940,6 +5922,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         graphId={currentGraphId || ""}
         uploaderEmail={profile?.email || ""}
         onSuccess={handleUploadSuccess}
+        onUploadStart={() => uploadButtonRef.current?.startLoading()}
       />
 
       {/* Notes Modals */}
@@ -5970,6 +5953,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           </div>
         </div>
       )}
+
+
     </div>
   );
 };

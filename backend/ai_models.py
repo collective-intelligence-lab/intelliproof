@@ -45,6 +45,7 @@ class NodeModel(BaseModel):
     evidence: Optional[List[float]] = None  # Accept list of floats for this endpoint
     evidence_min: Optional[float] = None
     evidence_max: Optional[float] = None
+    evidence_score: Optional[float] = None  # Unified per-claim evidence score in [-1, 1]
 
 
 class EdgeModel(BaseModel):
@@ -143,6 +144,30 @@ class CheckEvidenceResponse(BaseModel):
     Response containing AI evaluations of evidence-claim relationships.
     """
     results: List[EvidenceEvaluation] 
+
+class UnifiedEvidenceRequest(BaseModel):
+    """
+    Request model for unified evidence evaluation for a single node.
+    
+    Evaluates ALL evidence attached to the node together to produce a single
+    overall score of support/contradiction for the claim.
+    """
+    node: NodeWithEvidenceModel
+    evidence: List[EvidenceModel]
+    supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+
+class UnifiedEvidenceResponse(BaseModel):
+    """
+    Response model for unified evidence evaluation.
+    
+    Returns a single signed score in [-1, 1], an evaluation label, and
+    brief reasoning describing the overall assessment.
+    """
+    node_id: str
+    score: float
+    evaluation: str
+    reasoning: str
 
 
 class ValidateEdgeRequest(BaseModel):

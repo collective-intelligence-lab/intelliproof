@@ -451,6 +451,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               : [],
           evidence_min: -1.0,
           evidence_max: 1.0,
+          evidence_score: node.data.evidenceScore ?? 0,
         })),
         edges: edges.map((edge) => ({
           source: edge.source,
@@ -622,6 +623,44 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const supportingDocumentsRedux = useSelector((state: RootState) =>
     currentGraphId ? state.graphs.supportingDocuments[currentGraphId] || [] : []
   );
+
+  // Map Redux docs to local state shape
+  // Listen for unified evidence score requests coming from NodeProperties (claim modal)
+  useEffect(() => {
+    const handler = (evt: Event) => {
+      const detail = (evt as CustomEvent).detail as
+        | {
+            nodeId?: string;
+            evidenceIds?: string[];
+            text?: string;
+            type?: ClaimType;
+          }
+        | undefined;
+      const nodeId = detail?.nodeId;
+      if (nodeId) {
+        console.log(
+          `[GraphCanvas] Received unified-evidence request for node ${nodeId} from NodeProperties`
+        );
+        triggerUnifiedEvidenceScore(nodeId, {
+          evidenceIds: detail?.evidenceIds,
+          text: detail?.text,
+          type: detail?.type,
+        })
+          .then(() => handleClaimCredibility())
+          .catch(() => {});
+      }
+    };
+    window.addEventListener(
+      "intelliproof:unified-evidence-request",
+      handler as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "intelliproof:unified-evidence-request",
+        handler as EventListener
+      );
+    };
+  }, []);
 
   // Map Redux docs to local state shape
   useEffect(() => {
@@ -1628,8 +1667,27 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         }
       });
 
-      // Immediately trigger evidence check and credibility update
-      setApiQueue((prev) => [...prev.filter((id) => id !== nodeId), nodeId]);
+      // Immediately compute unified evidence score and prevent duplicate deselect trigger
+      setModifiedNodes((prev) => {
+        const ns = new Set(prev);
+        ns.delete(nodeId);
+        return ns;
+      });
+      // Pass snapshot of the new evidenceIds to avoid stale state
+      const nodeAfter = nodes.find((n) => n.id === nodeId);
+      const prevIds = Array.isArray(nodeAfter?.data.evidenceIds)
+        ? (nodeAfter as any).data.evidenceIds
+        : [];
+      const snapshotIds = [...prevIds];
+      if (!snapshotIds.includes(clonedEvidenceId))
+        snapshotIds.push(clonedEvidenceId);
+      triggerUnifiedEvidenceScore(nodeId, {
+        evidenceIds: snapshotIds,
+        text: nodeAfter?.data.text,
+        type: nodeAfter?.data.type,
+      })
+        .then(() => handleClaimCredibility())
+        .catch(() => {});
     },
     [cloneEvidence]
   );
@@ -1645,6 +1703,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         author: node.data.author,
         belief: clamp(node.data.belief ?? 0.5, 0, 1),
         credibilityScore: node.data.credibilityScore ?? 0,
+        evidenceScore: node.data.evidenceScore ?? 0,
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
         evidenceIds: node.data.evidenceIds || [],
@@ -2480,7 +2539,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       {
         role: "user",
         content:
-          "Compute credibility using evidence confidence scores and return credibility score.",
+          "Compute credibility using unified evidence_score and return credibility scores.",
       },
     ]);
     try {
@@ -2500,6 +2559,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             : [], // Empty array for no evidence instead of [0.5]
         evidence_min: -1.0,
         evidence_max: 1.0,
+        evidence_score: node.data.evidenceScore ?? 0,
       }));
 
       // Construct edges array from all edges in the graph
@@ -2929,8 +2989,25 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       return updatedNodes;
     });
 
-    // Immediately trigger evidence check and credibility update
-    setApiQueue((prev) => [...prev.filter((id) => id !== nodeId), nodeId]);
+    // Immediately compute unified evidence score and prevent duplicate deselect trigger
+    setModifiedNodes((prev) => {
+      const ns = new Set(prev);
+      ns.delete(nodeId);
+      return ns;
+    });
+    // Build snapshot of updated evidenceIds for this node
+    const targetNode = nodes.find((n) => n.id === nodeId);
+    const currentIds = Array.isArray(targetNode?.data.evidenceIds)
+      ? (targetNode as any).data.evidenceIds
+      : [];
+    const snapshotIds = currentIds.filter((id: string) => id !== evidenceId);
+    triggerUnifiedEvidenceScore(nodeId, {
+      evidenceIds: snapshotIds,
+      text: targetNode?.data.text,
+      type: targetNode?.data.type,
+    })
+      .then(() => handleClaimCredibility())
+      .catch(() => {});
   };
 
   const pdfPreviewerRef = useRef<PDFPreviewerHandle>(null);
@@ -2954,10 +3031,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       // Only trigger API calls if the node was actually modified
       if (modifiedNodes.has(prevId)) {
-        console.log(`Node ${prevId} was modified, triggering API calls`);
-
-        // First run check_evidence to update evidence confidences
-        setApiQueue((q) => [...q, prevId]);
+        console.log(
+          `Node ${prevId} was modified, triggering unified evidence update`
+        );
+        // Run unified-evidence directly instead of queuing to avoid duplicate calls
+        void triggerUnifiedEvidenceScore(prevId);
 
         // Queue all connected edges for validation
         const connectedEdges = getConnectedEdges(prevId);
@@ -2988,51 +3066,22 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const nodeId = apiQueue[0];
       console.log(`[GraphCanvas] Queue processor: Processing node ${nodeId}`);
 
-      triggerCheckNodeEvidence(nodeId)
-        .then(async (updatedEvidenceData) => {
+      // NEW: compute unified evidence score for this node
+      triggerUnifiedEvidenceScore(nodeId)
+        .then(() => {
           console.log(
-            `[GraphCanvas] Queue processor: Evidence check completed for node ${nodeId}`
-          );
-          console.log(
-            `[GraphCanvas] Queue processor: Updated evidence data:`,
-            updatedEvidenceData
+            `[GraphCanvas] Queue processor: Unified evidence score updated for node ${nodeId}`
           );
 
           setApiQueue((q) => q.slice(1));
           setIsProcessing(false);
 
-          // After evidence check completes, run selective credibility for the specific node
-          console.log(
-            `[GraphCanvas] Queue processor: Running selective credibility for node ${nodeId}`
-          );
-          try {
-            // await handleNodeCredibility(nodeId);
-            await handleClaimCredibilityWithUpdatedEvidence(
-              updatedEvidenceData,
-              nodeId
-            );
-            console.log(
-              `[GraphCanvas] Queue processor: Selective credibility computation completed for node ${nodeId}`
-            );
-          } catch (error) {
-            console.error(
-              `[GraphCanvas] Queue processor: Error in selective credibility computation:`,
-              error
-            );
-            setCopilotMessages((msgs) => [
-              ...msgs,
-              {
-                role: "ai",
-                content: `Error computing credibility scores for node ${nodeId}: ${
-                  error instanceof Error ? error.message : "Unknown error"
-                }`,
-              },
-            ]);
-          }
+          // NOTE: We will wire credibility to use evidence_score in Chunk 6.
+          // Intentionally not calling get-claim-credibility here yet.
         })
         .catch((error) => {
           console.error(
-            `[GraphCanvas] Queue processor: Error in evidence check:`,
+            `[GraphCanvas] Queue processor: Error in unified evidence evaluation:`,
             error
           );
           setApiQueue((q) => q.slice(1));
@@ -3041,7 +3090,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...msgs,
             {
               role: "ai",
-              content: `Error checking evidence: ${
+              content: `Error computing unified evidence score for node ${nodeId}: ${
                 error instanceof Error ? error.message : "Unknown error"
               }`,
             },
@@ -3050,7 +3099,99 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
   }, [apiQueue, isProcessing]);
 
-  // API call function for queued node evidence check
+  // NEW: Unified evidence evaluation (all evidence together) to produce a single evidenceScore
+  const triggerUnifiedEvidenceScore = async (
+    nodeId: string,
+    override?: { text?: string; type?: ClaimType; evidenceIds?: string[] }
+  ) => {
+    console.log(
+      `[GraphCanvas] triggerUnifiedEvidenceScore: Start for node ${nodeId}`
+    );
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      console.log(
+        `[GraphCanvas] triggerUnifiedEvidenceScore: Node ${nodeId} not found`
+      );
+      return null;
+    }
+
+    try {
+      const requestBody = {
+        node: {
+          id: node.id,
+          text: override?.text ?? node.data.text,
+          type: override?.type ?? node.data.type,
+          evidenceIds: (override?.evidenceIds ?? node.data.evidenceIds) || [],
+        },
+        evidence: evidenceCards,
+        supportingDocuments: supportingDocumentsRedux,
+      };
+
+      const response = await fetch("/api/ai/check-unified-evidence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Failed to compute unified evidence score.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch {}
+        console.error(
+          `[GraphCanvas] triggerUnifiedEvidenceScore: API error: ${errorMsg}`
+        );
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      const score: number = typeof data.score === "number" ? data.score : 0;
+
+      // Update node's unified evidence score
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === nodeId
+            ? { ...n, data: { ...n.data, evidenceScore: score } }
+            : n
+        )
+      );
+
+      // Optional: Log/structured message
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: {
+            "Claim Node ID": nodeId,
+            "Node Title": node.data.text,
+            Evaluation: data.evaluation,
+            "Unified Evidence Score": score.toFixed(3),
+            "Unified Evidence Score (%)": `${Math.round((score + 1) * 50)}%`,
+            Reasoning: data.reasoning,
+          },
+          isStructured: true,
+        },
+      ]);
+
+      return score;
+    } catch (err: any) {
+      console.error(
+        `[GraphCanvas] triggerUnifiedEvidenceScore: Error for node ${nodeId}:`,
+        err
+      );
+      setCopilotMessages((msgs) => [
+        ...msgs,
+        {
+          role: "ai",
+          content: `Error computing unified evidence score for node ${nodeId}: ${err.message}`,
+        },
+      ]);
+      return null;
+    }
+  };
+
+  // API call function for queued node evidence check (legacy per-evidence)
   const triggerCheckNodeEvidence = async (nodeId: string) => {
     console.log(
       `[GraphCanvas] triggerCheckNodeEvidence: Starting evidence check for node ${nodeId}`
@@ -3230,7 +3371,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       {
         role: "user",
         content:
-          "Compute credibility using evidence confidence scores and return credibility score.",
+          "Compute credibility using unified evidence_score and return credibility scores.",
       },
     ]);
     try {
@@ -3299,6 +3440,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           evidence: nodeEvidence,
           evidence_min: -1.0,
           evidence_max: 1.0,
+          evidence_score: node.data.evidenceScore ?? 0,
         };
       });
 

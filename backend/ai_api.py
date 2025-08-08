@@ -36,6 +36,8 @@ from ai_models import (
     CheckEvidenceRequest,
     EvidenceEvaluation,
     CheckEvidenceResponse,
+    UnifiedEvidenceRequest,  # NEW
+    UnifiedEvidenceResponse,  # NEW
     ValidateEdgeRequest,  # NEW
     ValidateEdgeResponse,  # NEW
     ClassifyClaimTypeRequest,  # NEW
@@ -76,42 +78,43 @@ router = APIRouter()
 @router.post("/api/ai/get-claim-credibility", response_model=CredibilityPropagationResponse)
 def get_claim_credibility(data: CredibilityPropagationRequest):
     """
-    Compute credibility scores for claims using network propagation algorithm.
-    
-    Algorithm Overview:
-    1. Calculate initial evidence scores (E_i) for each node
-    2. Initialize credibility scores c_i^(0) = E_i  
-    3. Iteratively update scores using: c_i^(t+1) = tanh(λ * E_i + Σ(w_ji * c_j^(t)))
-    4. Continue until convergence or max iterations reached
-    
-    The tanh squashing function keeps scores in [-1, 1] range.
-    Lambda parameter balances evidence vs. network influence.
+    Compute credibility scores for claims using a network propagation algorithm.
+
+    Evidence term (intrinsic score):
+    - For each node i, the intrinsic score E_i is taken from the node's unified
+      `evidence_score` field (a single score produced by aggregating ALL attached
+      evidence together).
+    - E_i is clamped to [evidence_min, evidence_max] (defaults to [-1.0, 1.0]).
+    - If `evidence_score` is missing for a node, E_i defaults to 0.0.
+
+    Update rule:
+    - Initialize c_i^(0) = E_i
+    - Iteratively update: c_i^(t+1) = tanh(λ * E_i + Σ_j (w_ji * c_j^(t)))
+    - Continue until convergence (max change < epsilon) or max_iterations reached
+
+    Notes on edge contributions:
+    - Support edges (w > 0) contribute |w| * source_score
+    - Attack edges (w < 0) contribute -|w| * |source_score|
+    - Zero-weight edges contribute 0
+
+    The tanh squashing function keeps scores in [-1, 1]. The λ (lambda) parameter
+    balances how much intrinsic evidence vs. network influence affects each node.
     """
     print(f"DEBUG: Received request with {len(data.nodes)} nodes and {len(data.edges)} edges")
     
-    # Step 1: Compute E_i (initial evidence score) for each node
+    # Step 1: Compute E_i (initial evidence score) strictly from unified evidence_score
     E = {}
     for node in data.nodes:
-        # Explicitly initialize to 0.0
-        E[node.id] = 0.0
-        print(f"DEBUG: Initially set Node {node.id} E_i = 0.0")
-
-        evidence = node.evidence or []
-        print(f"DEBUG: Node {node.id} has evidence: {evidence}")
-
-        # Only update E if there is actual evidence
-        if evidence:
-            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
-            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
-            
-            clamped_evidence = [
-                max(min(ev, max_val), min_val) for ev in evidence
-            ]
-            
-            N_i = len(clamped_evidence)
-            if N_i > 0:
-                E[node.id] = sum(clamped_evidence) / N_i
-                print(f"DEBUG: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+        min_val = data.evidence_min if data.evidence_min is not None else -1.0
+        max_val = data.evidence_max if data.evidence_max is not None else 1.0
+        score = getattr(node, "evidence_score", None)
+        if score is None:
+            E[node.id] = 0.0
+            print(f"DEBUG: Node {node.id} evidence_score missing -> using 0.0")
+        else:
+            clamped = max(min(score, max_val), min_val)
+            E[node.id] = clamped
+            print(f"DEBUG: Node {node.id} using unified evidence_score {score} -> clamped {clamped}")
 
     # Verify final evidence scores
     print("DEBUG: Final evidence scores:")
@@ -121,6 +124,15 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
     # Step 2: Initialize credibility scores c_i^(0) = E_i
     c_prev = {node.id: E[node.id] for node in data.nodes}
     iterations = [c_prev.copy()]
+
+    # Handle empty graph safely
+    if len(data.nodes) == 0:
+        print("DEBUG: No nodes in request; returning empty scores")
+        return CredibilityPropagationResponse(
+            initial_evidence=E,
+            iterations=iterations,
+            final_scores=c_prev,
+        )
 
     # For single node with no edges, return immediately
     if len(data.nodes) == 1 and len(data.edges) == 0:
@@ -221,7 +233,8 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
         print(f"DEBUG: Iteration {iteration + 1} scores: {c_new}")
         
         # Check for convergence
-        if max(abs(c_new[nid] - c_prev[nid]) for nid in c_new) < data.epsilon:
+        # Guard against empty node set (avoids max() on empty sequence)
+        if not c_new or max(abs(c_new[nid] - c_prev[nid]) for nid in c_new) < data.epsilon:
             print(f"DEBUG: Converged after {iteration + 1} iterations")
             break
             
@@ -1444,6 +1457,89 @@ class CheckNodeEvidenceRequest(BaseModel):
     node: NodeWithEvidenceModel
     evidence: List[EvidenceModel]
     supportingDocuments: Optional[List[SupportingDocumentModel]] = []
+
+@router.post("/api/ai/check-unified-evidence", response_model=UnifiedEvidenceResponse)
+def check_unified_evidence(data: UnifiedEvidenceRequest = Body(...)):
+    """
+    Evaluate ALL evidence attached to a claim together and return a single
+    unified score in [-1, 1], along with a brief evaluation label and reasoning.
+    If no evidence is attached, returns score 0.0 with a neutral explanation.
+    """
+    node = data.node
+
+    evidence_ids = node.evidenceIds or []
+    if len(evidence_ids) == 0:
+        return UnifiedEvidenceResponse(
+            node_id=node.id,
+            score=0.0,
+            evaluation="Neutral",
+            reasoning="No evidence attached to this claim.",
+        )
+
+    evidences_text: list[str] = []
+    for eid in evidence_ids:
+        ev = next((e for e in data.evidence if e.id == eid), None)
+        if not ev:
+            continue
+        doc = next((d for d in (data.supportingDocuments or []) if d.id == ev.supportingDocId), None)
+        doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
+        evidences_text.append(
+            f"- Title: {ev.title}\n- Content: {ev.excerpt}\n- Supporting Document: {doc_info}"
+        )
+
+    if len(evidences_text) == 0:
+        return UnifiedEvidenceResponse(
+            node_id=node.id,
+            score=0.0,
+            evaluation="Neutral",
+            reasoning="No valid evidence found for this claim.",
+        )
+
+    prompt = f"""
+You are evaluating how well the entire set of evidence supports a specific claim, considering ALL pieces together.
+
+CLAIM:
+"{node.text}"
+
+EVIDENCE SET:
+{chr(10).join(evidences_text)}
+
+TASK:
+Provide a single overall evaluation for how well the EVIDENCE SET supports or contradicts the CLAIM.
+
+Respond in this exact format:
+Evaluation: <Supports|Contradicts|Neutral|Irrelevant|Unsure>
+Reasoning: <2-4 sentences explaining your overall assessment>
+Score: <a single number between -1.0 and 1.0 (negative = contradicts, positive = supports)>
+"""
+
+    try:
+        content = run_llm([{"role": "user", "content": prompt}], DEFAULT_MCP)
+
+        evaluation = "Unsure"
+        reasoning = content
+        score = 0.0
+
+        for line in content.splitlines():
+            if line.lower().startswith("evaluation:"):
+                evaluation = line.split(":", 1)[1].strip()
+            if line.lower().startswith("reasoning:"):
+                reasoning = line.split(":", 1)[1].strip()
+            if line.lower().startswith("score:"):
+                try:
+                    score = float(line.split(":", 1)[1].strip())
+                    score = max(min(score, 1.0), -1.0)
+                except Exception:
+                    score = 0.0
+
+        return UnifiedEvidenceResponse(
+            node_id=node.id,
+            score=score,
+            evaluation=evaluation,
+            reasoning=reasoning,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unified evidence evaluation failed: {str(e)}")
 
 @router.post("/api/ai/check-node-evidence", response_model=CheckEvidenceResponse)
 def check_node_evidence(data: CheckNodeEvidenceRequest = Body(...)):

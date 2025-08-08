@@ -132,6 +132,19 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           evidenceIds: [...prevIds, clonedEvidenceId],
         },
       });
+
+      // Trigger unified evidence score immediately with a snapshot payload
+      const nextIds = [...prevIds, clonedEvidenceId];
+      window.dispatchEvent(
+        new CustomEvent("intelliproof:unified-evidence-request", {
+          detail: {
+            nodeId: node.id,
+            evidenceIds: nextIds,
+            text: node.data.text,
+            type: node.data.type,
+          },
+        })
+      );
     }
   };
 
@@ -192,22 +205,36 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
                       {`How is this score calculated?
 
 This credibility score combines:
-• Evidence scores from attached evidence cards
+• Unified Evidence Score (single score for all attached evidence)
 • Support/attack relationships from connected claims
 
-Formula: tanh(λ × evidence_avg + Σ(edge_weights × connected_scores))
+Formula: tanh(λ × evidence_score + Σ(edge_weights × connected_scores))
 
 Where:
 • λ = 0.7 (70% more importance to evidence over network)
-• evidence_avg = average of attached evidence scores
+• evidence_score = unified evidence score in [-1, 1]
 • edge_weights = strength of supporting/attacking connections
 
-Range: 0.00 (least credible) to 1.00 (most credible)`}
+Range: -1.00 (fully contradicted) to 1.00 (fully supported)`}
                     </div>
                     <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
                   </div>
                 )}
               </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Unified Evidence Score */}
+        <div className="relative">
+          <label className="block text-base font-medium mb-2">
+            <div className="flex items-center gap-2">
+              <span>Evidence Score:</span>
+              <span className="text-blue-600">
+                {typeof node.data.evidenceScore === "number"
+                  ? node.data.evidenceScore.toFixed(2)
+                  : "0.00"}
+              </span>
             </div>
           </label>
         </div>
@@ -338,25 +365,6 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                     </div>
                     <div className="space-y-2 mt-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs">Score:</span>
-                        <span className="text-xs font-semibold">
-                          {Math.round((card.confidence ?? 0.5) * 100)}%
-                        </span>
-                        {card.evaluation && card.reasoning && (
-                          <button
-                            onClick={() =>
-                              setExpandedEvidenceId(
-                                expandedEvidenceId === eid ? null : eid
-                              )
-                            }
-                            className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1"
-                          >
-                            <InformationCircleIcon className="w-3.5 h-3.5" />
-                            {expandedEvidenceId === eid
-                              ? "Hide analysis"
-                              : "Show analysis"}
-                          </button>
-                        )}
                         <button
                           onClick={() => onUnlinkEvidence(eid, node.id)}
                           className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1 mt-1"
@@ -365,24 +373,6 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
                           Unlink evidence
                         </button>
                       </div>
-                      {expandedEvidenceId === eid && (
-                        <div className="text-xs bg-gray-50 p-3 rounded space-y-2">
-                          {card.evaluation && card.reasoning && (
-                            <>
-                              <div>
-                                <span className="font-medium">
-                                  Evaluation:{" "}
-                                </span>
-                                {card.evaluation}
-                              </div>
-                              <div>
-                                <span className="font-medium">Reasoning: </span>
-                                {card.reasoning}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );

@@ -10,6 +10,7 @@ export type Evidence = {
     supportingDocName: string;
     excerpt: string;
     confidence: number; // [0,1], user-specified, default 0.5
+    
 };
 
 export interface ClaimData {
@@ -22,6 +23,7 @@ export interface ClaimData {
     onChange?: (newText: string) => void;
     evidenceIds?: string[];
     onEvidenceDrop?: (evidenceId: string) => void;
+    evidenceScore?: number; // [-1, 1], unified score of the evidence
 }
 
 export interface ClaimNode extends Node<ClaimData> {
@@ -82,6 +84,7 @@ export const createClaimNode = (
             credibilityScore: 0,
             belief: 0,  // Add this line to explicitly set initial belief to 0
             evidenceIds: [],  // Also initialize evidenceIds as empty array
+            evidenceScore: 0,
         },
         style: {
             backgroundColor: colors.background,
@@ -119,6 +122,7 @@ export type ExportedGraphData = {
         position: { x: number; y: number };
         created_on: string;
         evidenceIds: string[];
+        evidenceScore: number;
         style?: React.CSSProperties;
     }>;
     edges: Array<{

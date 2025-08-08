@@ -601,7 +601,7 @@ Score: <float between -1 and 1, following the scoring guide above>
 @router.post("/api/ai/generate-assumptions", response_model=GenerateAssumptionsResponse)
 def generate_assumptions(data: GenerateAssumptionsRequest = Body(...)):
     """
-    Generate 3 implicit assumptions that would strengthen the support relationship between two claims.
+    "Generate 3 implicit assumptions that would strengthen the support relationship between two claims. For each assumption suggest approach to checking if the assumption holds."
     
     This endpoint analyzes what assumptions must be true for the target claim to provide
     stronger support for the source claim. The assumptions are purely based on the logical

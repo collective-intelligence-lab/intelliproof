@@ -15,6 +15,11 @@ export interface ClaimEdge {
     edgeType: EdgeType;
     confidence: number;
     edgeScore?: number;  // Score from edge validation
+    /**
+     * Natural-language explanation returned by edge validation.
+     * Optional: present only after validation has been run.
+     */
+    reasoning?: string;
   };
   markerStart?: {
     type: MarkerType;

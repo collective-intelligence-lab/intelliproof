@@ -19,6 +19,7 @@ interface EdgePropertiesProps {
   nodes: any[];
   evidenceCards: any[];
   supportingDocuments: any[];
+  edgeReasoning?: string;
 }
 
 const EdgeProperties: React.FC<EdgePropertiesProps> = ({
@@ -29,6 +30,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   nodes,
   evidenceCards,
   supportingDocuments,
+  edgeReasoning,
 }) => {
   const [confidence, setConfidence] = useState(0);
   const [assumptions, setAssumptions] = useState<Assumption[]>([]);
@@ -219,6 +221,33 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               </span>
             </div>
           </label>
+        </div>
+
+        {/* Reasoning (from edge validation) */}
+        <div className="relative">
+          <label
+            className="block text-base font-medium mb-2"
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontWeight: "500",
+            }}
+          >
+            Reasoning:
+          </label>
+          <p
+            className="text-base text-gray-800"
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontWeight: "400",
+              lineHeight: "1.5",
+            }}
+          >
+            {edge.data?.reasoning && edge.data.reasoning.trim().length > 0
+              ? edge.data.reasoning
+              : edgeReasoning && edgeReasoning.trim().length > 0
+              ? edgeReasoning
+              : "No reasoning yet — validate this relationship to generate an explanation."}
+          </p>
         </div>
 
         {/* Generate Assumptions Section */}

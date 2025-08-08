@@ -1186,7 +1186,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             }
           }
 
-          return {
+          const updatedEdge = {
             ...e,
             ...updates,
             data: updatedData,
@@ -1195,6 +1195,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               color: edgeColor,
             },
           };
+          // If this edge is currently selected, refresh selectedEdge so UI updates (e.g., Reasoning)
+          if (selectedEdge && selectedEdge.id === edgeId) {
+            setSelectedEdge(updatedEdge as ClaimEdge);
+          }
+          return updatedEdge;
         }
         return e;
       })
@@ -3500,12 +3505,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       const data = await response.json();
       console.log("Edge validation response:", data); // Debug log
 
-      // Update the edge with both confidence and edgeScore
+      // Update the edge with confidence, edgeScore, and reasoning
       handleEdgeUpdate(selectedEdge.id, {
         data: {
           ...selectedEdge.data,
           confidence: data.confidence,
           edgeScore: data.confidence, // Set edgeScore from validation result
+          reasoning: data.reasoning,
         },
       });
 
@@ -3624,6 +3630,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               ...edge.data,
               confidence: data.confidence,
               edgeScore: data.confidence,
+              reasoning: data.reasoning,
             },
           });
         } catch (err) {
@@ -5341,6 +5348,48 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     nodes={nodes}
                     evidenceCards={evidenceCards}
                     supportingDocuments={supportingDocumentsRedux}
+                    edgeReasoning={(() => {
+                      // Fallback: derive the most recent reasoning for this edge from copilot messages
+                      try {
+                        const sourceText = nodes.find(
+                          (n) => n.id === selectedEdge.source
+                        )?.data.text;
+                        const targetText = nodes.find(
+                          (n) => n.id === selectedEdge.target
+                        )?.data.text;
+                        const matches = copilotMessages
+                          .filter(
+                            (
+                              msg
+                            ): msg is {
+                              role: string;
+                              content: any;
+                              isStructured?: boolean;
+                            } =>
+                              msg.role === "ai" &&
+                              (msg as any).isStructured === true &&
+                              typeof msg.content === "object" &&
+                              msg.content !== null &&
+                              "Edge Source" in msg.content &&
+                              "Edge Target" in msg.content &&
+                              "Reasoning" in msg.content
+                          )
+                          .filter((msg) => {
+                            const c = msg.content as any;
+                            return (
+                              (!sourceText ||
+                                c["Edge Source"] === sourceText) &&
+                              (!targetText || c["Edge Target"] === targetText)
+                            );
+                          });
+                        const last = matches[matches.length - 1];
+                        return last
+                          ? String((last.content as any)["Reasoning"] || "")
+                          : "";
+                      } catch {
+                        return "";
+                      }
+                    })()}
                   />
                 )}
               </div>

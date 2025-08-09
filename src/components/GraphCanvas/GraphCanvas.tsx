@@ -105,6 +105,13 @@ import ImagePreviewer from "./ImagePreviewer";
 import NotesManagerModal, { Note } from "./NotesManagerModal";
 import NoteEditorModal from "./NoteEditorModal";
 import LoadingSuccessButton, { LoadingSuccessButtonRef } from "./LoadingSuccessButton";
+import useUndoRedo from "../../hooks/useUndoRedo";
+import {
+  downloadActionLog,
+  downloadApiLog,
+  installFetchLogger,
+  logAction,
+} from "../../lib/actionLogger";
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const getColors = (type: string) => {
@@ -547,13 +554,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [selectedEdge, setSelectedEdge] = useState<ClaimEdge | null>(null);
   const [selectedEdgeType, setSelectedEdgeType] =
     useState<EdgeType>("supporting");
-  const { project, undo, redo, canUndo, canRedo } =
-    useReactFlow() as ReactFlowInstance & {
-      undo: () => void;
-      redo: () => void;
-      canUndo: boolean;
-      canRedo: boolean;
-    };
+  const { project } = useReactFlow();
+  const { undo, redo, canUndo, canRedo, takeSnapshot } = useUndoRedo({
+    maxHistorySize: 200,
+    enableShortcuts: true,
+  });
   const reactFlowInstance = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const didInitViewportRef = useRef(false);
@@ -597,6 +602,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [selectedEvidenceCard, setSelectedEvidenceCard] = useState<
     null | (typeof evidenceCards)[0]
   >(null);
+
+  // Install global fetch logger for this component lifecycle
+  useEffect(() => {
+    const uninstall = installFetchLogger(() => ({
+      userId: profile?.user_id,
+      graphId: currentGraphId,
+    }));
+    return uninstall;
+  }, [profile?.user_id, currentGraphId]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -940,6 +954,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   );
 
   const addNode = (type: ClaimType) => {
+    takeSnapshot();
+    logAction("add_node", { type }, profile?.user_id);
     console.log(
       `[GraphCanvas] addNode: Starting node creation with type: ${type}`
     );
@@ -987,6 +1003,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
+      if (changes.some((c) => c.type === "remove" || c.type === "position")) {
+        takeSnapshot();
+        logAction("nodes_change", { changes }, profile?.user_id);
+      }
       // Check for node deletions and trigger credibility for affected nodes
       changes.forEach((change) => {
         if (change.type === "remove" && change.id) {
@@ -1020,6 +1040,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
+      if (changes.some((c) => c.type === "remove")) {
+        takeSnapshot();
+        logAction("edges_change", { changes }, profile?.user_id);
+      }
       // Check for edge deletions and trigger credibility for affected nodes
       changes.forEach((change) => {
         if (change.type === "remove" && change.id) {
@@ -1041,6 +1065,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      takeSnapshot();
+      logAction("add_edge", { source: params.source, target: params.target }, profile?.user_id);
       connectionCompleted.current = true; // Mark that a connection was made
       // Check if an edge already exists between these nodes
       const edgeExists = edges.some(
@@ -1325,6 +1351,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const handleDeleteEdge = useCallback(() => {
     if (!selectedEdge) return;
+    takeSnapshot();
+    logAction("delete_edge", { edgeId: selectedEdge.id }, profile?.user_id);
     const edgeToDelete = selectedEdge;
     setEdges((eds) => eds.filter((e) => e.id !== edgeToDelete.id));
     setSelectedEdge(null);
@@ -1335,6 +1363,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   }, [selectedEdge]);
 
   const handleEdgeUpdate = (edgeId: string, updates: Partial<ClaimEdge>) => {
+    takeSnapshot();
+    logAction("update_edge", { edgeId, updates }, profile?.user_id);
     // Find the edge to get source and target nodes
     const edge = edges.find((e) => e.id === edgeId);
 
@@ -1381,6 +1411,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   const handleDeleteNode = useCallback(() => {
     if (selectedNode) {
+      takeSnapshot();
+      logAction("delete_node", { nodeId: selectedNode.id }, profile?.user_id);
       // Delete all connected edges first
       setEdges((eds) =>
         eds.filter(
@@ -1422,6 +1454,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     Math.max(min, Math.min(max, val));
 
   const handleSave = async () => {
+    logAction("save_graph", { graphId: currentGraphId || currentGraph?.id }, profile?.user_id);
     // Add debug logging
     console.log("Current graph ID:", currentGraphId);
     console.log("Current graph:", currentGraph);
@@ -1820,6 +1853,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   );
 
   const handleExport = async () => {
+    logAction("export_graph", { graphId: currentGraphId || currentGraph?.id }, profile?.user_id);
     // Format the graph data according to the required structure
     const graphData: ExportedGraphData = {
       evidence: evidenceCards || [],
@@ -1861,6 +1895,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleImport = async () => {
+    takeSnapshot();
+    logAction("import_graph_start", {}, profile?.user_id);
     // Create a hidden file input
     const fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -2079,6 +2115,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const importGraphData = (data: ExportedGraphData) => {
     try {
       // Clear current graph
+      takeSnapshot();
       setNodes([]);
       setEdges([]);
       setEvidenceCards([]);
@@ -2156,6 +2193,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [showProgressToast, setShowProgressToast] = useState(false);
 
   const handleGenerateReport = async () => {
+    takeSnapshot();
+    logAction("generate_report", { graphId: currentGraphId || currentGraph?.id }, profile?.user_id);
     console.log(
       "[GraphCanvas] handleGenerateReport: Starting comprehensive report generation"
     );
@@ -2650,6 +2689,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // Handler for Claim icon click
   const handleClaimCredibility = async () => {
+    takeSnapshot();
+    logAction("claim_credibility", { graphId: currentGraphId || currentGraph?.id }, profile?.user_id);
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
@@ -2782,6 +2823,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // NEW: Selective credibility calculation for specific node and its dependents
   const handleNodeCredibility = async (nodeId: string) => {
+    takeSnapshot();
+    logAction("node_credibility", { nodeId }, profile?.user_id);
     console.log(
       `[GraphCanvas] handleNodeCredibility: Starting for node ${nodeId}`
     );
@@ -3389,6 +3432,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     updatedEvidenceData: any[],
     nodeId: string
   ) => {
+    takeSnapshot();
+    logAction("claim_credibility_updated_evidence", { nodeId }, profile?.user_id);
     console.log(
       `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Starting with ${updatedEvidenceData.length} evidence items`
     );
@@ -3595,6 +3640,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   const handleValidateEdge = async () => {
+    takeSnapshot();
+    logAction("validate_edge", { edgeId: selectedEdge?.id }, profile?.user_id);
     setCopilotLoading(true);
     setCopilotMessages((msgs) => [
       ...msgs,
@@ -4263,6 +4310,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // Handler for Critique Graph button click
   const handleCritiqueGraph = async () => {
+    takeSnapshot();
+    logAction("critique_graph", { graphId: currentGraphId || currentGraph?.id }, profile?.user_id);
     // Check if there are any nodes in the graph
     if (nodes.length === 0) {
       setCopilotMessages((msgs) => [
@@ -4458,6 +4507,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // API call function for claim type classification
   const triggerClassifyClaimType = async (nodeId: string) => {
+    takeSnapshot();
+    logAction("classify_claim_type", { nodeId }, profile?.user_id);
     console.log(
       `[GraphCanvas] triggerClassifyClaimType: Starting classification for node ${nodeId}`
     );
@@ -5140,15 +5191,26 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             Back to Graph Manager
                           </button>
                           <div className="w-full h-px bg-gray-200 my-1"></div>
+                          {/* Download logs inside menu */}
                           <button
                             onClick={() => {
-                              handleLogout();
+                              downloadActionLog();
                               setIsMenuOpen(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                            className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
                           >
-                            <ArrowUturnRightIcon className="w-5 h-5" />
-                            Log Out
+                            <ClipboardDocumentListIcon className="w-5 h-5" />
+                            Download User Actions Log
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadApiLog();
+                              setIsMenuOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                          >
+                            <DocumentTextIcon className="w-5 h-5" />
+                            Download API Calls Log
                           </button>
                         </div>
                       )}
@@ -5195,6 +5257,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     >
                       <ShareIcon className="w-7 h-7" strokeWidth={2} />
                     </button>
+                    {/* Download Logs moved to left menu - buttons removed from here */}
                     <LoadingSuccessButton
                       ref={importButtonRef}
                       onClick={handleImport}

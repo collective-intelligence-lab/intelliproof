@@ -436,16 +436,16 @@ Features / bugs to fix:
 - change save buttons on graph manager modals from light blue to navy blue
 - Remove evidence and supporting docs from evidence panel feature - (DONE)
 - Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
-- Claim modal overlaps with top right navbar when expanded
+- Claim modal overlaps with top right navbar when expanded (DONE)
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
 - deleting the left node is re-triggering check ev and get claim cred on right node, which is not needed
 - loading an existing graph starts in a state that is too zoomed out (DONE)
-- when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it
+- when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it (and on the edges)
 - autosave functionality
 - saving brings you to graph manager page (DONE)
 - implement streaming in the chat
 - share button not functional (DO WE ACTUALLY NEED THIS, REMOVING!)
-- undo / redo buttons not functional
+- undo / redo buttons not functional (DONE)
 - Make edge toggle functional (user can pick support / attack edge)
   - If AI returns a score that changes color, make sure the color change is reflected on graph - (DONE)
 - Few shot learning for all prompts
@@ -459,12 +459,12 @@ Features / bugs to fix:
 - dark blue navbar on graph manager page must have consistent styling
 - Helper / info box explaining the different functionality / features of graph
 - Position header section of nodes slightly more to left (there's a very small white gap)
-- Extensive console logging throughout the process
+- Extensive console logging throughout the process (TRACKING USER AND AI CALLS SEPERATELY)
   - change to be named console log, give it terminal like theme
 - Format console output slightly nicer, can still be raw but change things like "confidence" to "score"
-- Step-by-step progress tracking
+- Step-by-step progress tracking (KINDA DONE, needs to fix tracking on user actions on db)
 - Error reporting and recovery
-- Performance monitoring
+- Performance monitoring (DONE THRU VERCEL SPEED INSIGHTS)
 
 IF there's TIME (low priority):
 

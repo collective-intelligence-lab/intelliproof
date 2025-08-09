@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
-import type { ClaimEdge, EdgeType } from "../../types/edges";
+import React, { useState } from "react";
+import type { ClaimEdge } from "../../types/edges";
 import { EDGE_COLORS } from "../../types/edges";
-import { MarkerType } from "reactflow";
-import { HandRaisedIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { HandRaisedIcon } from "@heroicons/react/24/outline";
 
 interface Assumption {
   assumption_text: string;
@@ -34,56 +33,18 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   edgeReasoning,
   onValidateEdge,
 }) => {
-  const [confidence, setConfidence] = useState(0);
   const [assumptions, setAssumptions] = useState<Assumption[]>([]);
   const [isGeneratingAssumptions, setIsGeneratingAssumptions] = useState(false);
   const [assumptionsSummary, setAssumptionsSummary] = useState<any>(null);
 
-  useEffect(() => {
-    if (edge) {
-      setConfidence(edge.data.confidence ?? 0);
-    }
-  }, [edge]);
-
   if (!edge) return null;
 
-  const handleConfidenceChange = (newConfidence: number) => {
-    setConfidence(newConfidence);
-    // Determine edge type based on confidence sign
-    const newEdgeType: EdgeType =
-      newConfidence >= 0 ? "supporting" : "attacking";
-    onUpdate(edge.id, {
-      data: {
-        ...edge.data,
-        confidence: newConfidence,
-        edgeType: newEdgeType,
-      },
-      markerStart: {
-        type: MarkerType.ArrowClosed,
-        color: EDGE_COLORS[newEdgeType],
-      },
-    });
-  };
-
-  // Helper function to get edge type and color based on the chosen edgeType
-  const getEdgeTypeInfo = (edgeType: EdgeType | undefined) => {
-    if (edgeType === "attacking") return { type: "Attacking", color: EDGE_COLORS.attacking };
-    return { type: "Supporting", color: EDGE_COLORS.supporting };
-  };
-
-  const handleTypeChange = (newType: EdgeType) => {
-    // Only update the visual edge type and marker color; DO NOT change scores/confidence
-    onUpdate(edge.id, {
-      data: {
-        ...edge.data,
-        edgeType: newType,
-      },
-      markerStart: {
-        type: MarkerType.ArrowClosed,
-        color: EDGE_COLORS[newType],
-      },
-    });
-  };
+  // Derive display color/type from score sign (>= 0 => Supporting/green, < 0 => Attacking/red)
+  const score =
+    typeof edge.data?.edgeScore === "number" ? edge.data.edgeScore : 0;
+  const displayColor =
+    score < 0 ? EDGE_COLORS.attacking : EDGE_COLORS.supporting;
+  const displayType = score < 0 ? "Attacking" : "Supporting";
 
   const handleGenerateAssumptions = async () => {
     setIsGeneratingAssumptions(true);
@@ -139,7 +100,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
 
@@ -168,7 +129,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
     }
   };
 
-  const edgeTypeInfo = getEdgeTypeInfo(edge.data?.edgeType);
+  // edge type text/color in the modal follows score sign, not explicit edgeType
 
   return (
     <div
@@ -211,7 +172,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
           >
             <div className="flex items-center gap-2">
               <span>Score:</span>
-              <span style={{ color: edgeTypeInfo.color }}>
+              <span style={{ color: displayColor }}>
                 {typeof edge.data.edgeScore === "number"
                   ? edge.data.edgeScore.toFixed(2)
                   : "0.00"}
@@ -220,36 +181,19 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
           </label>
         </div>
 
-        {/* Type (inline with controls) */}
+        {/* Type (read-only) */}
         <div className="relative">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-base font-medium" style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}>Type:</span>
-              <span style={{ color: edgeTypeInfo.color }} className="text-base">{edgeTypeInfo.type}</span>
-            </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={() => handleTypeChange("supporting")}
-                className={`px-2 py-0.5 rounded border text-xs transition-colors ${edge.data?.edgeType !== "attacking"
-                  ? "bg-green-100 border-green-600 text-green-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                aria-pressed={edge.data?.edgeType !== "attacking"}
+              <span
+                className="text-base font-medium"
+                style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
               >
-                Supporting
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTypeChange("attacking")}
-                className={`px-2 py-0.5 rounded border text-xs transition-colors ${edge.data?.edgeType === "attacking"
-                  ? "bg-red-100 border-red-700 text-red-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                aria-pressed={edge.data?.edgeType === "attacking"}
-              >
-                Attacking
-              </button>
+                Type:
+              </span>
+              <span style={{ color: displayColor }} className="text-base">
+                {displayType}
+              </span>
             </div>
           </div>
         </div>
@@ -257,17 +201,12 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
         {/* Validate Edge (like copilot) */}
         <div className="border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-medium" style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}>
-              Validate Edge
-            </h3>
-            <button
-              onClick={onValidateEdge}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#232F3E] hover:bg-[#1a252f] text-white transition-all"
+            <h3
+              className="text-base font-medium"
               style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
             >
-              <ArrowPathIcon className="w-4 h-4" />
-              Validate
-            </button>
+              Validate Edge
+            </h3>
           </div>
         </div>
 
@@ -278,27 +217,23 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               <div className="flex items-center gap-2">
                 {edge.data?.recommendedEdgeType && (
                   <span
-                    className={`px-2 py-1 rounded text-xs ${edge.data.recommendedEdgeType === "attacking"
-                      ? "bg-red-100 text-red-700 border border-red-300"
-                      : "bg-green-100 text-green-700 border border-green-300"
-                      }`}
-                    style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
+                    className={`px-2 py-1 rounded text-xs ${
+                      edge.data.recommendedEdgeType === "attacking"
+                        ? "bg-red-100 text-red-700 border border-red-300"
+                        : "bg-green-100 text-green-700 border border-green-300"
+                    }`}
+                    style={{
+                      fontFamily: "DM Sans, sans-serif",
+                      fontWeight: 500,
+                    }}
                   >
-                    Type Recommendation: {edge.data.recommendedEdgeType === "attacking" ? "Attack" : "Support"}
+                    Type Recommendation:{" "}
+                    {edge.data.recommendedEdgeType === "attacking"
+                      ? "Attack"
+                      : "Support"}
                   </span>
                 )}
               </div>
-              <span
-                className="px-2 py-1 rounded text-xs"
-                style={{
-                  fontFamily: "DM Sans, sans-serif",
-                  fontWeight: 400,
-                  backgroundColor: "#232F3E",
-                  color: "white",
-                }}
-              >
-                {`${Math.round(Math.abs((edge.data?.edgeScore ?? 0)) * 100)}% confidence`}
-              </span>
             </div>
             <span
               className="text-sm font-medium text-gray-800 block mb-1"
@@ -317,8 +252,8 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               {edge.data?.reasoning && edge.data.reasoning.trim().length > 0
                 ? edge.data.reasoning
                 : edgeReasoning && edgeReasoning.trim().length > 0
-                  ? edgeReasoning
-                  : "No reasoning yet — validate this relationship to generate an explanation."}
+                ? edgeReasoning
+                : "No reasoning yet — validate this relationship to generate an explanation."}
             </p>
           </div>
         </div>
@@ -338,10 +273,11 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
             <button
               onClick={handleGenerateAssumptions}
               disabled={isGeneratingAssumptions}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${isGeneratingAssumptions
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-[#232F3E] hover:bg-[#1a252f] text-white"
-                }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                isGeneratingAssumptions
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-[#232F3E] hover:bg-[#1a252f] text-white"
+              }`}
               style={{
                 fontFamily: "DM Sans, sans-serif",
                 fontWeight: "500",

@@ -86,13 +86,16 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   markerStart,
   markerEnd,
 }) => {
-  // Determine edge color based on explicit edge type selection (do not change scores)
-  let color: string = EDGE_COLORS.supporting;
-  if (data?.edgeType === "attacking") {
-    color = EDGE_COLORS.attacking;
-  } else if (data?.edgeType === "supporting") {
-    color = EDGE_COLORS.supporting;
-  }
+  // Determine edge color based on score sign (>= 0 => supporting/green, < 0 => attacking/red)
+  const score = typeof data?.edgeScore === "number" ? data.edgeScore : 0;
+  const color: string =
+    score < 0 ? EDGE_COLORS.attacking : EDGE_COLORS.supporting;
+
+  // Keep arrow marker color in sync with computed stroke color
+  const computedMarkerStart: any =
+    markerStart && typeof markerStart === "object"
+      ? { ...(markerStart as any), color }
+      : markerStart;
 
   // Get the bezier path for the edge and label position
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -115,11 +118,17 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
           strokeDasharray: "none",
           transition: "stroke 0.3s",
         }}
-        markerStart={markerStart}
+        markerStart={computedMarkerStart}
         markerEnd={markerEnd}
       />
       {/* Edge score label with theme-matching styling */}
-      <foreignObject x={labelX - 12} y={labelY - 6} width="22" height="11" style={{ overflow: "visible" }}>
+      <foreignObject
+        x={labelX - 12}
+        y={labelY - 6}
+        width="22"
+        height="11"
+        style={{ overflow: "visible" }}
+      >
         <div
           style={{
             fontSize: "6px",
@@ -139,7 +148,9 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
             lineHeight: "0.8",
           }}
         >
-          {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(2)}
+          {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(
+            2
+          )}
         </div>
       </foreignObject>
     </>

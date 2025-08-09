@@ -14,6 +14,8 @@ import {
   ConnectionMode,
   getIncomers,
   getOutgoers,
+  getNodesBounds,
+  useNodesInitialized,
 } from "reactflow";
 import type {
   OnNodesChange,
@@ -553,6 +555,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       canRedo: boolean;
     };
   const reactFlowInstance = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
+  const didInitViewportRef = useRef(false);
   const [connectingNodeId, setConnectingNodeId] = useState<string | null>(null);
   const [connectingHandleType, setConnectingHandleType] = useState<
     "source" | "target" | null
@@ -877,8 +881,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       setNodes(formattedNodes);
       setEdges(formattedEdges);
+      // After nodes/edges are set, we'll let the nodes initialize and handle viewport in a separate effect
     }
   }, [currentGraph]);
+
+  // Once nodes are initialized in the viewport, fit to bounds and then center/zoom
+  useEffect(() => {
+    if (!nodesInitialized || didInitViewportRef.current) return;
+    if (nodes.length === 0) return;
+    didInitViewportRef.current = true;
+
+    try {
+      const bounds = getNodesBounds(reactFlowInstance.getNodes());
+      console.log("[GraphCanvas] nodesInitialized → bounds", bounds);
+      (async () => {
+        try {
+          await reactFlowInstance.fitBounds(bounds, { padding: 0.08 });
+          const centerX = bounds.x + bounds.width / 2;
+          const centerY = bounds.y + bounds.height / 2;
+          const zoom = 1.0; // tweak as desired
+          // Pan a bit to the right to compensate the evidence sidebar
+          const panPixels = 450; // screen pixels to shift to the right on load
+          const panXFlow = panPixels / zoom;
+          await reactFlowInstance.setCenter(centerX - panXFlow, centerY, { zoom, duration: 0 });
+          console.log("[GraphCanvas] setCenter with pan offset", { zoom, panPixels, panXFlow });
+        } catch (e) {
+          console.warn("[GraphCanvas] viewport init failed", e);
+        }
+      })();
+    } catch (e) {
+      console.warn("[GraphCanvas] nodesInitialized viewport sequence error", e);
+    }
+  }, [nodesInitialized, nodes, reactFlowInstance]);
 
   // Load evidence from graph_data when currentGraph changes
   useEffect(() => {
@@ -1200,7 +1234,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
     // Mark node as modified if there are meaningful changes
     if (hasContentChange || hasTypeChange || hasEvidenceChange) {
-      setModifiedNodes((prev) => new Set([...prev, nodeId]));
+      setModifiedNodes((prev) => new Set(Array.from(prev).concat(nodeId)));
       console.log(
         `[GraphCanvas] handleNodeUpdate: Marked node ${nodeId} as modified`
       );
@@ -3025,7 +3059,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       node.data.evidenceIds?.includes(evidenceId)
     );
     if (nodeWithEvidence) {
-      setModifiedNodes((prev) => new Set([...prev, nodeWithEvidence.id]));
+      setModifiedNodes((prev) => new Set(Array.from(prev).concat(nodeWithEvidence.id)));
     }
 
     updateCredibilityScores();
@@ -5211,7 +5245,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         <span className="pt-0.5">{profile?.first_name?.[0]}</span>
                       </button>
                       {isProfileOpen && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
                           <div className="px-4 py-2 text-sm text-gray-700">
                             <div className="font-medium">
                               {profile?.first_name} {profile?.last_name}
@@ -5220,6 +5254,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               {profile?.email}
                             </div>
                           </div>
+                          <div className="w-full h-px bg-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              router.push("/graph-manager");
+                              setIsProfileOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm"
+                          >
+                            <ArrowUturnLeftIcon className="w-4 h-4" />
+                            Back to Graph Manager
+                          </button>
                           <div className="w-full h-px bg-gray-200 my-1"></div>
                           <button
                             onClick={() => {
@@ -5391,7 +5436,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               edgeTypes={edgeTypes}
               fitView
               minZoom={0.25}
-              maxZoom={6}
+              maxZoom={30}
               className="bg-white h-full [--xy-theme-selected:#f57dbd] [--xy-theme-hover:#c5c5c5] [--xy-theme-color-focus:#e8e8e8]"
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}

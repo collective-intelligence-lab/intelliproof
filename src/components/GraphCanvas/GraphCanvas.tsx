@@ -5853,15 +5853,32 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
         {isAICopilotOpen && (
           <Panel defaultSize={24} minSize={12} maxSize={30}>
-            <div className="h-full bg-white border-l border-black flex flex-col">
+            <div
+              className={`h-full border-l flex flex-col font-[DM Sans] ${
+                activeTab === "console"
+                  ? "bg-[#232F3E] text-gray-200 border-black"
+                  : "bg-white text-black border-black"
+              }`}
+            >
               {/* AI Copilot Header */}
-              <div className="p-4 border-b border-black flex justify-between items-center bg-white relative">
+              <div
+                className={`p-4 border-b flex justify-between items-center relative ${
+                  activeTab === "console"
+                    ? "bg-[#232F3E] text-gray-200 border-[#2f3b4a]"
+                    : "bg-white text-black border-black"
+                }`}
+              >
                 <div className="flex items-center gap-3">
-                  <SparklesIcon className="w-6 h-6 text-purple-500" />
+                  <SparklesIcon
+                    className={`w-6 h-6 ${
+                      activeTab === "console"
+                        ? "text-purple-300"
+                        : "text-purple-500"
+                    }`}
+                  />
                   <h2
                     className="text-lg tracking-wide uppercase"
                     style={{
-                      fontFamily: "DM Sans, sans-serif",
                       fontWeight: "600",
                     }}
                   >
@@ -5872,7 +5889,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
                     className={`p-2 rounded-full transition-colors ${
-                      isAICopilotFrozen ? "bg-gray-200" : "hover:bg-gray-100"
+                      activeTab === "console"
+                        ? isAICopilotFrozen
+                          ? "bg-[#1f2937]"
+                          : "hover:bg-[#1f2937]"
+                        : isAICopilotFrozen
+                        ? "bg-gray-200"
+                        : "hover:bg-gray-100"
                     }`}
                     title={
                       isAICopilotFrozen
@@ -5881,16 +5904,32 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     }
                   >
                     {isAICopilotFrozen ? (
-                      <LockClosedIcon className="w-5 h-5 text-blue-600" />
+                      <LockClosedIcon
+                        className={`w-5 h-5 ${
+                          activeTab === "console"
+                            ? "text-blue-300"
+                            : "text-blue-600"
+                        }`}
+                      />
                     ) : (
-                      <LockOpenIcon className="w-5 h-5 text-gray-400" />
+                      <LockOpenIcon
+                        className={`w-5 h-5 ${
+                          activeTab === "console"
+                            ? "text-gray-300"
+                            : "text-gray-400"
+                        }`}
+                      />
                     )}
                   </button>
                   <button
                     onClick={() =>
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
-                    className={`p-2 hover:bg-white rounded-md transition-colors ${
+                    className={`p-2 rounded-md transition-colors ${
+                      activeTab === "console"
+                        ? "hover:bg-[#1f2937] text-gray-200"
+                        : "hover:bg-white"
+                    } ${
                       isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
                     }`}
                     aria-label="Close AI copilot"
@@ -5902,16 +5941,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               </div>
 
               {/* Tab Navigation */}
-              <div className="flex border-b border-gray-200">
+              <div
+                className={`flex border-b ${
+                  activeTab === "console"
+                    ? "bg-[#232F3E] border-[#2f3b4a]"
+                    : "border-gray-200"
+                }`}
+              >
                 <button
                   onClick={() => setActiveTab("chat")}
                   className={`flex-1 px-4 py-3 text-sm transition-colors ${
                     activeTab === "chat"
                       ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
+                      : activeTab === "console"
+                      ? "text-gray-300 hover:bg-[#1f2937]"
                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                   style={{
-                    fontFamily: "DM Sans, sans-serif",
                     fontWeight: "500",
                   }}
                 >
@@ -5921,11 +5967,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   onClick={() => setActiveTab("console")}
                   className={`flex-1 px-4 py-3 text-sm transition-colors ${
                     activeTab === "console"
-                      ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
+                      ? "text-white border-b-2 border-purple-400 bg-transparent"
                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                   style={{
-                    fontFamily: "DM Sans, sans-serif",
                     fontWeight: "500",
                   }}
                 >
@@ -6076,7 +6121,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               ) : (
                 <>
                   {/* Console Area - Terminal themed */}
-                  <div className="flex-1 overflow-auto bg-[#232F3E] text-gray-200 font-mono text-sm">
+                  <div className="flex-1 overflow-auto bg-[#232F3E] text-gray-200 font-mono text-base">
                     <div className="px-4 py-2 text-xs text-gray-300 border-b border-[#2f3b4a]">
                       Console ready.
                     </div>
@@ -6146,7 +6191,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     <div className="flex justify-center">
                       <button
                         onClick={handleClearCopilotChat}
-                        className="px-4 py-1.5 rounded-md text-xs bg-[#0f172a] hover:bg-[#111827] text-gray-200 border border-[#334155]"
+                        className="px-5 py-2 rounded-md text-sm bg-[#0f172a] hover:bg-[#111827] text-white border border-[#334155]"
                         type="button"
                       >
                         Clear Console

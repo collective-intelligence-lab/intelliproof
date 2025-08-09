@@ -63,7 +63,6 @@ import {
   PlusIcon,
   TrashIcon,
   ArrowPathIcon,
-  ShareIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   CheckIcon,
@@ -91,6 +90,42 @@ import {
   ArrowsPointingOutIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
+
+// Simple floppy disk outline icon for the Save action
+const FloppyDiskIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <rect
+      x={7}
+      y={3}
+      width={8}
+      height={6}
+      rx={1}
+      stroke="currentColor"
+      strokeWidth={2}
+    />
+    <rect
+      x={9}
+      y={13}
+      width={6}
+      height={6}
+      rx={1}
+      stroke="currentColor"
+      strokeWidth={2}
+    />
+  </svg>
+);
 import { fetchUserData } from "../../store/slices/userSlice";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -5369,16 +5404,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
                     <div className="h-10 w-px bg-gray-200"></div>
 
-                    {/* Share, Import, Export, Save, and Generate Report Buttons */}
-                    <button
-                      onClick={() => {
-                        /* Add share functionality */
-                      }}
-                      className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                      title="Share"
-                    >
-                      <ShareIcon className="w-7 h-7" strokeWidth={2} />
-                    </button>
+                    {/* Import, Export, Save, and Generate Report Buttons */}
                     {/* Download Logs moved to left menu - buttons removed from here */}
                     <LoadingSuccessButton
                       ref={importButtonRef}
@@ -5397,13 +5423,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       successText="Exported"
                     />
                     <LoadingSuccessButton
-                      onClick={handleSave}
-                      icon={DocumentCheckIcon}
-                      title="Save"
-                      loadingText="Saving..."
-                      successText="Saved"
-                    />
-                    <LoadingSuccessButton
                       onClick={handleCritiqueGraph}
                       icon={DocumentMagnifyingGlassIcon}
                       title="Critique Graph"
@@ -5417,6 +5436,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       loadingText="Generating..."
                       successText="Generated"
                       disabled={isGeneratingReport}
+                    />
+
+                    {/* Save moved to be the rightmost action, just left of profile */}
+                    <LoadingSuccessButton
+                      onClick={handleSave}
+                      icon={FloppyDiskIcon}
+                      title="Save"
+                      loadingText="Saving..."
+                      successText="Saved"
                     />
 
                     <div className="h-10 w-px bg-gray-200"></div>

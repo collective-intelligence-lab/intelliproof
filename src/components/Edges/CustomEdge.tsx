@@ -91,11 +91,23 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   const color: string =
     score < 0 ? EDGE_COLORS.attacking : EDGE_COLORS.supporting;
 
-  // Keep arrow marker color in sync with computed stroke color
+  // Keep arrow marker color in sync with computed stroke color and drop cached id so React Flow regenerates marker
   const computedMarkerStart: any =
     markerStart && typeof markerStart === "object"
-      ? { ...(markerStart as any), color }
+      ? (() => {
+          const { id: _ignoreId, ...rest } = markerStart as any;
+          return { ...rest, color };
+        })()
       : markerStart;
+
+  // If there's an end marker, keep it in sync too
+  const computedMarkerEnd: any =
+    markerEnd && typeof markerEnd === "object"
+      ? (() => {
+          const { id: _ignoreId, ...rest } = markerEnd as any;
+          return { ...rest, color };
+        })()
+      : markerEnd;
 
   // Get the bezier path for the edge and label position
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -119,7 +131,7 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
           transition: "stroke 0.3s",
         }}
         markerStart={computedMarkerStart}
-        markerEnd={markerEnd}
+        markerEnd={computedMarkerEnd}
       />
       {/* Edge score label with theme-matching styling */}
       <foreignObject

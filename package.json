@@ -17,6 +17,8 @@
     "@supabase/supabase-js": "^2.50.0",
     "@types/dagre": "^0.7.53",
     "@types/react-redux": "^7.1.34",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "autoprefixer": "^10.4.17",
     "axios": "^1.9.0",
     "dagre": "^0.8.5",

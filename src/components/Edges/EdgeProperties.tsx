@@ -203,64 +203,32 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
           </div>
         </div>
 
-        {/* Validate Edge (like copilot) */}
-        <div className="border-t border-gray-200 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3
-              className="text-base font-medium"
-              style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
-            >
-              Validate Edge
-            </h3>
-          </div>
-        </div>
+        {/* Removed Validate Edge divider/heading */}
 
-        {/* Reasoning (formatted like assumption card) */}
+        {/* Reasoning inline (immediately after Score/Type) */}
         <div className="relative">
-          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                {edge.data?.recommendedEdgeType && (
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      edge.data.recommendedEdgeType === "attacking"
-                        ? "bg-red-100 text-red-700 border border-red-300"
-                        : "bg-green-100 text-green-700 border border-green-300"
-                    }`}
-                    style={{
-                      fontFamily: "DM Sans, sans-serif",
-                      fontWeight: 500,
-                    }}
-                  >
-                    Type Recommendation:{" "}
-                    {edge.data.recommendedEdgeType === "attacking"
-                      ? "Attack"
-                      : "Support"}
-                  </span>
-                )}
-              </div>
-            </div>
-            <span
-              className="text-sm font-medium text-gray-800 block mb-1"
-              style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
-            >
-              Reasoning
-            </span>
-            <p
-              className="text-sm text-gray-700"
-              style={{
-                fontFamily: "DM Sans, sans-serif",
-                fontWeight: 400,
-                lineHeight: "1.5",
-              }}
-            >
-              {edge.data?.reasoning && edge.data.reasoning.trim().length > 0
-                ? edge.data.reasoning
-                : edgeReasoning && edgeReasoning.trim().length > 0
-                ? edgeReasoning
-                : "No reasoning yet — validate this relationship to generate an explanation."}
-            </p>
-          </div>
+          {/* Absolute label so first line appears after it, and wrapped lines start from left */}
+          <span
+            className="absolute left-0 top-0 text-base font-medium"
+            style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
+          >
+            Reasoning:
+          </span>
+          <p
+            className="text-gray-700 font-normal whitespace-pre-wrap break-words m-0"
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              lineHeight: 1.5,
+              wordBreak: "break-word",
+              textIndent: 96,
+            }}
+          >
+            {edge.data?.reasoning && edge.data.reasoning.trim().length > 0
+              ? edge.data.reasoning
+              : edgeReasoning && edgeReasoning.trim().length > 0
+              ? edgeReasoning
+              : "No reasoning yet — validate this relationship to generate an explanation."}
+          </p>
         </div>
 
         {/* Generate Assumptions Section */}

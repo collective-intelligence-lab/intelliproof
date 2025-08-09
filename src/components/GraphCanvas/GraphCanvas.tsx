@@ -556,7 +556,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [isAddNodeOpen, setIsAddNodeOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<ClaimNode | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<ClaimEdge | null>(null);
-  const [selectedEdgeType, setSelectedEdgeType] =
+  // Edge creation type toggle for initial edge color
+  const [edgeCreationType, setEdgeCreationType] =
     useState<EdgeType>("supporting");
   const { project } = useReactFlow();
   const { undo, redo, canUndo, canRedo, takeSnapshot } = useUndoRedo({
@@ -1123,19 +1124,21 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       // If edge exists, don't create a new one
       if (edgeExists) return;
 
+      const isAttacking = edgeCreationType === "attacking";
       const newEdge: ClaimEdge = {
         id: `e${params.source}-${params.target}`,
         source: params.source!,
         target: params.target!,
         type: "custom" as const,
         data: {
-          edgeType: "supporting", // default, will be updated by user
+          edgeType: edgeCreationType,
           confidence: 0,
-          edgeScore: 0,
+          // tiny negative score for attacking so it renders red immediately; 0 for supporting
+          edgeScore: isAttacking ? -0.01 : 0,
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
-          color: "#166534", // Green for neutral/supporting (edgeScore = 0)
+          color: isAttacking ? "#991B1B" : "#166534",
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
@@ -1238,6 +1241,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         };
 
         // Create the edge between the nodes
+        const isAttackingNew = edgeCreationType === "attacking";
         const newEdge: ClaimEdge = {
           id: `e${connectingNodeId}-${newNode.id}`,
           source:
@@ -1246,12 +1250,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             connectingHandleType === "source" ? newNode.id : connectingNodeId,
           type: "custom" as const,
           data: {
-            edgeType: "supporting", // default, will be updated by user
+            edgeType: edgeCreationType,
             confidence: 0,
+            edgeScore: isAttackingNew ? -0.01 : 0,
           },
           markerStart: {
             type: MarkerType.ArrowClosed,
-            color: "#166534",
+            color: isAttackingNew ? "#991B1B" : "#166534",
           },
         };
 
@@ -5533,30 +5538,31 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               <div className="w-full h-px bg-gray-200"></div>
 
-              {/* Edge Type Buttons */}
-              <button
-                onClick={() => setSelectedEdgeType("supporting")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "supporting"
-                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-                title="Supporting Edge"
-              >
-                <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
-              </button>
-
-              <button
-                onClick={() => setSelectedEdgeType("attacking")}
-                className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
-                  selectedEdgeType === "attacking"
-                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-                title="Attacking Edge"
-              >
-                <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
-              </button>
+              {/* Edge Creation Type Toggle */}
+              <div className="flex flex-col gap-2" title="Edge Type">
+                <button
+                  onClick={() => setEdgeCreationType("supporting")}
+                  className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                    edgeCreationType === "supporting"
+                      ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                  aria-pressed={edgeCreationType === "supporting"}
+                >
+                  <ArrowTrendingUpIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+                <button
+                  onClick={() => setEdgeCreationType("attacking")}
+                  className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+                    edgeCreationType === "attacking"
+                      ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                  aria-pressed={edgeCreationType === "attacking"}
+                >
+                  <ArrowTrendingDownIcon className="w-8 h-8" strokeWidth={2} />
+                </button>
+              </div>
 
               <div className="w-full h-px bg-gray-200"></div>
 

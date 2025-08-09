@@ -15,6 +15,7 @@ interface EdgePropertiesProps {
   onClose: () => void;
   onUpdate: (edgeId: string, updates: Partial<ClaimEdge>) => void;
   copilotOpen?: boolean;
+  copilotOffsetPx?: number;
   nodes: any[];
   evidenceCards: any[];
   supportingDocuments: any[];
@@ -27,6 +28,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   onClose,
   onUpdate,
   copilotOpen,
+  copilotOffsetPx,
   nodes,
   evidenceCards,
   supportingDocuments,
@@ -135,8 +137,11 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
     <div
       className="fixed top-24 w-[400px] bg-white rounded-lg shadow-lg p-6 z-50 font-[DM Sans] font-normal max-h-[80vh] overflow-y-auto"
       style={{
-        right: copilotOpen ? "27vw" : "1.5rem",
-        transition: "right 0.3s",
+        right:
+          typeof copilotOffsetPx === "number" && copilotOffsetPx > 0
+            ? copilotOffsetPx + 24
+            : 24,
+        transition: "right 0.2s ease",
       }}
     >
       {/* Header */}

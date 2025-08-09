@@ -653,10 +653,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   }, [profile?.user_id, currentGraphId]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  // Track AI Copilot width to position property panels without overlap
+  const copilotRef = useRef<HTMLDivElement | null>(null);
+  const [copilotWidthPx, setCopilotWidthPx] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
+  useEffect(() => {
+    if (!copilotRef.current) return;
+    const el = copilotRef.current;
+    const update = () =>
+      setCopilotWidthPx(isAICopilotOpen ? el.offsetWidth : 0);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isAICopilotOpen]);
   const [isAICopilotFrozen, setIsAICopilotFrozen] = useState(false);
 
   // Notes state
@@ -5695,24 +5708,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <Controls className="!hidden" />
             </ReactFlow>
 
-            {/* Properties Modal beside AI Copilot */}
+            {/* Properties Modals beside AI Copilot (position synced to copilot width) */}
             {(selectedNode || selectedEdge) && (
-              <div
-                style={{
-                  position: "fixed",
-                  top: 80, // adjust as needed
-                  right: isAICopilotOpen ? "27vw" : 0, // leave space for Copilot if open
-                  zIndex: 50,
-                  width: 270,
-                  maxWidth: "67.5vw",
-                  background: "white",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
-                  borderRadius: 16,
-                  border: "1px solid #eee",
-                  padding: 0,
-                  transition: "right 0.3s",
-                }}
-              >
+              <div style={{ position: "fixed", top: 0 }}>
                 {selectedNode && !selectedEdge && (
                   <NodeProperties
                     node={selectedNode}
@@ -5723,6 +5721,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onUpdateEvidenceConfidence={handleUpdateEvidenceConfidence}
                     onUnlinkEvidence={handleUnlinkEvidence}
                     copilotOpen={isAICopilotOpen}
+                    copilotOffsetPx={isAICopilotOpen ? copilotWidthPx : 0}
                     onClassifyClaimType={triggerClassifyClaimType}
                     onCloneEvidence={cloneEvidence}
                     evaluationMessages={copilotMessages.filter(
@@ -5755,6 +5754,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     onClose={() => setSelectedEdge(null)}
                     onUpdate={handleEdgeUpdate}
                     copilotOpen={isAICopilotOpen}
+                    copilotOffsetPx={isAICopilotOpen ? copilotWidthPx : 0}
                     nodes={nodes}
                     evidenceCards={evidenceCards}
                     supportingDocuments={supportingDocumentsRedux}
@@ -5882,6 +5882,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         {isAICopilotOpen && (
           <Panel defaultSize={24} minSize={12} maxSize={30}>
             <div
+              ref={copilotRef}
               className={`h-full border-l flex flex-col font-[DM Sans] ${
                 activeTab === "console"
                   ? "bg-[#232F3E] text-gray-200 border-black"

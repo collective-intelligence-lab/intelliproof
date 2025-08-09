@@ -161,7 +161,7 @@ export default function GraphManagerPage() {
                 console.log("[GraphManagerPage] New Graph button clicked");
                 setIsCreateModalOpen(true);
               }}
-              className="w-full"
+              className="w-full !bg-[#232F3E] !text-white hover:!bg-[#1a2530] focus:!ring-[#232F3E] transition-colors font-medium"
             >
               New Graph
             </ContinueButton>
@@ -343,7 +343,7 @@ export default function GraphManagerPage() {
                       onClick={() => {
                         router.push(`/graph-editor?id=${currentGraph.id}`);
                       }}
-                      className="px-4 py-2 bg-[#7283D9] text-white rounded-md hover:bg-[#5f6fc0] transition-colors font-medium"
+                      className="px-4 py-2 bg-[#232F3E] text-white rounded-md hover:bg-[#5f6fc0] transition-colors font-medium"
                     >
                       Edit Graph
                     </button>
@@ -445,7 +445,7 @@ export default function GraphManagerPage() {
                   }
                   setIsCreateModalOpen(false);
                 }}
-                className="w-auto px-6"
+                className="w-auto px-6 !bg-[#232F3E] !text-white hover:!bg-[#1a2530] focus:!ring-[#232F3E]"
               >
                 Create
               </ContinueButton>

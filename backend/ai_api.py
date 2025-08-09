@@ -564,6 +564,7 @@ IMPORTANT:
 - Ignore any external evidence or context
 - Consider only what is explicitly stated or necessarily implied
 - Identify only the assumptions needed for the logical relationship
+- If the claims are unrelated, the score should be 0
 
 Respond in this format:
 Evaluation: <attack|support|neutral>

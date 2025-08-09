@@ -6075,17 +6075,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 </>
               ) : (
                 <>
-                  {/* Console Area - Keep existing functionality */}
-                  <div className="flex-1 overflow-auto p-4">
-                    <div
-                      className="text-center text-gray-500 mt-2 mb-2"
-                      style={{
-                        fontFamily: "DM Sans, sans-serif",
-                        fontWeight: "500",
-                      }}
-                    >
-                      AI Copilot is ready to assist with your graph.
+                  {/* Console Area - Terminal themed */}
+                  <div className="flex-1 overflow-auto bg-[#232F3E] text-gray-200 font-mono text-sm">
+                    <div className="px-4 py-2 text-xs text-gray-300 border-b border-[#2f3b4a]">
+                      Console ready.
                     </div>
+                    {/* Command buttons commented out in Console */}
+                    {/**
                     <CommandMessageBox
                       title="Check All Claim Evidence"
                       content="Check evidence for each claim and evaluate relationship"
@@ -6100,7 +6096,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={handleClaimCredibility}
                       disabled={copilotLoading}
                     />
-                    {/* New function chat boxes (Validate Edge button moved to Edge Properties panel) */}
                     <CommandMessageBox
                       title="Validate All Edges"
                       content="Checks all edges for support/attack/neutral and outputs reasoning for each."
@@ -6108,7 +6103,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={validate_edges}
                       disabled={copilotLoading}
                     />
-
                     <CommandMessageBox
                       title="Generate All Assumptions"
                       content="Generates assumptions for all edges in the graph sequentially"
@@ -6116,58 +6110,46 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={handleGenerateAllAssumptions}
                       disabled={copilotLoading}
                     />
-                    <div className="mt-4 space-y-2">
+                    */}
+                    <div className="mt-0">
                       {copilotMessages.map((msg, idx) => (
-                        <ChatBox key={idx}>
+                        <div
+                          key={idx}
+                          className="px-4 py-2 border-b border-[#2f3b4a] whitespace-pre-wrap"
+                        >
                           {msg.isStructured ? (
-                            <MessageBox message={msg.content} />
+                            <div className="bg-white text-black rounded-md p-3">
+                              <MessageBox message={msg.content} />
+                            </div>
                           ) : msg.role === "assistant" ? (
                             <span
-                              className={`text-left text-sm text-blue-700`}
+                              className="text-gray-200"
                               dangerouslySetInnerHTML={{ __html: msg.content }}
                             />
+                          ) : msg.role === "system" ? (
+                            <span className="text-gray-400">{msg.content}</span>
                           ) : (
-                            <span
-                              className={`text-left text-sm ${
-                                msg.role === "system"
-                                  ? "text-gray-500"
-                                  : "text-black"
-                              }`}
-                            >
-                              {msg.content}
-                            </span>
+                            <span className="text-gray-200">{msg.content}</span>
                           )}
-                        </ChatBox>
+                        </div>
                       ))}
                       {copilotLoading && (
-                        <ChatBox>
-                          <span className="text-purple-500 text-sm">
-                            Analyzing claim credibility...
-                          </span>
-                        </ChatBox>
+                        <div className="px-4 py-2 text-purple-300 text-xs">
+                          Processing...
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Console Controls */}
-                  <div className="border-t border-gray-200 p-4">
-                    <div className="relative mb-2">
-                      <input
-                        type="text"
-                        placeholder="Ask anything about your graph..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
-                      />
-                      <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600">
-                        <SparklesIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <div className="flex justify-center mt-2">
+                  {/* Console Controls (no input) */}
+                  <div className="border-t border-[#2f3b4a] p-3 bg-[#232F3E]">
+                    <div className="flex justify-center">
                       <button
                         onClick={handleClearCopilotChat}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium shadow-sm border border-gray-300 transition-all"
+                        className="px-4 py-1.5 rounded-md text-xs bg-[#0f172a] hover:bg-[#111827] text-gray-200 border border-[#334155]"
                         type="button"
                       >
-                        Clear Chat
+                        Clear Console
                       </button>
                     </div>
                   </div>

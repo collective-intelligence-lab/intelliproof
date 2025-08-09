@@ -439,7 +439,7 @@ Features / bugs to fix:
 - Claim modal overlaps with top right navbar when expanded
 - validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
 - deleting the left node is re-triggering check ev and get claim cred on right node, which is not needed
-- loading an existing graph starts in a state that is too zoomed out
+- loading an existing graph starts in a state that is too zoomed out (DONE)
 - when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it
 - autosave functionality
 - saving brings you to graph manager page (DONE)

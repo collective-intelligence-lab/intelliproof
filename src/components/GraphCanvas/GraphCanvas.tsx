@@ -678,6 +678,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
+  // Text Area Modal state
+  const [isTextAreaModalOpen, setIsTextAreaModalOpen] = useState(false);
+  const [textAreaContent, setTextAreaContent] = useState("");
+
   // Import button ref
   const importButtonRef = useRef<LoadingSuccessButtonRef>(null);
   // Upload button ref
@@ -2343,6 +2347,75 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
   // State for import
   const [isImporting, setIsImporting] = useState(false);
+
+  // Handler for text area modal
+  const handleOpenTextArea = () => {
+    setIsTextAreaModalOpen(true);
+    setTextAreaContent("");
+  };
+
+  const handleCloseTextArea = () => {
+    setIsTextAreaModalOpen(false);
+    setTextAreaContent("");
+  };
+
+  // Handler for processing text through LLM argument mining (Step 1 & 2)
+  const handleProcessTextWithLLM = async () => {
+    if (!textAreaContent.trim()) {
+      setToast("Please enter some text to process.");
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    // Close modal and indicate processing
+    setIsTextAreaModalOpen(false);
+    setToast("Processing text with AI...");
+
+    try {
+      console.log("[GraphCanvas] handleProcessTextWithLLM: Starting LLM call");
+
+      const requestBody = {
+        model: "ft:gpt-4.1-nano-2025-04-14:link-lab::C2vLQbZi",
+        system_prompt:
+          'You are an argument mining bot, given an essay, extract the argument graph of the essay. You should return a Python dictionary containing a list of nodes and a list of edges.\n    Where each element in the list of nodes is in the format of\n    {\n          "text": {span of text corresponding to each node extracted from the essay},\n          "id": {the node number} such as 1, 2, 3,...,\n        }\n\n    You should return the nodes with the main/central claim FIRST (id: 1), then the supporting claims in the order they appear in the essay.\n    Additionally, the list of edges should be in the format of\n            {\n          "label": {the label of the edge}, ONLY choose from support and attack, where support is a positive relationship between the two nodes and attack is a negative relationship between the two nodes,\n          "source": {the node that is BEING supported/attacked},\n          "target": {the node that is DOING the supporting/attacking},\n        }\n\n    You should return the final answer in a dictionary format containing a list of edges and a list of nodes. The format is something like {[], []} RETURN THE DICTIONARY and NOTHING ELSE.',
+        user_input: textAreaContent,
+      };
+
+      console.log(
+        "[GraphCanvas] handleProcessTextWithLLM: Request body:",
+        requestBody
+      );
+
+      const response = await fetch("/api/ai/process-argument-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Failed to process text with AI.";
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errorMsg = errorData.detail;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      console.log(
+        "[GraphCanvas] handleProcessTextWithLLM: Received response:",
+        data
+      );
+
+      // Step 1 & 2 only: confirm call worked; conversion/import in later steps
+      setToast("LLM call successful! (Conversion to graph coming next)");
+      setTimeout(() => setToast(null), 4000);
+    } catch (err: any) {
+      console.error("[GraphCanvas] handleProcessTextWithLLM: Error:", err);
+      setToast(`Error processing text: ${err.message}`);
+      setTimeout(() => setToast(null), 5000);
+    }
+  };
 
   // State for report generation
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -5409,6 +5482,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         </div>
                       )}
                     </div>
+
+                    {/* Text Area Button */}
+                    <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
+                    <button
+                      onClick={handleOpenTextArea}
+                      className="p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 text-gray-700 hover:bg-gray-100"
+                      title="Open Text Area"
+                    >
+                      <DocumentTextIcon className="w-9 h-9" strokeWidth={2.5} />
+                    </button>
                   </div>
                 </div>
 
@@ -6303,6 +6386,58 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         initialNote={editingNote}
         onSave={handleSaveNote}
       />
+
+      {/* Text Area Modal */}
+      {isTextAreaModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Text Area</h3>
+              <button
+                onClick={handleCloseTextArea}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <textarea
+                value={textAreaContent}
+                onChange={(e) => setTextAreaContent(e.target.value)}
+                placeholder="Enter your text here..."
+                className="w-full h-full min-h-[400px] p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                style={{ fontFamily: "DM Sans, sans-serif" }}
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={handleCloseTextArea}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleProcessTextWithLLM}
+                className="px-4 py-2 bg-[#232F3E] text-white rounded-md hover:bg-[#1A2330] transition-colors font-medium"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Progress Toast */}
       {showProgressToast && (

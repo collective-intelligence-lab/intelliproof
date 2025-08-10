@@ -25,6 +25,8 @@ import requests
 import fitz  # PyMuPDF
 import io
 import json
+import re
+import ast
 from ai_models import (
     NodeModel,
     EdgeModel,
@@ -57,6 +59,7 @@ from ai_models import (
 )
 from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol
 from datetime import datetime
+from graph_conversion import convert_graph_format
 
 # Load environment variables from .env file
 load_dotenv()
@@ -317,6 +320,119 @@ Score: <a number between -1 and 1 giving the evidence a score of how well the ev
 # =============================================================================
 # FUTURE AI ENDPOINTS - Placeholder implementations
 # =============================================================================
+
+class ProcessArgumentTextRequest(BaseModel):
+    model: str
+    system_prompt: str
+    user_input: str
+
+class ProcessArgumentTextResponse(BaseModel):
+    success: bool
+    llm_output: str
+    converted_graph: dict | None = None
+    error: str | None = None
+
+@router.post("/api/ai/process-argument-text", response_model=ProcessArgumentTextResponse)
+def process_argument_text(data: ProcessArgumentTextRequest = Body(...)):
+    """
+    Calls the specified LLM with a system prompt and user input to extract an argument graph.
+    Then converts the LLM string output to the tool's graph JSON format using convert_graph_format.
+    """
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured.")
+
+    try:
+        openai.api_key = OPENAI_API_KEY
+
+        # Call OpenAI Chat Completions
+        response = openai.chat.completions.create(
+            model=data.model,
+            messages=[
+                {"role": "system", "content": data.system_prompt},
+                {"role": "user", "content": data.user_input},
+            ],
+            temperature=0.1,
+            max_tokens=2000,
+        )
+
+        llm_output = response.choices[0].message.content
+        if not isinstance(llm_output, str):
+            llm_output = str(llm_output)
+
+        # Normalize to a Python dict compatible with converter (expects from/to/relation edges)
+        raw = llm_output.strip()
+        if not (raw.startswith("{") and raw.endswith("}")):
+            brace_match = re.search(r"\{.*\}", raw, re.DOTALL)
+            if brace_match:
+                raw = brace_match.group(0)
+
+        # Try parse as JSON first, then Python literal as fallback
+        parsed: dict[str, Any] | None = None
+        try:
+            parsed = json.loads(raw)
+        except Exception:
+            try:
+                parsed = ast.literal_eval(raw)
+            except Exception:
+                parsed = None
+
+        if not isinstance(parsed, dict):
+            return ProcessArgumentTextResponse(
+                success=False,
+                llm_output=llm_output,
+                converted_graph=None,
+                error="LLM output is not a dictionary",
+            )
+
+        # Normalize nodes
+        nodes = parsed.get("nodes", []) or []
+        norm_nodes = []
+        for n in nodes:
+            if not isinstance(n, dict):
+                continue
+            nid = n.get("id")
+            text = n.get("text")
+            if nid is None or text is None:
+                continue
+            norm_nodes.append({"id": nid, "text": text, "type": n.get("type", "factual")})
+
+        # Normalize edges: accept either {from,to,relation} or {source,target,label}
+        edges = parsed.get("edges", []) or []
+        norm_edges = []
+        for e in edges:
+            if not isinstance(e, dict):
+                continue
+            if "from" in e and "to" in e and "relation" in e:
+                norm_edges.append({"from": e["from"], "to": e["to"], "relation": str(e["relation"]).lower()})
+            else:
+                src = e.get("source")
+                tgt = e.get("target")
+                label = e.get("label")
+                if src is not None and tgt is not None and label is not None:
+                    norm_edges.append({"from": src, "to": tgt, "relation": str(label).lower()})
+
+        normalized = {"nodes": norm_nodes, "edges": norm_edges}
+
+        # Pass normalized dict as a Python-dict string to converter (it expects literal eval)
+        normalized_str = str(normalized)
+
+        try:
+            converted_graph = convert_graph_format(normalized_str)
+            return ProcessArgumentTextResponse(
+                success=True,
+                llm_output=llm_output,
+                converted_graph=converted_graph,
+            )
+        except Exception as conv_err:
+            # Return the raw output and error; frontend will show parse error toast
+            return ProcessArgumentTextResponse(
+                success=False,
+                llm_output=llm_output,
+                converted_graph=None,
+                error=f"Failed to convert LLM output: {str(conv_err)}",
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
 
 @router.post("/api/ai/classify-claim-type", response_model=ClassifyClaimTypeResponse)
 def classify_claim_type(data: ClassifyClaimTypeRequest = Body(...)):

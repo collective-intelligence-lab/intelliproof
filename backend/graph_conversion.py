@@ -22,6 +22,9 @@ def convert_graph_format(graph) :
         edge["source"] = edge.pop("from") # Rename 'from' to 'source'
         edge["target"] = edge.pop("to")
 
+        edge["source"] = str(edge["source"])
+        edge["target"] = str(edge["target"])
+
         if edge["relation"] == "support" : 
             del edge["relation"] # Remove 'support' relation
             edge["weight"] = 0.75 # Assign a default weight for support edges
@@ -33,6 +36,7 @@ def convert_graph_format(graph) :
     start_x = 100
     start_y = 100
     for node in converted['nodes']:
+        node["id"] = str(node["id"])
         node["author"] = "LLM"
         node["belief"] = 0.5
         node["credibilityScore"] = 0

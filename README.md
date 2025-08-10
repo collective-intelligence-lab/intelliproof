@@ -166,14 +166,14 @@ USING (true);
 
 -- Notes table (supports optional external link)
 create table if not exists notes (
-  id uuid primary key default gen_random_uuid(),
-  graph_id uuid references graphs(id) on delete cascade,
-  owner_email text references profiles(email) on delete set null,
-  title text not null,
-  text text not null,
-  link text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+id uuid primary key default gen_random_uuid(),
+graph_id uuid references graphs(id) on delete cascade,
+owner_email text references profiles(email) on delete set null,
+title text not null,
+text text not null,
+link text,
+created_at timestamptz default now(),
+updated_at timestamptz default now()
 );
 
 -- Indexes for performance
@@ -433,14 +433,14 @@ Features / bugs to fix:
 - Style edge scores nicely - (DONE)
 - Fix fonts / styling in ALL modals - (DONE)
 - change check_evidence to read all of the evidence as one rather than
-- change save buttons on graph manager modals from light blue to navy blue
+- change save buttons on graph manager modals from light blue to navy blue - (DONE)
 - Remove evidence and supporting docs from evidence panel feature - (DONE)
-- Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active
+- Graph Canvas Navbars overlap when both Evidence Navbar and AI Copilot navbar active - (DONE)
 - Claim modal overlaps with top right navbar when expanded (DONE)
-- validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge)
-- deleting the left node is re-triggering check ev and get claim cred on right node, which is not needed
-- loading an existing graph starts in a state that is too zoomed out (DONE)
-- when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it (and on the edges)
+- validate edge is re-triggering check evidence which is unnecessary (but only when I modify the right node, ie the node with an outgoing edge) - (DONE)
+- deleting the left node is re-triggering check ev and get claim cred on right node, which is not needed - (DONE)
+- loading an existing graph starts in a state that is too zoomed out - (DONE)
+- when u load a graph, the analysis section in the evidence cards does not render, have to re-run check evidence to see it (and on the edges) - (DONE)
 - autosave functionality
 - saving brings you to graph manager page (DONE)
 - implement streaming in the chat
@@ -451,17 +451,16 @@ Features / bugs to fix:
 - Few shot learning for all prompts
 - Center score within mini circle (increase font size slightly)
 - remove buttons from copilot section
-- in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence.
+- in check node evidence, make the prompt emphasize that the AI should assess how well the "content" of the evidence supports the claim. because the title might support it but if the content is unrelated to the title I think right now it still scores it highly. Perhaps say just use the title as context but only analyze the content of the evidence. - (DONE)
 - Notes section (DONE)
 - Move generate assumptions onto the edge modal - (DONE)
 - Implement chat Q&A (With Kaveh help) - (DONE)
-- make edges thinner
-- dark blue navbar on graph manager page must have consistent styling
+- dark blue navbar on graph manager page must have consistent styling - (DONE)
 - Helper / info box explaining the different functionality / features of graph
-- Position header section of nodes slightly more to left (there's a very small white gap)
-- Extensive console logging throughout the process (TRACKING USER AND AI CALLS SEPERATELY)
-  - change to be named console log, give it terminal like theme
-- Format console output slightly nicer, can still be raw but change things like "confidence" to "score"
+- Position header section of nodes slightly more to left (there's a very small white gap) - (DONE)
+- Extensive console logging throughout the process (TRACKING USER AND AI CALLS SEPERATELY) - (DONE)
+  - change to be named console log, give it terminal like theme - (DONE)
+- Format console output slightly nicer, can still be raw but change things like "confidence" to "score" - (DONE)
 - Step-by-step progress tracking (KINDA DONE, needs to fix tracking on user actions on db)
 - Error reporting and recovery
 - Performance monitoring (DONE THRU VERCEL SPEED INSIGHTS)
@@ -470,10 +469,13 @@ IF there's TIME (low priority):
 
 - Use get_node_cred instead of get_claim_cred (more efficient)
 - Enable drag and drop of supporting docs onto nodes
-- Reziseable nodes
+- resizeable nodes
 - Potential layout locks, snap to a left - right layout format
-- Chat save functionality (low priority)
 
-TO DO (Kabir):
+TO DO (Anesu):
 
--
+- Add back extract content in evidence
+- Features list + how to interact with graph
+- Allow user to see what they're typing on node
+- Empty log (low priority)
+- re-deployment

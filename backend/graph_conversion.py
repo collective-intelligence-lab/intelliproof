@@ -1,5 +1,16 @@
 import json
 import ast
+import string
+import random
+
+def generate_random_string(length):
+    """
+    Generates a random string of a given length, composed of
+    ASCII letters (uppercase and lowercase) and digits.
+    """
+    characters = string.ascii_letters + string.digits
+    random_string = ''.join(random.choices(characters, k=length))
+    return random_string
 
 def convert_graph_format(graph) : 
     """
@@ -17,7 +28,22 @@ def convert_graph_format(graph) :
         elif edge["relation"] == "attack" : 
             del edge["relation"] # Remove 'attack' relation
             edge["weight"] = -0.75
-        
+        edge["id"] = generate_random_string(24)
+    
+    start_x = 100
+    start_y = 100
+    for node in converted['nodes']:
+        node["author"] = "LLM"
+        node["belief"] = 0.5
+        node["credibilityScore"] = 0
+        node["position"] = {
+            "x": start_x,
+            "y": start_y
+        }
+        node["created_on"] = "2025-01-01T00:00:00Z"
+        node["evidenceIds"] = []
+        start_x += 200
+        start_y += 100
     converted["evidence"] = []
     
     return converted

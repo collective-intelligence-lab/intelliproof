@@ -8,24 +8,12 @@ export interface ClaimEdge {
   target: string;
   type: 'custom';  // we'll create a custom edge type
   data: {
-    /**
-     * Confidence level from -1 to 1. Negative = attack, positive = support.
-     * The edge type is determined by the sign of confidence.
-     */
     edgeType: EdgeType;
     confidence: number;
     edgeScore?: number;  // Score from edge validation
-    /**
-     * Natural-language explanation returned by edge validation.
-     * Optional: present only after validation has been run.
-     */
     reasoning?: string;
-    /**
-     * Optional recommendation returned by edge validation API indicating whether
-     * the relationship should be supporting or attacking. Used only for UI
-     * display; does not affect scores or logic unless the user changes type.
-     */
     recommendedEdgeType?: EdgeType;
+
   };
   markerStart?: {
     type: MarkerType;

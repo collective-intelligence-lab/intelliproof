@@ -928,22 +928,35 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           let edgeType: EdgeType = "supporting";
           let confidence: number = 0;
           let edgeScore: number | undefined;
+          let reasoning: string | undefined;
 
           // Check if edge has saved validation data (from saved graph)
           if ("edgeScore" in edge && edge.edgeScore !== undefined) {
             edgeType = (edge as any).edgeType || "supporting";
             confidence = (edge as any).confidence ?? 0;
             edgeScore = (edge as any).edgeScore;
+            reasoning = (edge as any).reasoning;
+
+            // Add debug logging
+            console.log(`Loading edge ${edge.id}:`, {
+              edgeType,
+              confidence,
+              edgeScore,
+              reasoning,
+              originalEdge: edge,
+            });
           } else if ("data" in edge && edge.data) {
             // If edge is a ClaimEdge (has 'data'), use its data
             edgeType = edge.data.edgeType || "supporting";
             confidence = edge.data.confidence ?? 0;
             edgeScore = edge.data.edgeScore ?? 0;
+            reasoning = edge.data.reasoning;
           } else if ("weight" in edge && typeof edge.weight === "number") {
             // Legacy or exported edge
             confidence = edge.weight;
             edgeType = edge.weight >= 0 ? "supporting" : "attacking";
             edgeScore = edge.weight; // Use weight as edgeScore for legacy edges
+            reasoning = edge.data.reasoning;
           }
 
           // Determine edge color based on score sign when available; fallback to type
@@ -959,6 +972,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               edgeType,
               confidence,
               edgeScore,
+              reasoning,
             },
             markerStart: {
               type: MarkerType.ArrowClosed,
@@ -1183,6 +1197,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           confidence: 0,
           // tiny negative score for attacking so it renders red immediately; 0 for supporting
           edgeScore: isAttacking ? -0.01 : 0,
+          reasoning: "",
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
@@ -1190,6 +1205,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
+
+      // Auto-validate the new edge to get reasoning
+      setTimeout(() => {
+        setEdgeApiQueue((q) => [...q, newEdge.id]);
+      }, 100); // Small delay to ensure edge is fully added
 
       // Trigger credibility calculation for the target node only
       console.log(
@@ -1606,16 +1626,24 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         created_on: node.data.created_on || new Date().toISOString(),
         evidenceIds: node.data.evidenceIds || [],
       })),
-      edges: edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        weight: clamp(edge.data.confidence, -1, 1),
-        // Save edge validation data
-        edgeType: edge.data.edgeType,
-        confidence: edge.data.confidence,
-        edgeScore: edge.data.edgeScore,
-      })),
+      edges: edges.map((edge) => {
+        const edgeData = {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          weight: clamp(edge.data.confidence, -1, 1),
+          // Save edge validation data
+          edgeType: edge.data.edgeType,
+          confidence: edge.data.confidence,
+          edgeScore: edge.data.edgeScore,
+          reasoning: edge.data.reasoning,
+        };
+
+        // Add debug logging
+        console.log(`Saving edge ${edge.id}:`, edgeData);
+
+        return edgeData;
+      }),
     };
 
     console.log("Saving graph with ID:", graphId);
@@ -4117,6 +4145,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           ...edge.data,
           confidence: data.confidence,
           edgeScore: data.confidence,
+          reasoning: data.reasoning,
         },
       });
     } catch (err) {

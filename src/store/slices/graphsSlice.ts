@@ -35,6 +35,7 @@ export interface GraphItem {
             source: string;
             target: string;
             weight: number;
+            
         }>;
     };
     created_at?: string;

@@ -73,14 +73,11 @@ const SupportingDocumentUploadModal: React.FC<
           },
         }
       );
-      // Delay the success callback to ensure upload is actually complete
-      setTimeout(() => {
-        onSuccess(metaRes.data.document);
-        setName("");
-        setType("document");
-        setFile(null);
-        onClose();
-      }, 7000);
+      onSuccess(metaRes.data.document);
+      setName("");
+      setType("document");
+      setFile(null);
+      onClose();
     } catch (err: any) {
       setError(err?.response?.data?.error || "Upload failed");
     } finally {

@@ -1216,7 +1216,7 @@ REPORT CONTEXT:
 
 WRITING REQUIREMENTS:
 - Write a coherent natural‑language report that someone can read to understand the argument expressed by the materials.
-- Do NOT mention or use the terms "graph", "node(s)", "edge(s)", "vertex/vertices", or "link(s)" anywhere in the report. Discuss the content and reasoning itself.
+- Do NOT mention or use the terms "graph", "node(s)", "edge(s)", "vertex/vertices", or "link(s)" anywhere in the report. Discuss the content and reasoning itself. Don't use the words claim, and argument so often, talk more about the content and argument itself.
 - Explain the main claim, supporting reasons, how sources/evidence support or challenge those reasons, relevant counterpoints, and important assumptions.
 - Include a clearly labeled subsection "Limitations and Flaws" that candidly discusses gaps, weaknesses, uncertainties, potential biases, and scope constraints in the argument and evidence.
 - Convert the structured inputs above into readable prose; do not list raw identifiers. Refer to sources generically (e.g., "one source", "a document", "an article") unless a specific title meaningfully improves clarity.

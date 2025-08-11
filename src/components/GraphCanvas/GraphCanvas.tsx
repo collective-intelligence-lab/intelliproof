@@ -5488,16 +5488,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         </div>
                       )}
                     </div>
-
-                    {/* Text Area Button */}
-                    <div className="h-10 w-px bg-gray-200 mx-3 my-auto"></div>
-                    <button
-                      onClick={handleOpenTextArea}
-                      className="p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 text-gray-700 hover:bg-gray-100"
-                      title="Open Text Area"
-                    >
-                      <DocumentTextIcon className="w-9 h-9" strokeWidth={2.5} />
-                    </button>
                   </div>
                 </div>
 
@@ -5756,6 +5746,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 }
               >
                 <DocumentTextIcon className="w-8 h-8" strokeWidth={2} />
+              </button>
+
+              <div className="w-full h-px bg-gray-200"></div>
+
+              {/* Argument Input Button */}
+              <button
+                onClick={handleOpenTextArea}
+                className="p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                title="Argument Input Area"
+              >
+                <PlusIcon className="w-8 h-8" strokeWidth={2} />
               </button>
             </div>
 
@@ -6398,7 +6399,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Text Area</h3>
+              <h3
+                className="text-lg font-semibold text-gray-900"
+                style={{ fontFamily: "DM Sans, sans-serif", fontWeight: "600" }}
+              >
+                Argument Input Area
+              </h3>
               <button
                 onClick={handleCloseTextArea}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -6422,21 +6428,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <textarea
                 value={textAreaContent}
                 onChange={(e) => setTextAreaContent(e.target.value)}
-                placeholder="Enter your text here..."
+                placeholder="Enter your argument here"
                 className="w-full h-full min-h-[400px] p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                style={{ fontFamily: "DM Sans, sans-serif" }}
+                style={{
+                  fontFamily: "DM Sans, sans-serif",
+                  color: "black",
+                  fontWeight: "500",
+                  fontSize: "16px",
+                }}
               />
             </div>
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={handleCloseTextArea}
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium"
+                style={{ fontFamily: "DM Sans, sans-serif", fontWeight: "500" }}
               >
                 Close
               </button>
               <button
                 onClick={handleProcessTextWithLLM}
                 className="px-4 py-2 bg-[#232F3E] text-white rounded-md hover:bg-[#1A2330] transition-colors font-medium"
+                style={{ fontFamily: "DM Sans, sans-serif", fontWeight: "500" }}
               >
                 Save
               </button>

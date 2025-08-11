@@ -351,8 +351,8 @@ def process_argument_text(data: ProcessArgumentTextRequest = Body(...)):
                 {"role": "system", "content": data.system_prompt},
                 {"role": "user", "content": data.user_input},
             ],
-            temperature=0.1,
-            max_tokens=2000,
+            temperature=0.3,
+            max_tokens=5000,
         )
 
         llm_output = response.choices[0].message.content

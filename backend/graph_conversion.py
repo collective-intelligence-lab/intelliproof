@@ -44,13 +44,21 @@ def convert_graph_format(graph) :
         node["author"] = "LLM"
         node["belief"] = 0.5
         node["credibilityScore"] = 0
-        # Better positioning logic
+         # Better positioning logic for a well-spaced graph
         if i == 0:
-            # Main claim on left
-            node["position"] = {"x": 100, "y": 300}
+            # Main claim centered on the left
+            node["position"] = {"x": 150, "y": 400}
         else:
-            # Supporting claims in a horizontal row to the right
-            node["position"] = {"x": 400 + ((i - 1) * 250), "y": 200}
+            # Supporting claims in a more spread out arrangement
+            # Calculate position based on index for better distribution
+            row = (i - 1) // 3  # 3 claims per row
+            col = (i - 1) % 3   # Column within the row
+            
+            # Start from x=500, y=200 and space out nicely
+            x_pos = 500 + (col * 300)  # 300px spacing between columns
+            y_pos = 200 + (row * 250)  # 250px spacing between rows
+            
+            node["position"] = {"x": x_pos, "y": y_pos}
         node["created_on"] = "2025-01-01T00:00:00Z"
         node["evidenceIds"] = []
         

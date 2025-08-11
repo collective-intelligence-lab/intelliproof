@@ -2407,9 +2407,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         data
       );
 
-      // Step 1 & 2 only: confirm call worked; conversion/import in later steps
-      setToast("LLM call successful! (Conversion to graph coming next)");
-      setTimeout(() => setToast(null), 4000);
+      // Automatically import the converted graph if successful
+      if (data.success && data.converted_graph) {
+        importGraphData(data.converted_graph);
+        setToast("Graph imported successfully!");
+        setTimeout(() => setToast(null), 4000);
+      } else {
+        setToast("Error: Could not parse LLM output");
+        setTimeout(() => setToast(null), 5000);
+      }
     } catch (err: any) {
       console.error("[GraphCanvas] handleProcessTextWithLLM: Error:", err);
       setToast(`Error processing text: ${err.message}`);

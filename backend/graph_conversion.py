@@ -25,6 +25,11 @@ def convert_graph_format(graph) :
         edge["source"] = str(edge["source"])
         edge["target"] = str(edge["target"])
 
+        # Force source to have lower ID than target
+        if int(edge["source"]) > int(edge["target"]):
+            # Swap them
+            edge["source"], edge["target"] = edge["target"], edge["source"]
+
         if edge["relation"] == "support" : 
             del edge["relation"] # Remove 'support' relation
             edge["weight"] = 0.75 # Assign a default weight for support edges
@@ -33,21 +38,22 @@ def convert_graph_format(graph) :
             edge["weight"] = -0.75
         edge["id"] = generate_random_string(24)
     
-    start_x = 100
-    start_y = 100
-    for node in converted['nodes']:
+    
+    for i, node in enumerate(converted['nodes']):
         node["id"] = str(node["id"])
         node["author"] = "LLM"
         node["belief"] = 0.5
         node["credibilityScore"] = 0
-        node["position"] = {
-            "x": start_x,
-            "y": start_y
-        }
+        # Better positioning logic
+        if i == 0:
+            # Main claim on left
+            node["position"] = {"x": 100, "y": 300}
+        else:
+            # Supporting claims in a horizontal row to the right
+            node["position"] = {"x": 400 + ((i - 1) * 250), "y": 200}
         node["created_on"] = "2025-01-01T00:00:00Z"
         node["evidenceIds"] = []
-        start_x += 200
-        start_y += 100
+        
     converted["evidence"] = []
     
     return converted

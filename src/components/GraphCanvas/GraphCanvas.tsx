@@ -4981,13 +4981,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {isAddEvidenceOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
                   <div
-                    className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-8 relative"
+                    className="bg-white rounded-lg shadow-lg w-full max-w-5xl p-4 relative"
                     style={{ fontFamily: "DM Sans, sans-serif" }}
                   >
-                    <h2 className="text-2xl font-bold mb-2 text-black">
+                    <h2 className="text-xl font-bold mb-1 text-black">
                       Add Evidence
                     </h2>
-                    <p className="text-black text-lg mb-6 font-normal">
+                    <p className="text-black text-sm mb-3 font-normal">
                       Create evidence from your supporting documents
                     </p>
                     <form
@@ -5010,12 +5010,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         ]);
                         closeEvidenceModal();
                       }}
-                      className="space-y-6"
+                      className="space-y-3"
                     >
                       {/* Title */}
-                      <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1">
                         <label
-                          className="text-black text-base font-medium"
+                          className="text-black text-sm font-medium"
                           htmlFor="title"
                         >
                           Title
@@ -5023,7 +5023,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         <input
                           id="title"
                           type="text"
-                          className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-1.5 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           style={{ color: "#000000", fontWeight: 500 }}
                           value={newEvidence.title}
                           onChange={(e) =>
@@ -5038,16 +5038,16 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       </div>
 
                       {/* Supporting Doc Select */}
-                      <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1">
                         <label
-                          className="text-black text-base font-medium"
+                          className="text-black text-sm font-medium"
                           htmlFor="supportingDoc"
                         >
                           Supporting Document
                         </label>
                         <select
                           id="supportingDoc"
-                          className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-1.5 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           style={{ color: "#000000", fontWeight: 500 }}
                           value={newEvidence.supportingDocId}
                           onChange={(e) =>
@@ -5072,9 +5072,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
                       {/* Node Selection - only show when a document is selected */}
                       {newEvidence.supportingDocId && (
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-1">
                           <label
-                            className="text-black text-base font-medium"
+                            className="text-black text-sm font-medium"
                             htmlFor="associatedNode"
                           >
                             Associated Node (Optional but Required for AI
@@ -5082,7 +5082,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           </label>
                           <select
                             id="associatedNode"
-                            className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-1.5 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             style={{ color: "#000000", fontWeight: 500 }}
                             value={newEvidence.selectedNodeId}
                             onChange={(e) =>
@@ -5116,7 +5116,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         if (doc && doc.type === "document") {
                           const isPDF = doc.url.toLowerCase().endsWith(".pdf");
                           return (
-                            <div className="flex flex-row gap-6 items-stretch">
+                            <div className="flex flex-row gap-4 items-stretch">
                               {/* PDF Previewer on the left */}
                               {isPDF && (
                                 <div
@@ -5127,7 +5127,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     maxWidth: 350,
                                   }}
                                 >
-                                  <label className="text-black text-base font-medium mb-2">
+                                  <label className="text-black text-sm font-medium mb-1">
                                     Document Preview
                                   </label>
                                   <PDFPreviewer
@@ -5165,50 +5165,194 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 </button>
 
                                 {/* Document-specific buttons - only show when type is document */}
-                                {newEvidence.selectedNodeId && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors mt-2"
-                                      onClick={handleSuggestContent}
-                                      disabled={suggestLoading}
-                                    >
-                                      {suggestLoading
-                                        ? "Suggesting..."
-                                        : "AI Suggest Text"}
-                                    </button>
-                                    {suggestError && (
-                                      <div className="text-red-500 text-sm mt-2">
-                                        {suggestError}
-                                      </div>
-                                    )}
-                                    <button
-                                      type="button"
-                                      className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors mt-2"
-                                      onClick={handleExtractAllText}
-                                      disabled={extractLoading}
-                                    >
-                                      {extractLoading
-                                        ? "Extracting..."
-                                        : "Extract All Text"}
-                                    </button>
-                                    {extractError && (
-                                      <div className="text-red-500 text-sm mt-2">
-                                        {extractError}
-                                      </div>
-                                    )}
-                                  </>
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors mt-2"
+                                  onClick={handleSuggestContent}
+                                  disabled={suggestLoading || !newEvidence.selectedNodeId}
+                                >
+                                  {suggestLoading
+                                    ? "Suggesting..."
+                                    : "AI Suggest Text"}
+                                </button>
+                                {suggestError && (
+                                  <div className="text-red-500 text-sm mt-2">
+                                    {suggestError}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] font-medium transition-colors mt-2"
+                                  onClick={handleExtractAllText}
+                                  disabled={extractLoading}
+                                >
+                                  {extractLoading
+                                    ? "Extracting..."
+                                    : "Extract All Text"}
+                                </button>
+                                {extractError && (
+                                  <div className="text-red-500 text-sm mt-2">
+                                    {extractError}
+                                  </div>
                                 )}
                               </div>
 
-                              <div className="flex-1">
-                                <label className="text-black text-base font-medium mb-2">
+                              <div className="flex-1 flex flex-col">
+                                <label className="text-black text-sm font-medium mb-1">
                                   Excerpt / Lines
                                 </label>
                                 <textarea
-                                  className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[450px]"
+                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-grow resize-none"
                                   style={{ color: "#000000", fontWeight: 500 }}
                                   placeholder="Paste or type the relevant excerpt or lines here... Alternatively, select text from the preview and click 'Add Content' to add it to the excerpt."
+                                  value={newEvidence.excerpt}
+                                  onChange={(e) =>
+                                    setNewEvidence((ev) => ({
+                                      ...ev,
+                                      excerpt: e.target.value,
+                                    }))
+                                  }
+                                  required
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (doc && doc.type === "image") {
+                          return (
+                            <div className="flex flex-row gap-4 items-stretch">
+                              {/* Image Previewer on the left */}
+                              <div
+                                className="flex flex-col"
+                                style={{
+                                  width: 400,
+                                  minWidth: 400,
+                                  maxWidth: 400,
+                                }}
+                              >
+                                <label className="text-black text-sm font-medium mb-1">
+                                  Image Preview
+                                </label>
+                                <ImagePreviewer
+                                  url={doc.url}
+                                  fixedWidth={400}
+                                />
+                              </div>
+                              {/* Centered Parse Text button */}
+                              <div className="flex flex-col justify-center items-center px-2">
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 rounded-md bg-[#232F3E] text-white hover:bg-[#1A2330] text-base font-medium whitespace-pre-line text-center"
+                                  disabled={parseLoading}
+                                  onClick={async () => {
+                                    setParseError(null);
+                                    setParseLoading(true);
+                                    try {
+                                      console.log(
+                                        "[Parse Text] Starting OCR for image URL:",
+                                        doc.url
+                                      );
+                                      let text = "";
+                                      let response = await fetch(
+                                        "/api/ai/extract-text-from-image",
+                                        {
+                                          method: "POST",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({
+                                            url: doc.url,
+                                          }),
+                                        }
+                                      );
+                                      console.log(
+                                        "[Parse Text] OCR response:",
+                                        response
+                                      );
+                                      if (!response.ok) {
+                                        const errText = await response.text();
+                                        console.error(
+                                          "[Parse Text] OCR failed:",
+                                          errText
+                                        );
+                                        throw new Error(
+                                          "Failed to extract text from image"
+                                        );
+                                      }
+                                      const data = await response.json();
+                                      text = data.text?.trim() || "";
+                                      // If no text detected, ask for a description
+                                      if (!text || text.length < 3) {
+                                        console.log(
+                                          "[Parse Text] No text detected, requesting image description for URL:",
+                                          doc.url
+                                        );
+                                        response = await fetch(
+                                          "/api/ai/extract-text-from-image?summarize=true",
+                                          {
+                                            method: "POST",
+                                            headers: {
+                                              "Content-Type": "application/json",
+                                            },
+                                            body: JSON.stringify({
+                                              url: doc.url,
+                                            }),
+                                          }
+                                        );
+                                        console.log(
+                                          "[Parse Text] Description response:",
+                                          response
+                                        );
+                                        if (!response.ok) {
+                                          const errText = await response.text();
+                                          console.error(
+                                            "[Parse Text] Description failed:",
+                                            errText
+                                          );
+                                          throw new Error(
+                                            "Failed to get image description"
+                                          );
+                                        }
+                                        const descData = await response.json();
+                                        text =
+                                          descData.text?.trim() ||
+                                          "No text or description could be extracted.";
+                                      }
+                                      setNewEvidence((ev) => ({
+                                        ...ev,
+                                        excerpt: text,
+                                      }));
+                                      console.log(
+                                        "[Parse Text] Final extracted text/description:",
+                                        text
+                                      );
+                                    } catch (err: any) {
+                                      setParseError(
+                                        err.message || "Failed to parse image."
+                                      );
+                                      console.error("[Parse Text] Error:", err);
+                                    } finally {
+                                      setParseLoading(false);
+                                    }
+                                  }}
+                                >
+                                  {parseLoading ? "Parsing..." : `Parse\nText`}
+                                </button>
+                                {parseError && (
+                                  <div className="text-red-500 text-xs mt-2">
+                                    {parseError}
+                                  </div>
+                                )}
+                              </div>
+                              {/* Excerpt/Lines on the right */}
+                              <div className="flex-1 flex flex-col">
+                                <label className="text-black text-sm font-medium mb-1">
+                                  Excerpt / Lines
+                                </label>
+                                <textarea
+                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-grow resize-none"
+                                  style={{ color: "#000000", fontWeight: 500 }}
+                                  placeholder="Paste or type the relevant excerpt or lines here... Alternatively, click 'Parse Text' to extract text from the image."
                                   value={newEvidence.excerpt}
                                   onChange={(e) =>
                                     setNewEvidence((ev) => ({
@@ -5226,17 +5370,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       })()}
 
                       {/* Actions */}
-                      <div className="flex gap-4 justify-end">
+                      <div className="flex gap-3 justify-end mt-2">
                         <button
                           type="button"
-                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium"
+                          className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium text-sm"
                           onClick={closeEvidenceModal}
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 bg-[#232F3E] text-white rounded-md hover:bg-[#1A2330] transition-colors font-medium"
+                          className="px-3 py-1.5 bg-[#232F3E] text-white rounded-md hover:bg-[#1A2330] transition-colors font-medium text-sm"
                         >
                           Save
                         </button>
@@ -5339,8 +5483,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             {!hideNavbar && (
               <div
                 className={`absolute top-6 z-10 ${isEvidencePanelOpen && isAICopilotOpen
-                    ? "left-6 flex flex-col items-start gap-2" // stacked: content width only, left aligned
-                    : "left-6 right-6 flex justify-between" // single row: keep original behavior
+                  ? "left-6 flex flex-col items-start gap-2" // stacked: content width only, left aligned
+                  : "left-6 right-6 flex justify-between" // single row: keep original behavior
                   }`}
               >
                 {/* Floating Top Left Navbar */}
@@ -5401,8 +5545,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                         className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center h-11 w-11 ${isMenuOpen
-                            ? "bg-gray-100"
-                            : "text-gray-700 hover:bg-gray-100"
+                          ? "bg-gray-100"
+                          : "text-gray-700 hover:bg-gray-100"
                           }`}
                         title="Menu"
                       >
@@ -5459,8 +5603,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={undo}
                       disabled={!canUndo}
                       className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canUndo
-                          ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                          : "text-gray-300 cursor-not-allowed"
+                        ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                        : "text-gray-300 cursor-not-allowed"
                         }`}
                       title="Undo"
                     >
@@ -5470,8 +5614,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       onClick={redo}
                       disabled={!canRedo}
                       className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${canRedo
-                          ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
-                          : "text-gray-300 cursor-not-allowed"
+                        ? "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                        : "text-gray-300 cursor-not-allowed"
                         }`}
                       title="Redo"
                     >
@@ -5579,8 +5723,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             {/* Tools Navbar */}
             <div
               className={`absolute left-6 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-4 w-[60px] ${isEvidencePanelOpen && isAICopilotOpen && !hideNavbar
-                  ? "top-36"
-                  : "top-24"
+                ? "top-36"
+                : "top-24"
                 }`}
             >
               {/* Add Node Button */}
@@ -5588,8 +5732,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={() => setIsAddNodeOpen(!isAddNodeOpen)}
                   className={`p-2.5 rounded-lg transition-all duration-200 w-full flex items-center justify-center ${isAddNodeOpen
-                      ? "bg-[#232F3E] text-white shadow-inner"
-                      : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                    ? "bg-[#232F3E] text-white shadow-inner"
+                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
                     }`}
                   title="Add Claim"
                 >
@@ -5630,8 +5774,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 }}
                 disabled={!selectedNode && !selectedEdge}
                 className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${selectedNode || selectedEdge
-                    ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
-                    : "text-gray-300 cursor-not-allowed"
+                  ? "text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-105 active:scale-95"
+                  : "text-gray-300 cursor-not-allowed"
                   }`}
                 title={selectedEdge ? "Delete Edge" : "Delete Claim"}
               >
@@ -5645,8 +5789,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={() => setEdgeCreationType("supporting")}
                   className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${edgeCreationType === "supporting"
-                      ? "bg-[#166534] bg-opacity-20 text-[#166534]"
-                      : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-[#166534] bg-opacity-20 text-[#166534]"
+                    : "text-gray-700 hover:bg-gray-100"
                     }`}
                   aria-pressed={edgeCreationType === "supporting"}
                 >
@@ -5655,8 +5799,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={() => setEdgeCreationType("attacking")}
                   className={`p-2.5 rounded-lg transition-colors flex items-center justify-center ${edgeCreationType === "attacking"
-                      ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
-                      : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-[#991B1B] bg-opacity-20 text-[#991B1B]"
+                    : "text-gray-700 hover:bg-gray-100"
                     }`}
                   aria-pressed={edgeCreationType === "attacking"}
                 >
@@ -5670,8 +5814,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={openNotesManager}
                 className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isNotesOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  ? "bg-[#232F3E] text-white shadow-inner"
+                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
                   }`}
                 title="Notes"
               >
@@ -5685,8 +5829,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               <button
                 onClick={() => setIsEvidencePanelOpen(!isEvidencePanelOpen)}
                 className={`p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center ${isEvidencePanelOpen
-                    ? "bg-[#232F3E] text-white shadow-inner"
-                    : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
+                  ? "bg-[#232F3E] text-white shadow-inner"
+                  : "text-[#232F3E] hover:bg-gray-100 hover:scale-105 active:scale-95"
                   }`}
                 title={
                   isEvidencePanelOpen
@@ -5952,22 +6096,22 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             <div
               ref={copilotRef}
               className={`h-full border-l flex flex-col font-[DM Sans] ${activeTab === "console"
-                  ? "bg-[#232F3E] text-gray-200 border-black"
-                  : "bg-white text-black border-black"
+                ? "bg-[#232F3E] text-gray-200 border-black"
+                : "bg-white text-black border-black"
                 }`}
             >
               {/* AI Copilot Header */}
               <div
                 className={`p-4 border-b flex justify-between items-center relative ${activeTab === "console"
-                    ? "bg-[#232F3E] text-gray-200 border-[#2f3b4a]"
-                    : "bg-white text-black border-black"
+                  ? "bg-[#232F3E] text-gray-200 border-[#2f3b4a]"
+                  : "bg-white text-black border-black"
                   }`}
               >
                 <div className="flex items-center gap-3">
                   <SparklesIcon
                     className={`w-6 h-6 ${activeTab === "console"
-                        ? "text-purple-300"
-                        : "text-purple-500"
+                      ? "text-purple-300"
+                      : "text-purple-500"
                       }`}
                   />
                   <h2
@@ -5983,12 +6127,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   <button
                     onClick={() => setIsAICopilotFrozen((f) => !f)}
                     className={`p-2 rounded-full transition-colors ${activeTab === "console"
-                        ? isAICopilotFrozen
-                          ? "bg-[#1f2937]"
-                          : "hover:bg-[#1f2937]"
-                        : isAICopilotFrozen
-                          ? "bg-gray-200"
-                          : "hover:bg-gray-100"
+                      ? isAICopilotFrozen
+                        ? "bg-[#1f2937]"
+                        : "hover:bg-[#1f2937]"
+                      : isAICopilotFrozen
+                        ? "bg-gray-200"
+                        : "hover:bg-gray-100"
                       }`}
                     title={
                       isAICopilotFrozen
@@ -5999,15 +6143,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     {isAICopilotFrozen ? (
                       <LockClosedIcon
                         className={`w-5 h-5 ${activeTab === "console"
-                            ? "text-blue-300"
-                            : "text-blue-600"
+                          ? "text-blue-300"
+                          : "text-blue-600"
                           }`}
                       />
                     ) : (
                       <LockOpenIcon
                         className={`w-5 h-5 ${activeTab === "console"
-                            ? "text-gray-300"
-                            : "text-gray-400"
+                          ? "text-gray-300"
+                          : "text-gray-400"
                           }`}
                       />
                     )}
@@ -6017,8 +6161,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       !isAICopilotFrozen && setIsAICopilotOpen(false)
                     }
                     className={`p-2 rounded-md transition-colors ${activeTab === "console"
-                        ? "hover:bg-[#1f2937] text-gray-200"
-                        : "hover:bg-white"
+                      ? "hover:bg-[#1f2937] text-gray-200"
+                      : "hover:bg-white"
                       } ${isAICopilotFrozen ? "opacity-40 cursor-not-allowed" : ""
                       }`}
                     aria-label="Close AI copilot"
@@ -6032,17 +6176,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {/* Tab Navigation */}
               <div
                 className={`flex border-b ${activeTab === "console"
-                    ? "bg-[#232F3E] border-[#2f3b4a]"
-                    : "border-gray-200"
+                  ? "bg-[#232F3E] border-[#2f3b4a]"
+                  : "border-gray-200"
                   }`}
               >
                 <button
                   onClick={() => setActiveTab("chat")}
                   className={`flex-1 px-4 py-3 text-sm transition-colors ${activeTab === "chat"
-                      ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
-                      : activeTab === "console"
-                        ? "text-gray-300 hover:bg-[#1f2937]"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
+                    : activeTab === "console"
+                      ? "text-gray-300 hover:bg-[#1f2937]"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                     }`}
                   style={{
                     fontWeight: "500",
@@ -6053,8 +6197,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <button
                   onClick={() => setActiveTab("console")}
                   className={`flex-1 px-4 py-3 text-sm transition-colors ${activeTab === "console"
-                      ? "text-white border-b-2 border-purple-400 bg-transparent"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    ? "text-white border-b-2 border-purple-400 bg-transparent"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                     }`}
                   style={{
                     fontWeight: "500",

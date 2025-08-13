@@ -148,6 +148,53 @@ import {
   logAction,
 } from "../../lib/actionLogger";
 
+// Add score classification function
+const getScoreClassification = (credibilityScore: number) => {
+  if (credibilityScore >= -1.00 && credibilityScore <= -0.60) {
+    return {
+      label: "Very Low Confidence",
+      color: "#dc2626", // red-600
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  } else if (credibilityScore >= -0.59 && credibilityScore <= -0.20) {
+    return {
+      label: "Low Confidence",
+      color: "#ea580c", // orange-600
+      bgColor: "#fff7ed", // orange-50
+      borderColor: "#fed7aa" // orange-200
+    };
+  } else if (credibilityScore >= -0.19 && credibilityScore <= 0.19) {
+    return {
+      label: "Neutral / Unknown",
+      color: "#6b7280", // gray-500
+      bgColor: "#f9fafb", // gray-50
+      borderColor: "#d1d5db" // gray-200
+    };
+  } else if (credibilityScore >= 0.20 && credibilityScore <= 0.59) {
+    return {
+      label: "High Confidence",
+      color: "#16a34a", // green-600
+      bgColor: "#f0fdf4", // green-50
+      borderColor: "#bbf7d0" // green-200
+    };
+  } else if (credibilityScore >= 0.60 && credibilityScore <= 1.00) {
+    return {
+      label: "Very High Confidence",
+      color: "#15803d", // green-700
+      bgColor: "#ecfdf5", // green-50
+      borderColor: "#86efac" // green-300
+    };
+  }
+  // Default fallback
+  return {
+    label: "Unknown",
+    color: "#6b7280",
+    bgColor: "#f9fafb",
+    borderColor: "#d1d5db"
+  };
+};
+
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const getColors = (type: string) => {
     switch (type) {
@@ -229,6 +276,9 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         };
     }
   })();
+
+  // Get score classification
+  const scoreClassification = getScoreClassification(data.credibilityScore || 0);
 
   // Sync localText with data.text when not editing
   useEffect(() => {
@@ -350,7 +400,7 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
             : "0.00"}
         </div>
 
-        {/* Corner header section */}
+        {/* Score Classification Bar - replacing the black line */}
         <div
           style={{
             position: "absolute",
@@ -358,26 +408,29 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
             left: "-8.4px",
             width: "fit-content",
             minWidth: "10px",
-            maxWidth: "40px",
+            maxWidth: "80px",
             height: "8px",
-            backgroundColor: colors.header,
+            backgroundColor: scoreClassification.bgColor,
+            border: `1px solid ${scoreClassification.borderColor}`,
             borderBottomRightRadius: "3px",
             borderTopLeftRadius: "2px",
             zIndex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#000000",
-            fontSize: "8px",
-            fontWeight: "400",
-            letterSpacing: "0.03em",
+            color: scoreClassification.color,
+            fontSize: "5px",
+            fontWeight: "500",
+            letterSpacing: "0.01em",
             fontFamily: "DM Sans, sans-serif",
-            padding: "5px",
+            padding: "2px 4px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
+          title={scoreClassification.label}
         >
-          {data.type === "factual"
-            ? "Factual"
-            : data.type.charAt(0).toUpperCase() + data.type.slice(1)}
+          {scoreClassification.label}
         </div>
 
         {/* Content section */}

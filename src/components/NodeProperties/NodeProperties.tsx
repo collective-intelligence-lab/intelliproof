@@ -3,6 +3,53 @@ import type { ClaimNode, ClaimType } from "../../types/graph";
 import ContinueButton from "../ContinueButton";
 import { InformationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
+// Add score classification function
+const getScoreClassification = (credibilityScore: number) => {
+  if (credibilityScore >= -1.00 && credibilityScore <= -0.60) {
+    return {
+      label: "Very Low Confidence",
+      color: "#dc2626", // red-600
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  } else if (credibilityScore >= -0.59 && credibilityScore <= -0.20) {
+    return {
+      label: "Low Confidence",
+      color: "#ea580c", // orange-600
+      bgColor: "#fff7ed", // orange-50
+      borderColor: "#fed7aa" // orange-200
+    };
+  } else if (credibilityScore >= -0.19 && credibilityScore <= 0.19) {
+    return {
+      label: "Neutral / Unknown",
+      color: "#6b7280", // gray-500
+      bgColor: "#f9fafb", // gray-50
+      borderColor: "#d1d5db" // gray-200
+    };
+  } else if (credibilityScore >= 0.20 && credibilityScore <= 0.59) {
+    return {
+      label: "High Confidence",
+      color: "#16a34a", // green-600
+      bgColor: "#f0fdf4", // green-50
+      borderColor: "#bbf7d0" // green-200
+    };
+  } else if (credibilityScore >= 0.60 && credibilityScore <= 1.00) {
+    return {
+      label: "Very High Confidence",
+      color: "#15803d", // green-700
+      bgColor: "#ecfdf5", // green-50
+      borderColor: "#86efac" // green-300
+    };
+  }
+  // Default fallback
+  return {
+    label: "Unknown",
+    color: "#6b7280",
+    bgColor: "#f9fafb",
+    borderColor: "#d1d5db"
+  };
+};
+
 interface EvidenceCard {
   id: string;
   title: string;
@@ -77,6 +124,9 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   }, [node?.data.text]);
 
   if (!node) return null;
+
+  // Get score classification
+  const scoreClassification = getScoreClassification(node.data.credibilityScore || 0);
 
   const handleTypeChange = (newType: ClaimType) => {
     onUpdate(node.id, {
@@ -217,37 +267,53 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
           </label>
         </div>
 
+        {/* Score Classification */}
+        <div className="relative">
+          <label className="block text-base font-medium mb-2">
+            Score Classification:
+          </label>
+          <div
+            className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium"
+            style={{
+              backgroundColor: scoreClassification.bgColor,
+              color: scoreClassification.color,
+              border: `1px solid ${scoreClassification.borderColor}`,
+            }}
+          >
+            {scoreClassification.label}
+          </div>
+        </div>
+
+
+
         {/* Node Type */}
         <div>
           <label className="block text-base font-medium mb-2">Claim Type</label>
           <div className="flex gap-3">
             <button
               onClick={() => handleTypeChange("factual")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "factual"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
                   ? "bg-[#aeaeae] text-black"
                   : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
-              }`}
+                }`}
             >
               Factual
             </button>
             <button
               onClick={() => handleTypeChange("value")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "value"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
                   ? "bg-[#94bc84] text-black"
                   : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
-              }`}
+                }`}
             >
               Value
             </button>
             <button
               onClick={() => handleTypeChange("policy")}
-              className={`px-4 py-2 rounded-md text-base transition-colors ${
-                node.data.type === "policy"
+              className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
                   ? "bg-[#91A4C2] text-black"
                   : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
-              }`}
+                }`}
             >
               Policy
             </button>
@@ -301,7 +367,7 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
           {/* Evidence Cards Container */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {Array.isArray(node.data.evidenceIds) &&
-            node.data.evidenceIds.length > 0 ? (
+              node.data.evidenceIds.length > 0 ? (
               node.data.evidenceIds.map((eid: string) => {
                 const card = evidenceCards.find((c) => c.id === eid);
                 if (!card) return null;

@@ -5202,8 +5202,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   Excerpt / Lines
                                 </label>
                                 <textarea
-                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-grow resize-none"
-                                  style={{ color: "#000000", fontWeight: 500 }}
+                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                  style={{
+                                    color: "#000000",
+                                    fontWeight: 500,
+                                    height: "450px"
+                                  }}
                                   placeholder="Paste or type the relevant excerpt or lines here... Alternatively, select text from the preview and click 'Add Content' to add it to the excerpt."
                                   value={newEvidence.excerpt}
                                   onChange={(e) =>
@@ -5350,8 +5354,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   Excerpt / Lines
                                 </label>
                                 <textarea
-                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-grow resize-none"
-                                  style={{ color: "#000000", fontWeight: 500 }}
+                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                  style={{
+                                    color: "#000000",
+                                    fontWeight: 500,
+                                    height: "450px"
+                                  }}
                                   placeholder="Paste or type the relevant excerpt or lines here... Alternatively, click 'Parse Text' to extract text from the image."
                                   value={newEvidence.excerpt}
                                   onChange={(e) =>

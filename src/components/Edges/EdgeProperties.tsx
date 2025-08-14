@@ -3,6 +3,53 @@ import type { ClaimEdge } from "../../types/edges";
 import { EDGE_COLORS } from "../../types/edges";
 import { HandRaisedIcon } from "@heroicons/react/24/outline";
 
+// Add edge score classification function
+const getEdgeScoreClassification = (edgeScore: number) => {
+  if (edgeScore >= -1.00 && edgeScore <= -0.60) {
+    return {
+      label: "Very Strong Attack",
+      color: "#dc2626", // red-600
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  } else if (edgeScore >= -0.59 && edgeScore <= -0.20) {
+    return {
+      label: "Moderate Attack",
+      color: "#ea580c", // orange-600
+      bgColor: "#fff7ed", // orange-50
+      borderColor: "#fed7aa" // orange-200
+    };
+  } else if (edgeScore >= -0.19 && edgeScore <= 0.19) {
+    return {
+      label: "Neutral / Weak",
+      color: "#6b7280", // gray-500
+      bgColor: "#f9fafb", // gray-50
+      borderColor: "#d1d5db" // gray-200
+    };
+  } else if (edgeScore >= 0.20 && edgeScore <= 0.59) {
+    return {
+      label: "Moderate Support",
+      color: "#16a34a", // green-600
+      bgColor: "#f0fdf4", // green-50
+      borderColor: "#bbf7d0" // green-200
+    };
+  } else if (edgeScore >= 0.60 && edgeScore <= 1.00) {
+    return {
+      label: "Very Strong Support",
+      color: "#15803d", // green-700
+      bgColor: "#ecfdf5", // green-50
+      borderColor: "#86efac" // green-300
+    };
+  }
+  // Default fallback
+  return {
+    label: "Unknown",
+    color: "#6b7280",
+    bgColor: "#f9fafb",
+    borderColor: "#d1d5db"
+  };
+};
+
 interface Assumption {
   assumption_text: string;
   reasoning: string;
@@ -41,11 +88,27 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 
   if (!edge) return null;
 
-  // Derive display color/type from score sign (>= 0 => Supporting/green, < 0 => Attacking/red)
+  // Derive display color/type from continuous score spectrum
   const score =
     typeof edge.data?.edgeScore === "number" ? edge.data.edgeScore : 0;
-  const displayColor =
-    score < 0 ? EDGE_COLORS.attacking : EDGE_COLORS.supporting;
+
+  // Create a continuous color spectrum from red (-1) to green (1)
+  const getContinuousEdgeColor = (score: number) => {
+    // Clamp score between -1 and 1
+    const clampedScore = Math.max(-1, Math.min(1, score));
+
+    // Convert from -1 to 1 range to 0 to 1 range
+    const normalizedScore = (clampedScore + 1) / 2;
+
+    // Red to green color interpolation
+    const red = Math.round(255 * (1 - normalizedScore));
+    const green = Math.round(255 * normalizedScore);
+    const blue = 0;
+
+    return `rgb(${red}, ${green}, ${blue})`;
+  };
+
+  const displayColor = getContinuousEdgeColor(score);
   const displayType = score < 0 ? "Attacking" : "Supporting";
 
   const handleGenerateAssumptions = async () => {
@@ -102,7 +165,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
         try {
           const errorData = await response.json();
           if (errorData.detail) errorMsg = errorData.detail;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -186,6 +249,34 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
           </label>
         </div>
 
+        {/* Edge Score Classification */}
+        <div className="relative">
+          <label
+            className="block text-base font-medium mb-2"
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontWeight: "500",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span>Edge Score Classification:</span>
+              <span
+                style={{
+                  color: getEdgeScoreClassification(score).color,
+                  backgroundColor: getEdgeScoreClassification(score).bgColor,
+                  border: `1px solid ${getEdgeScoreClassification(score).borderColor}`,
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                }}
+              >
+                {getEdgeScoreClassification(score).label}
+              </span>
+            </div>
+          </label>
+        </div>
+
         {/* Type (read-only) */}
         <div className="relative">
           <div className="flex items-center gap-3">
@@ -226,8 +317,8 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
             {edge.data?.reasoning && edge.data.reasoning.trim().length > 0
               ? edge.data.reasoning
               : edgeReasoning && edgeReasoning.trim().length > 0
-              ? edgeReasoning
-              : "No reasoning yet — validate this relationship to generate an explanation."}
+                ? edgeReasoning
+                : "No reasoning yet — validate this relationship to generate an explanation."}
           </p>
         </div>
 
@@ -246,11 +337,10 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
             <button
               onClick={handleGenerateAssumptions}
               disabled={isGeneratingAssumptions}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                isGeneratingAssumptions
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-[#232F3E] hover:bg-[#1a252f] text-white"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${isGeneratingAssumptions
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-[#232F3E] hover:bg-[#1a252f] text-white"
+                }`}
               style={{
                 fontFamily: "DM Sans, sans-serif",
                 fontWeight: "500",

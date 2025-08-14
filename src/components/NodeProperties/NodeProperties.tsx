@@ -230,7 +230,10 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
           <label className="block text-base font-medium mb-2">
             <div className="flex items-center gap-2">
               <span>Claim Credibility Score:</span>
-              <span className="text-blue-600">
+              <span
+                style={{ color: scoreClassification.color }}
+                className="font-semibold"
+              >
                 {typeof node.data.credibilityScore === "number"
                   ? node.data.credibilityScore.toFixed(2)
                   : "0.00"}
@@ -293,8 +296,8 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
             <button
               onClick={() => handleTypeChange("factual")}
               className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "factual"
-                  ? "bg-[#aeaeae] text-black"
-                  : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
+                ? "bg-[#aeaeae] text-black"
+                : "bg-[#aeaeae] bg-opacity-60 text-[#aeaeae] hover:bg-opacity-80 hover:text-black"
                 }`}
             >
               Factual
@@ -302,8 +305,8 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
             <button
               onClick={() => handleTypeChange("value")}
               className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "value"
-                  ? "bg-[#94bc84] text-black"
-                  : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
+                ? "bg-[#94bc84] text-black"
+                : "bg-[#94bc84] bg-opacity-60 text-[#889178] hover:bg-opacity-80 hover:text-black"
                 }`}
             >
               Value
@@ -311,8 +314,8 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
             <button
               onClick={() => handleTypeChange("policy")}
               className={`px-4 py-2 rounded-md text-base transition-colors ${node.data.type === "policy"
-                  ? "bg-[#91A4C2] text-black"
-                  : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
+                ? "bg-[#91A4C2] text-black"
+                : "bg-[#91A4C2] bg-opacity-60 text-[#888C94] hover:bg-opacity-80 hover:text-black"
                 }`}
             >
               Policy

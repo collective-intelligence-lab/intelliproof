@@ -3,6 +3,53 @@ import { BaseEdge, getBezierPath, Position } from "reactflow";
 import type { EdgeProps } from "reactflow";
 import { EDGE_COLORS, type EdgeType } from "../../types/edges";
 
+// Add edge score classification function
+const getEdgeScoreClassification = (edgeScore: number) => {
+  if (edgeScore >= -1.00 && edgeScore <= -0.60) {
+    return {
+      label: "Very Strong Attack",
+      color: "#dc2626", // red-600
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  } else if (edgeScore >= -0.59 && edgeScore <= -0.20) {
+    return {
+      label: "Moderate Attack",
+      color: "#ea580c", // orange-600
+      bgColor: "#fff7ed", // orange-50
+      borderColor: "#fed7aa" // orange-200
+    };
+  } else if (edgeScore >= -0.19 && edgeScore <= 0.19) {
+    return {
+      label: "Neutral / Weak",
+      color: "#6b7280", // gray-500
+      bgColor: "#f9fafb", // gray-50
+      borderColor: "#d1d5db" // gray-200
+    };
+  } else if (edgeScore >= 0.20 && edgeScore <= 0.59) {
+    return {
+      label: "Moderate Support",
+      color: "#16a34a", // green-600
+      bgColor: "#f0fdf4", // green-50
+      borderColor: "#bbf7d0" // green-200
+    };
+  } else if (edgeScore >= 0.60 && edgeScore <= 1.00) {
+    return {
+      label: "Very Strong Support",
+      color: "#15803d", // green-700
+      bgColor: "#ecfdf5", // green-50
+      borderColor: "#86efac" // green-300
+    };
+  }
+  // Default fallback
+  return {
+    label: "Unknown",
+    color: "#6b7280",
+    bgColor: "#f9fafb",
+    borderColor: "#d1d5db"
+  };
+};
+
 interface CustomEdgeData {
   edgeType: EdgeType;
   confidence: number;
@@ -86,27 +133,46 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   markerStart,
   markerEnd,
 }) => {
-  // Determine edge color based on score sign (>= 0 => supporting/green, < 0 => attacking/red)
+  // Determine edge color based on continuous score spectrum (-1 to 1: red to green)
   const score = typeof data?.edgeScore === "number" ? data.edgeScore : 0;
-  const color: string =
-    score < 0 ? EDGE_COLORS.attacking : EDGE_COLORS.supporting;
+
+  // Create a continuous color spectrum from red (-1) to green (1)
+  const getEdgeColor = (score: number) => {
+    // Clamp score between -1 and 1
+    const clampedScore = Math.max(-1, Math.min(1, score));
+
+    // Convert from -1 to 1 range to 0 to 1 range
+    const normalizedScore = (clampedScore + 1) / 2;
+
+    // Red to green color interpolation
+    const red = Math.round(255 * (1 - normalizedScore));
+    const green = Math.round(255 * normalizedScore);
+    const blue = 0;
+
+    return `rgb(${red}, ${green}, ${blue})`;
+  };
+
+  const color: string = getEdgeColor(score);
+
+  // Get classification for label styling (keep discrete categories for readability)
+  const edgeClassification = getEdgeScoreClassification(score);
 
   // Keep arrow marker color in sync with computed stroke color and drop cached id so React Flow regenerates marker
   const computedMarkerStart: any =
     markerStart && typeof markerStart === "object"
       ? (() => {
-          const { id: _ignoreId, ...rest } = markerStart as any;
-          return { ...rest, color };
-        })()
+        const { id: _ignoreId, ...rest } = markerStart as any;
+        return { ...rest, color };
+      })()
       : markerStart;
 
   // If there's an end marker, keep it in sync too
   const computedMarkerEnd: any =
     markerEnd && typeof markerEnd === "object"
       ? (() => {
-          const { id: _ignoreId, ...rest } = markerEnd as any;
-          return { ...rest, color };
-        })()
+        const { id: _ignoreId, ...rest } = markerEnd as any;
+        return { ...rest, color };
+      })()
       : markerEnd;
 
   // Get the bezier path for the edge and label position
@@ -133,21 +199,22 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
         markerStart={computedMarkerStart}
         markerEnd={computedMarkerEnd}
       />
-      {/* Edge score label with theme-matching styling */}
+      {/* Edge classification label with color-coded styling */}
       <foreignObject
-        x={labelX - 12}
-        y={labelY - 6}
-        width="22"
-        height="11"
+        x={labelX - 25}
+        y={labelY - 8}
+        width="50"
+        height="16"
         style={{ overflow: "visible" }}
       >
         <div
           style={{
-            fontSize: "6px",
+            fontSize: "5px",
             fontFamily: "DM Sans, sans-serif",
-            color: "#232F3E",
-            fontWeight: "bold",
-            backgroundColor: "rgb(247, 245, 245)",
+            color: edgeClassification.color,
+            fontWeight: "500",
+            backgroundColor: edgeClassification.bgColor,
+            border: `1px solid ${edgeClassification.borderColor}`,
             borderRadius: "3px",
             textAlign: "center",
             boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
@@ -158,11 +225,14 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
             height: "100%",
             width: "100%",
             lineHeight: "0.8",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            padding: "1px 2px",
           }}
+          title={edgeClassification.label}
         >
-          {(typeof data?.edgeScore === "number" ? data.edgeScore : 0).toFixed(
-            2
-          )}
+          {edgeClassification.label}
         </div>
       </foreignObject>
     </>

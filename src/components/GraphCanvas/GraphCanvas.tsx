@@ -195,6 +195,69 @@ const getScoreClassification = (credibilityScore: number) => {
   };
 };
 
+// Add edge score classification function
+const getEdgeScoreClassification = (edgeScore: number) => {
+  if (edgeScore >= -1.00 && edgeScore <= -0.60) {
+    return {
+      label: "Very Strong Attack",
+      color: "#dc2626", // red-600
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  } else if (edgeScore >= -0.59 && edgeScore <= -0.20) {
+    return {
+      label: "Moderate Attack",
+      color: "#ea580c", // orange-600
+      bgColor: "#fff7ed", // orange-50
+      borderColor: "#fed7aa" // orange-200
+    };
+  } else if (edgeScore >= -0.19 && edgeScore <= 0.19) {
+    return {
+      label: "Neutral / Weak",
+      color: "#6b7280", // gray-500
+      bgColor: "#f9fafb", // gray-50
+      borderColor: "#d1d5db" // gray-200
+    };
+  } else if (edgeScore >= 0.20 && edgeScore <= 0.59) {
+    return {
+      label: "Moderate Support",
+      color: "#16a34a", // green-600
+      bgColor: "#f0fdf4", // green-50
+      borderColor: "#bbf7d0" // green-200
+    };
+  } else if (edgeScore >= 0.60 && edgeScore <= 1.00) {
+    return {
+      label: "Very Strong Support",
+      color: "#15803d", // green-700
+      bgColor: "#ecfdf5", // green-50
+      borderColor: "#86efac" // green-300
+    };
+  }
+  // Default fallback
+  return {
+    label: "Unknown",
+    color: "#6b7280",
+    bgColor: "#f9fafb",
+    borderColor: "#d1d5db"
+  };
+};
+
+// Add continuous edge color function for red-to-green spectrum
+const getContinuousEdgeColor = (score: number) => {
+  // Clamp score between -1 and 1
+  const clampedScore = Math.max(-1, Math.min(1, score));
+
+  // Convert from -1 to 1 range to 0 to 1 range
+  const normalizedScore = (clampedScore + 1) / 2;
+
+  // Red to green color interpolation
+  const red = Math.round(255 * (1 - normalizedScore));
+  const green = Math.round(255 * normalizedScore);
+  const blue = 0;
+
+  return `rgb(${red}, ${green}, ${blue})`;
+};
+
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
   const getColors = (type: string) => {
     switch (type) {
@@ -376,29 +439,7 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Score circle in top right */}
-        <div
-          className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center z-10"
-          style={{
-            position: "absolute",
-            top: "-4px",
-            right: "-13px",
-            width: "12px",
-            height: "12px",
-            fontSize: "4.5px",
-            fontFamily: "DM Sans, sans-serif",
-            textAlign: "center",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.background,
-            borderColor: colors.header,
-            fontWeight: "normal",
-          }}
-        >
-          {typeof data.credibilityScore === "number"
-            ? data.credibilityScore.toFixed(2)
-            : "0.00"}
-        </div>
+
 
         {/* Score Classification Bar - replacing the black line */}
         <div
@@ -1009,9 +1050,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             reasoning = edge.data.reasoning;
           }
 
-          // Determine edge color based on score sign when available; fallback to type
+          // Determine edge color based on continuous score spectrum
           const scoreForColor = typeof edgeScore === "number" ? edgeScore : 0;
-          let edgeColor = scoreForColor < 0 ? "#991B1B" : "#166534";
+          let edgeColor = getContinuousEdgeColor(scoreForColor);
 
           return {
             id: edge.id,
@@ -1251,7 +1292,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
-          color: isAttacking ? "#991B1B" : "#166534",
+          color: getContinuousEdgeColor(isAttacking ? -0.01 : 0),
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
@@ -1374,7 +1415,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           },
           markerStart: {
             type: MarkerType.ArrowClosed,
-            color: isAttackingNew ? "#991B1B" : "#166534",
+            color: getContinuousEdgeColor(isAttackingNew ? -0.01 : 0),
           },
         };
 
@@ -1555,19 +1596,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...updates.data,
           };
 
-          // Determine edge color based on score sign when available; fallback to type
+          // Determine edge color based on continuous score spectrum
           const scoreForColor =
             typeof updatedData.edgeScore === "number"
               ? updatedData.edgeScore
-              : undefined;
-          let edgeColor =
-            scoreForColor !== undefined
-              ? scoreForColor < 0
-                ? "#991B1B"
-                : "#166534"
-              : updatedData.edgeType === "attacking"
-                ? "#991B1B"
-                : "#166534";
+              : 0;
+          let edgeColor = getContinuousEdgeColor(scoreForColor);
 
           const updatedEdge = {
             ...e,

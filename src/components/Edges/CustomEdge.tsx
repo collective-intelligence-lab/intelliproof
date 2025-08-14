@@ -133,29 +133,10 @@ const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
   markerStart,
   markerEnd,
 }) => {
-  // Determine edge color based on continuous score spectrum (-1 to 1: red to green)
+  // Determine edge color based on discrete score classification
   const score = typeof data?.edgeScore === "number" ? data.edgeScore : 0;
-
-  // Create a continuous color spectrum from red (-1) to green (1)
-  const getEdgeColor = (score: number) => {
-    // Clamp score between -1 and 1
-    const clampedScore = Math.max(-1, Math.min(1, score));
-
-    // Convert from -1 to 1 range to 0 to 1 range
-    const normalizedScore = (clampedScore + 1) / 2;
-
-    // Red to green color interpolation
-    const red = Math.round(255 * (1 - normalizedScore));
-    const green = Math.round(255 * normalizedScore);
-    const blue = 0;
-
-    return `rgb(${red}, ${green}, ${blue})`;
-  };
-
-  const color: string = getEdgeColor(score);
-
-  // Get classification for label styling (keep discrete categories for readability)
   const edgeClassification = getEdgeScoreClassification(score);
+  const color: string = edgeClassification.color;
 
   // Keep arrow marker color in sync with computed stroke color and drop cached id so React Flow regenerates marker
   const computedMarkerStart: any =

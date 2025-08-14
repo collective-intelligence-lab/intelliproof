@@ -242,20 +242,23 @@ const getEdgeScoreClassification = (edgeScore: number) => {
   };
 };
 
-// Add continuous edge color function for red-to-green spectrum
-const getContinuousEdgeColor = (score: number) => {
-  // Clamp score between -1 and 1
-  const clampedScore = Math.max(-1, Math.min(1, score));
 
-  // Convert from -1 to 1 range to 0 to 1 range
-  const normalizedScore = (clampedScore + 1) / 2;
 
-  // Red to green color interpolation
-  const red = Math.round(255 * (1 - normalizedScore));
-  const green = Math.round(255 * normalizedScore);
-  const blue = 0;
-
-  return `rgb(${red}, ${green}, ${blue})`;
+// Add discrete edge color function based on score classifications
+const getDiscreteEdgeColor = (score: number) => {
+  if (score >= -1.00 && score <= -0.60) {
+    return "#dc2626"; // red-600 - Very Strong Attack
+  } else if (score >= -0.59 && score <= -0.20) {
+    return "#ea580c"; // orange-600 - Moderate Attack
+  } else if (score >= -0.19 && score <= 0.19) {
+    return "#6b7280"; // gray-500 - Neutral / Weak
+  } else if (score >= 0.20 && score <= 0.59) {
+    return "#16a34a"; // green-600 - Moderate Support
+  } else if (score >= 0.60 && score <= 1.00) {
+    return "#15803d"; // green-700 - Very Strong Support
+  }
+  // Default fallback
+  return "#6b7280"; // gray-500
 };
 
 const getNodeStyle: (type: string) => React.CSSProperties = (type) => {
@@ -1050,9 +1053,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             reasoning = edge.data.reasoning;
           }
 
-          // Determine edge color based on continuous score spectrum
+          // Determine edge color based on discrete score classifications
           const scoreForColor = typeof edgeScore === "number" ? edgeScore : 0;
-          let edgeColor = getContinuousEdgeColor(scoreForColor);
+          let edgeColor = getDiscreteEdgeColor(scoreForColor);
 
           return {
             id: edge.id,
@@ -1292,7 +1295,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         },
         markerStart: {
           type: MarkerType.ArrowClosed,
-          color: getContinuousEdgeColor(isAttacking ? -0.01 : 0),
+          color: getDiscreteEdgeColor(isAttacking ? -0.01 : 0),
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as ClaimEdge[]);
@@ -1415,7 +1418,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           },
           markerStart: {
             type: MarkerType.ArrowClosed,
-            color: getContinuousEdgeColor(isAttackingNew ? -0.01 : 0),
+            color: getDiscreteEdgeColor(isAttackingNew ? -0.01 : 0),
           },
         };
 
@@ -1596,12 +1599,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             ...updates.data,
           };
 
-          // Determine edge color based on continuous score spectrum
+          // Determine edge color based on discrete score classifications
           const scoreForColor =
             typeof updatedData.edgeScore === "number"
               ? updatedData.edgeScore
               : 0;
-          let edgeColor = getContinuousEdgeColor(scoreForColor);
+          let edgeColor = getDiscreteEdgeColor(scoreForColor);
 
           const updatedEdge = {
             ...e,

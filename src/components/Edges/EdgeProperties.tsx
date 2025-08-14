@@ -88,27 +88,28 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 
   if (!edge) return null;
 
-  // Derive display color/type from continuous score spectrum
+  // Derive display color/type from discrete score classifications
   const score =
     typeof edge.data?.edgeScore === "number" ? edge.data.edgeScore : 0;
 
-  // Create a continuous color spectrum from red (-1) to green (1)
-  const getContinuousEdgeColor = (score: number) => {
-    // Clamp score between -1 and 1
-    const clampedScore = Math.max(-1, Math.min(1, score));
-
-    // Convert from -1 to 1 range to 0 to 1 range
-    const normalizedScore = (clampedScore + 1) / 2;
-
-    // Red to green color interpolation
-    const red = Math.round(255 * (1 - normalizedScore));
-    const green = Math.round(255 * normalizedScore);
-    const blue = 0;
-
-    return `rgb(${red}, ${green}, ${blue})`;
+  // Create discrete color classifications based on score ranges
+  const getDiscreteEdgeColor = (score: number) => {
+    if (score >= -1.00 && score <= -0.60) {
+      return "#dc2626"; // red-600 - Very Strong Attack
+    } else if (score >= -0.59 && score <= -0.20) {
+      return "#ea580c"; // orange-600 - Moderate Attack
+    } else if (score >= -0.19 && score <= 0.19) {
+      return "#6b7280"; // gray-500 - Neutral / Weak
+    } else if (score >= 0.20 && score <= 0.59) {
+      return "#16a34a"; // green-600 - Moderate Support
+    } else if (score >= 0.60 && score <= 1.00) {
+      return "#15803d"; // green-700 - Very Strong Support
+    }
+    // Default fallback
+    return "#6b7280"; // gray-500
   };
 
-  const displayColor = getContinuousEdgeColor(score);
+  const displayColor = getDiscreteEdgeColor(score);
   const displayType = score < 0 ? "Attacking" : "Supporting";
 
   const handleGenerateAssumptions = async () => {
@@ -259,7 +260,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
             }}
           >
             <div className="flex items-center gap-2">
-              <span>Edge Score Classification:</span>
+              <span>Score Classification:</span>
               <span
                 style={{
                   color: getEdgeScoreClassification(score).color,
@@ -278,21 +279,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
         </div>
 
         {/* Type (read-only) */}
-        <div className="relative">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="text-base font-medium"
-                style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}
-              >
-                Type:
-              </span>
-              <span style={{ color: displayColor }} className="text-base">
-                {displayType}
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* (Removed Type display block) */}
 
         {/* Removed Validate Edge divider/heading */}
 

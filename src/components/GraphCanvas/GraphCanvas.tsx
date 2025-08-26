@@ -5110,21 +5110,34 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         >
                           Title
                         </label>
-                        <input
-                          id="title"
-                          type="text"
-                          className="w-full px-3 py-1.5 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          style={{ color: "#000000", fontWeight: 500 }}
-                          value={newEvidence.title}
-                          onChange={(e) =>
-                            setNewEvidence((ev) => ({
-                              ...ev,
-                              title: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g. Research findings on climate change"
-                          required
-                        />
+                        <div className="relative">
+                          <input
+                            id="title"
+                            type="text"
+                            className="w-full px-3 py-1.5 pr-12 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            style={{ color: "#000000", fontWeight: 500 }}
+                            value={newEvidence.title}
+                            onChange={(e) =>
+                              setNewEvidence((ev) => ({
+                                ...ev,
+                                title: e.target.value,
+                              }))
+                            }
+                            placeholder="e.g. Research findings on climate change"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-black hover:text-gray-700"
+                            onClick={() => {
+                              // Button does nothing for now
+                            }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Supporting Doc Select */}
@@ -5291,23 +5304,36 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 <label className="text-black text-sm font-medium mb-1">
                                   Excerpt / Lines
                                 </label>
-                                <textarea
-                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                  style={{
-                                    color: "#000000",
-                                    fontWeight: 500,
-                                    height: "450px"
-                                  }}
-                                  placeholder="Paste or type the relevant excerpt or lines here... Alternatively, select text from the preview and click 'Add Content' to add it to the excerpt."
-                                  value={newEvidence.excerpt}
-                                  onChange={(e) =>
-                                    setNewEvidence((ev) => ({
-                                      ...ev,
-                                      excerpt: e.target.value,
-                                    }))
-                                  }
-                                  required
-                                />
+                                <div className="relative">
+                                  <textarea
+                                    className="w-full px-3 py-2 pr-12 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    style={{
+                                      color: "#000000",
+                                      fontWeight: 500,
+                                      height: "450px"
+                                    }}
+                                    placeholder="Paste or type the relevant excerpt or lines here... Alternatively, select text from the preview and click 'Add Content' to add it to the excerpt."
+                                    value={newEvidence.excerpt}
+                                    onChange={(e) =>
+                                      setNewEvidence((ev) => ({
+                                        ...ev,
+                                        excerpt: e.target.value,
+                                      }))
+                                    }
+                                    required
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute right-2 top-2 p-1.5 text-black hover:text-gray-700"
+                                    onClick={() => {
+                                      // Button does nothing for now
+                                    }}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           );
@@ -5443,23 +5469,36 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 <label className="text-black text-sm font-medium mb-1">
                                   Excerpt / Lines
                                 </label>
-                                <textarea
-                                  className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                  style={{
-                                    color: "#000000",
-                                    fontWeight: 500,
-                                    height: "450px"
-                                  }}
-                                  placeholder="Paste or type the relevant excerpt or lines here... Alternatively, click 'Parse Text' to extract text from the image."
-                                  value={newEvidence.excerpt}
-                                  onChange={(e) =>
-                                    setNewEvidence((ev) => ({
-                                      ...ev,
-                                      excerpt: e.target.value,
-                                    }))
-                                  }
-                                  required
-                                />
+                                <div className="relative">
+                                  <textarea
+                                    className="w-full px-3 py-2 pr-12 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    style={{
+                                      color: "#000000",
+                                      fontWeight: 500,
+                                      height: "450px"
+                                    }}
+                                    placeholder="Paste or type the relevant excerpt or lines here... Alternatively, click 'Parse Text' to extract text from the image."
+                                    value={newEvidence.excerpt}
+                                    onChange={(e) =>
+                                      setNewEvidence((ev) => ({
+                                        ...ev,
+                                        excerpt: e.target.value,
+                                      }))
+                                    }
+                                    required
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute right-2 top-2 p-1.5 text-black hover:text-gray-700"
+                                    onClick={() => {
+                                      // Button does nothing for now
+                                    }}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           );
@@ -6417,12 +6456,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         value={chatInput}
                         onChange={handleChatInputChange}
                         placeholder="Ask me anything about your graph..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-24"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
                           fontWeight: "400",
                         }}
                       />
+                      <button
+                        type="button"
+                        className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"
+                        onClick={() => {
+                          // Button does nothing for now
+                        }}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                      </button>
                       <button
                         type="submit"
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"

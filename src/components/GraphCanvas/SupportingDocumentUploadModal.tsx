@@ -113,16 +113,29 @@ const SupportingDocumentUploadModal: React.FC<
               >
                 Name
               </label>
-              <input
-                id="name"
-                type="text"
-                className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                style={{ color: "#000000", fontWeight: 500 }}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Research Paper"
-                required
-              />
+              <div className="relative">
+                <input
+                  id="name"
+                  type="text"
+                  className="w-full px-4 py-2 pr-12 bg-white border border-zinc-300 rounded-md placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ color: "#000000", fontWeight: 500 }}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Research Paper"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-black hover:text-gray-700"
+                  onClick={() => {
+                    // Button does nothing for now
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-4">

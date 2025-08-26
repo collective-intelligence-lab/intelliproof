@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { ClaimNode, ClaimType } from "../../types/graph";
 import ContinueButton from "../ContinueButton";
 import { InformationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import AudioRecorder from "../AudioRecorder";
 
 // Add score classification function
 const getScoreClassification = (credibilityScore: number) => {
@@ -346,17 +347,20 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
               className="w-full px-4 py-2.5 pr-12 bg-[#FAFAFA] rounded-md text-base outline-none focus:ring-1 focus:ring-black min-h-[100px] resize-y"
               placeholder="Enter node text..."
             />
-            <button
-              type="button"
-              className="absolute right-2 top-2 p-1.5 text-black hover:text-gray-700"
-              onClick={() => {
-                // Button does nothing for now
-              }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
+            <div className="absolute right-2 top-2">
+              <AudioRecorder
+                onTranscription={(transcribedText) => {
+                  // Append transcribed text to existing text
+                  const newText = text ? `${text} ${transcribedText}` : transcribedText;
+                  handleTextChange(newText);
+                }}
+                onError={(error) => {
+                  console.error('Audio transcription error:', error);
+                  // You could add a toast notification here
+                }}
+                className="p-1.5"
+              />
+            </div>
           </div>
         </div>
 

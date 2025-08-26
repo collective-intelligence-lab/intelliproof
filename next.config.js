@@ -8,6 +8,12 @@ const nextConfig = {
           ? 'https://intelliproofbackend.vercel.app/api/ai/:path*'
           : 'http://localhost:8000/api/ai/:path*',
       },
+      {
+        source: '/api/audio/:path*',
+        destination: process.env.NODE_ENV === 'production' 
+          ? 'https://intelliproofbackend.vercel.app/api/audio/:path*'
+          : 'http://localhost:8000/api/audio/:path*',
+      },
     ];
   },
   // Temporarily disable TypeScript errors during build

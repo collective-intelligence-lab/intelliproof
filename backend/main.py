@@ -49,6 +49,18 @@ except Exception as e:
     print(f"Warning: Error loading AI API router: {e}")
     print("AI endpoints will not be available")
 
+# Include Audio API router with error handling
+try:
+    import audio_api
+    app.include_router(audio_api.router)
+    print("Audio API router loaded successfully")
+except ImportError as e:
+    print(f"Warning: Could not import Audio API router: {e}")
+    print("Audio endpoints will not be available")
+except Exception as e:
+    print(f"Warning: Error loading Audio API router: {e}")
+    print("Audio endpoints will not be available")
+
 # Supabase configuration
 try:
     supabase: Client = create_client(

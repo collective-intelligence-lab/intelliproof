@@ -350,9 +350,8 @@ Range: 0.00 (least credible) to 1.00 (most credible)`}
             <div className="absolute right-2 top-2">
               <AudioRecorder
                 onTranscription={(transcribedText) => {
-                  // Append transcribed text to existing text
-                  const newText = text ? `${text} ${transcribedText}` : transcribedText;
-                  handleTextChange(newText);
+                  // Overwrite existing text with transcribed text
+                  handleTextChange(transcribedText);
                 }}
                 onError={(error) => {
                   console.error('Audio transcription error:', error);

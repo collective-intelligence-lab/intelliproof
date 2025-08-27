@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import AudioRecorder from "../AudioRecorder";
 
 interface SupportingDocumentUploadModalProps {
   open: boolean;
@@ -124,17 +125,19 @@ const SupportingDocumentUploadModal: React.FC<
                   placeholder="e.g. Research Paper"
                   required
                 />
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-black hover:text-gray-700"
-                  onClick={() => {
-                    // Button does nothing for now
-                  }}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </button>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <AudioRecorder
+                    onTranscription={(transcribedText) => {
+                      // Set transcribed text as the document name
+                      setName(transcribedText);
+                    }}
+                    onError={(error) => {
+                      console.error('Audio transcription error:', error);
+                      // You could add a toast notification here
+                    }}
+                    className="p-1.5"
+                  />
+                </div>
               </div>
             </div>
 

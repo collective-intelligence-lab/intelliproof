@@ -43,6 +43,7 @@ import type { ClaimEdge, EdgeType } from "../../types/edges";
 import NodeProperties from "../NodeProperties/NodeProperties";
 import EdgeProperties from "../Edges/EdgeProperties";
 import CustomEdge from "../Edges/CustomEdge";
+import AudioRecorder from "../AudioRecorder";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../store";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -5126,17 +5127,22 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             placeholder="e.g. Research findings on climate change"
                             required
                           />
-                          <button
-                            type="button"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-black hover:text-gray-700"
-                            onClick={() => {
-                              // Button does nothing for now
-                            }}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            </svg>
-                          </button>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            <AudioRecorder
+                              onTranscription={(transcribedText) => {
+                                // Set transcribed text as title
+                                setNewEvidence((ev) => ({
+                                  ...ev,
+                                  title: transcribedText,
+                                }));
+                              }}
+                              onError={(error) => {
+                                console.error('Audio transcription error:', error);
+                                // You could add a toast notification here
+                              }}
+                              className="p-1.5"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -5322,17 +5328,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     }
                                     required
                                   />
-                                  <button
-                                    type="button"
-                                    className="absolute right-2 top-2 p-1.5 text-black hover:text-gray-700"
-                                    onClick={() => {
-                                      // Button does nothing for now
-                                    }}
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                    </svg>
-                                  </button>
+                                  <div className="absolute right-2 top-2">
+                                    <AudioRecorder
+                                      onTranscription={(transcribedText) => {
+                                        // Append transcribed text to existing excerpt
+                                        const newExcerpt = newEvidence.excerpt ? `${newEvidence.excerpt} ${transcribedText}` : transcribedText;
+                                        setNewEvidence((ev) => ({
+                                          ...ev,
+                                          excerpt: newExcerpt,
+                                        }));
+                                      }}
+                                      onError={(error) => {
+                                        console.error('Audio transcription error:', error);
+                                        // You could add a toast notification here
+                                      }}
+                                      className="p-1.5"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -5487,17 +5499,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     }
                                     required
                                   />
-                                  <button
-                                    type="button"
-                                    className="absolute right-2 top-2 p-1.5 text-black hover:text-gray-700"
-                                    onClick={() => {
-                                      // Button does nothing for now
-                                    }}
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                    </svg>
-                                  </button>
+                                  <div className="absolute right-2 top-2">
+                                    <AudioRecorder
+                                      onTranscription={(transcribedText) => {
+                                        // Append transcribed text to existing excerpt
+                                        const newExcerpt = newEvidence.excerpt ? `${newEvidence.excerpt} ${transcribedText}` : transcribedText;
+                                        setNewEvidence((ev) => ({
+                                          ...ev,
+                                          excerpt: newExcerpt,
+                                        }));
+                                      }}
+                                      onError={(error) => {
+                                        console.error('Audio transcription error:', error);
+                                        // You could add a toast notification here
+                                      }}
+                                      className="p-1.5"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -6462,17 +6480,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           fontWeight: "400",
                         }}
                       />
-                      <button
-                        type="button"
-                        className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"
-                        onClick={() => {
-                          // Button does nothing for now
-                        }}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                      </button>
+                      <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                        <AudioRecorder
+                          onTranscription={(transcribedText) => {
+                            // Set transcribed text as chat input
+                            setChatInput(transcribedText);
+                          }}
+                          onError={(error) => {
+                            console.error('Audio transcription error:', error);
+                            // You could add a toast notification here
+                          }}
+                          className="p-2 text-purple-500 hover:text-purple-600"
+                        />
+                      </div>
                       <button
                         type="submit"
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"
@@ -6654,12 +6674,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
               <textarea
                 value={textAreaContent}
                 onChange={(e) => setTextAreaContent(e.target.value)}
                 placeholder="Enter your argument here"
-                className="w-full h-full min-h-[400px] p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className="w-full h-full min-h-[400px] p-4 pr-12 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 style={{
                   fontFamily: "DM Sans, sans-serif",
                   color: "black",
@@ -6667,6 +6687,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   fontSize: "16px",
                 }}
               />
+              <div className="absolute top-4 right-4">
+                <AudioRecorder
+                  onTranscription={(transcribedText) => {
+                    // Append transcribed text to existing content
+                    const newContent = textAreaContent ? `${textAreaContent} ${transcribedText}` : transcribedText;
+                    setTextAreaContent(newContent);
+                  }}
+                  onError={(error) => {
+                    console.error('Audio transcription error:', error);
+                    // You could add a toast notification here
+                  }}
+                  className="p-1.5"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
               <button

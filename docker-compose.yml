@@ -1,0 +1,24 @@
+# This tells docker-compose which version of the syntax to use
+version: '3.8'
+
+# This is where we define our containers, which are called "services"
+services:
+  # We can name our service anything, "web" is a common choice
+  web:
+    # Use the same node image
+    image: node:22-alpine
+
+    # Set the working directory, so you don't have to cd /app anymore!
+    working_dir: /app
+
+    # Map the ports, same as -p 3000:3000
+    ports:
+      - "3000:3000"
+
+    # Mount the current directory into /app inside the container
+    volumes:
+      - .:/app
+
+    # This replaces --entrypoint sh and keeps the container running
+    # It starts a shell that does nothing, waiting for you to run commands
+    command: sh -c "sleep infinity"

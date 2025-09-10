@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
+from httpx import request
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
@@ -102,24 +103,32 @@ async def signup(request: SignupRequest):
             )
 
         # Get the session data
+
         session = auth_response.session
+        print(session)
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create session"
             )
+        
 
         # Then, insert into profiles table
+        first_name = request.first_name.strip() if request.first_name else ""
+        last_name = request.last_name.strip() if request.last_name else ""
+
         profile_data = {
             "email": request.email.lower().strip(),
             "user_id": auth_response.user.id,
-            "first_name": request.first_name.strip(),
-            "last_name": request.last_name.strip(),
+            "first_name": first_name,
+            "last_name": last_name,
             "account_type": "basic",  # Default account type
             "created_at": datetime.utcnow().isoformat()
         }
 
         profile_response = supabase.table("profiles").insert(profile_data).execute()
+        # ADD THIS LINE FOR DEBUGGING
+        print("DEBUG -- Supabase profile insert response:", profile_response)
 
         if not profile_response.data:
             # If profile creation fails, we should clean up the auth user

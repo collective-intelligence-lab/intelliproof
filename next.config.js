@@ -6,13 +6,13 @@ const nextConfig = {
         source: '/api/ai/:path*',
         destination: process.env.NODE_ENV === 'production' 
           ? 'https://intelliproofbackend.vercel.app/api/ai/:path*'
-          : 'http://localhost:8000/api/ai/:path*',
+          : 'http://host.docker.internal:8000/api/ai/:path*',
       },
       {
         source: '/api/audio/:path*',
         destination: process.env.NODE_ENV === 'production' 
           ? 'https://intelliproofbackend.vercel.app/api/audio/:path*'
-          : 'http://localhost:8000/api/audio/:path*',
+          : 'http://host.docker.internal:8000/api/audio/:path*',
       },
     ];
   },

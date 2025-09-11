@@ -6,42 +6,90 @@ import AudioRecorder from "../AudioRecorder";
 
 // Add score classification function
 const getScoreClassification = (credibilityScore: number) => {
-  if (credibilityScore >= -1.00 && credibilityScore <= -0.60) {
+  // Attack (red spectrum)
+  if (credibilityScore >= -1.00 && credibilityScore <= -0.80) {
     return {
-      label: "Very Low Confidence",
-      color: "#dc2626", // red-600
+      label: "Very Strong Contradiction",
+      color: "#b91c1c", // red-700
       bgColor: "#fef2f2", // red-50
       borderColor: "#fecaca" // red-200
     };
-  } else if (credibilityScore >= -0.59 && credibilityScore <= -0.20) {
+  } else if (credibilityScore > -0.80 && credibilityScore <= -0.60) {
     return {
-      label: "Low Confidence",
-      color: "#ea580c", // orange-600
-      bgColor: "#fff7ed", // orange-50
-      borderColor: "#fed7aa" // orange-200
+      label: "Strong Contradiction",
+      color: "#dc2626", // red-600
+      bgColor: "#fee2e2", // red-100
+      borderColor: "#fca5a5" // red-300
     };
-  } else if (credibilityScore >= -0.19 && credibilityScore <= 0.19) {
+  } else if (credibilityScore > -0.60 && credibilityScore <= -0.40) {
     return {
-      label: "Neutral / Unknown",
+      label: "Moderate Contradiction",
+      color: "#ef4444", // red-500
+      bgColor: "#fee2e2", // red-100
+      borderColor: "#fca5a5" // red-300
+    };
+  } else if (credibilityScore > -0.40 && credibilityScore <= -0.20) {
+    return {
+      label: "Weak Contradiction",
+      color: "#f87171", // red-400
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  } else if (credibilityScore > -0.20 && credibilityScore < 0.00) {
+    return {
+      label: "Very Weak Contradiction",
+      color: "#fca5a5", // red-300
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
+    };
+  }
+  // Neutral (grey)
+  else if (credibilityScore === 0.00) {
+    return {
+      label: "Neutral",
       color: "#6b7280", // gray-500
       bgColor: "#f9fafb", // gray-50
       borderColor: "#d1d5db" // gray-200
     };
-  } else if (credibilityScore >= 0.20 && credibilityScore <= 0.59) {
+  }
+  // Support (green spectrum)
+  else if (credibilityScore > 0.00 && credibilityScore <= 0.20) {
     return {
-      label: "High Confidence",
-      color: "#16a34a", // green-600
+      label: "Very Weak Support",
+      color: "#bbf7d0", // green-200
       bgColor: "#f0fdf4", // green-50
       borderColor: "#bbf7d0" // green-200
     };
-  } else if (credibilityScore >= 0.60 && credibilityScore <= 1.00) {
+  } else if (credibilityScore > 0.20 && credibilityScore <= 0.40) {
     return {
-      label: "Very High Confidence",
-      color: "#15803d", // green-700
-      bgColor: "#ecfdf5", // green-50
+      label: "Weak Support",
+      color: "#4ade80", // green-400
+      bgColor: "#dcfce7", // green-100
       borderColor: "#86efac" // green-300
     };
+  } else if (credibilityScore > 0.40 && credibilityScore <= 0.60) {
+    return {
+      label: "Moderate Support",
+      color: "#22c55e", // green-500
+      bgColor: "#bbf7d0", // green-200
+      borderColor: "#22c55e" // green-500
+    };
+  } else if (credibilityScore > 0.60 && credibilityScore <= 0.80) {
+    return {
+      label: "Strong Support",
+      color: "#16a34a", // green-600
+      bgColor: "#bbf7d0", // green-200
+      borderColor: "#22c55e" // green-500
+    };
+  } else if (credibilityScore > 0.80 && credibilityScore <= 1.00) {
+    return {
+      label: "Very Strong Support",
+      color: "#166534", // green-800
+      bgColor: "#bbf7d0", // green-200
+      borderColor: "#22c55e" // green-500
+    };
   }
+
   // Default fallback
   return {
     label: "Unknown",

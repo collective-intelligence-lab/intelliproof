@@ -5,49 +5,92 @@ import { HandRaisedIcon } from "@heroicons/react/24/outline";
 
 // Add edge score classification function
 const getEdgeScoreClassification = (edgeScore: number) => {
-  if (edgeScore >= -1.00 && edgeScore <= -0.60) {
+  if (edgeScore >= -1.00 && edgeScore <= -0.80) {
     return {
       label: "Very Strong Attack",
+      color: "#b91c1c", // red-700
+      bgColor: "#fee2e2", // red-100
+      borderColor: "#fca5a5" // red-300
+    };
+  } else if (edgeScore >= -0.79 && edgeScore <= -0.60) {
+    return {
+      label: "Strong Attack",
       color: "#dc2626", // red-600
       bgColor: "#fef2f2", // red-50
       borderColor: "#fecaca" // red-200
     };
-  } else if (edgeScore >= -0.59 && edgeScore <= -0.20) {
+  } else if (edgeScore >= -0.59 && edgeScore <= -0.40) {
     return {
       label: "Moderate Attack",
-      color: "#ea580c", // orange-600
-      bgColor: "#fff7ed", // orange-50
-      borderColor: "#fed7aa" // orange-200
+      color: "#f87171", // red-400
+      bgColor: "#fef2f2", // red-50
+      borderColor: "#fecaca" // red-200
     };
-  } else if (edgeScore >= -0.19 && edgeScore <= 0.19) {
+  } else if (edgeScore >= -0.39 && edgeScore <= -0.20) {
     return {
-      label: "Neutral / Weak",
+      label: "Weak Attack",
+      color: "#fca5a5", // red-300
+      bgColor: "#fff1f2", // red-50
+      borderColor: "#fecdd3" // red-200
+    };
+  } else if (edgeScore >= -0.19 && edgeScore <= -0.01) {
+    return {
+      label: "Very Weak Attack",
+      color: "#fcd34d", // yellow-300 (soft warning)
+      bgColor: "#fefce8", // yellow-50
+      borderColor: "#fde68a" // yellow-200
+    };
+  } else if (edgeScore === 0) {
+    return {
+      label: "Neutral",
       color: "#6b7280", // gray-500
       bgColor: "#f9fafb", // gray-50
       borderColor: "#d1d5db" // gray-200
     };
-  } else if (edgeScore >= 0.20 && edgeScore <= 0.59) {
+  } else if (edgeScore >= 0.01 && edgeScore <= 0.19) {
     return {
-      label: "Moderate Support",
-      color: "#16a34a", // green-600
+      label: "Very Weak Support",
+      color: "#bbf7d0", // green-200
+      bgColor: "#f0fdf4", // green-50
+      borderColor: "#86efac" // green-300
+    };
+  } else if (edgeScore >= 0.20 && edgeScore <= 0.39) {
+    return {
+      label: "Weak Support",
+      color: "#4ade80", // green-400
       bgColor: "#f0fdf4", // green-50
       borderColor: "#bbf7d0" // green-200
     };
-  } else if (edgeScore >= 0.60 && edgeScore <= 1.00) {
+  } else if (edgeScore >= 0.40 && edgeScore <= 0.59) {
+    return {
+      label: "Moderate Support",
+      color: "#22c55e", // green-500
+      bgColor: "#dcfce7", // green-100
+      borderColor: "#bbf7d0" // green-200
+    };
+  } else if (edgeScore >= 0.60 && edgeScore <= 0.79) {
+    return {
+      label: "Strong Support",
+      color: "#16a34a", // green-600
+      bgColor: "#d1fae5", // green-100
+      borderColor: "#4ade80" // green-400
+    };
+  } else if (edgeScore >= 0.80 && edgeScore <= 1.00) {
     return {
       label: "Very Strong Support",
-      color: "#15803d", // green-700
-      bgColor: "#ecfdf5", // green-50
-      borderColor: "#86efac" // green-300
+      color: "#166534", // green-800
+      bgColor: "#bbf7d0", // green-200
+      borderColor: "#22c55e" // green-500
+    };
+  } else {
+    // Default fallback
+    return {
+      label: "Unknown",
+      color: "#6b7280",
+      bgColor: "#f9fafb",
+      borderColor: "#d1d5db"
     };
   }
-  // Default fallback
-  return {
-    label: "Unknown",
-    color: "#6b7280",
-    bgColor: "#f9fafb",
-    borderColor: "#d1d5db"
-  };
 };
 
 interface Assumption {

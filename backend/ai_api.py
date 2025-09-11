@@ -278,8 +278,9 @@ Question: Does the above evidence support the claim?
 Respond in this format:
 Evaluation: <Supports|Contradicts|unsure|unrelated>
 Reasoning: <your explanation. Keep it to 2-4 sentences, focusing on the evidence and the claim.>
-Score: <a number between -1 and 1 giving the evidence a score of how well the evidence supports or contradicts the claim. -1 means fully contradicts, 1 means fully supports, 0 means neutral/ irrelevant. Score can be any number in between this range.>
+Strength: <Choose from (Very Weak|Weak|Moderate|Strong|Very Strong) based on how strongly the evidence supports or contradicts the claim.>
 """
+# Score: <a number between -1 and 1 giving the evidence a score of how well the evidence supports or contradicts the claim. -1 means fully contradicts, 1 means fully supports, 0 means neutral/ irrelevant. Score can be any number in between this range.>
             try:
                 content = run_llm(
                     [{"role": "user", "content": prompt}],
@@ -293,12 +294,23 @@ Score: <a number between -1 and 1 giving the evidence a score of how well the ev
                         eval_val = line.split(":", 1)[1].strip().lower()
                     if line.lower().startswith("reasoning:"):
                         reasoning = line.split(":", 1)[1].strip()
-                    if line.lower().startswith("confidence:"):
-                        try:
-                            confidence_val = float(line.split(":", 1)[1].strip())
-                            confidence_val = min(max(confidence_val, 0.0), 1.0)
-                        except Exception:
+                    if line.lower().startswith("strength:"):
+                        confidence_val = line.split(":", 1)[1].strip()
+                        if confidence_val.lower() == "very weak" : # This uses the Evans scale
+                            confidence_val = 0.1
+                        elif confidence_val.lower() == "weak":
+                            confidence_val = 0.3
+                        elif confidence_val.lower() == "moderate":
                             confidence_val = 0.5
+                        elif confidence_val.lower() == "strong":
+                            confidence_val = 0.7
+                        elif confidence_val.lower() == "very strong":
+                            confidence_val = 0.9
+                        # try:
+                        #     confidence_val = float(line.split(":", 1)[1].strip())
+                        #     confidence_val = min(max(confidence_val, 0.0), 1.0)
+                        # except Exception:
+                        #     confidence_val = 0.5
                 results.append(EvidenceEvaluation(
                     node_id=node.id,
                     evidence_id=evidence.id,
@@ -1645,7 +1657,7 @@ def check_node_evidence(data: CheckNodeEvidenceRequest = Body(...)):
         doc = next((d for d in (data.supportingDocuments or []) if d.id == evidence.supportingDocId), None)
         doc_info = f"Name: {doc.name}\nType: {doc.type}\nURL: {doc.url}\n" if doc else ""
         prompt = f"""
-You are evaluating how well a piece of evidence supports a specific claim. Focus ONLY on the claim content provided.
+You are evaluating how well a piece of evidence supports (positive) or attacks (negative) a specific claim. Focus ONLY on the claim content provided.
 
 CLAIM TO EVALUATE: "{node.text}"
 
@@ -1663,10 +1675,10 @@ IMPORTANT:
 - Focus solely on whether this evidence directly supports or contradicts the stated claim
 
 Respond in this exact format:
-Evaluation: <Supports|Contradicts|Neutral|Irrelevant|Unsure>
+Evaluation: <Choose from (Very Weak Negative | Weak Negative | Moderate Negative | Strong Negative | Very Strong Negative | Neutral | Very Weak Positive | Weak Positive | Strong Positive | Very Strong Positive)>
 Reasoning: <your explanation. Keep it to 2-4 sentences, focusing specifically on how this evidence relates to the claim: "{node.text}">
-Score: <a precise number between -1.0 and 1.0 giving the evidence a score of how well the evidence supports or contradicts the claim. Use the full range with decimal precision. Examples: 0.8 (strongly supports), -0.3 (weakly contradicts), 0.0 (neutral), 0.45 (moderately supports), -0.9 (strongly contradicts).>
 """
+        # Score: <a precise number between -1.0 and 1.0 giving the evidence a score of how well the evidence supports or contradicts the claim. Use the full range with decimal precision. Examples: 0.8 (strongly supports), -0.3 (weakly contradicts), 0.0 (neutral), 0.45 (moderately supports), -0.9 (strongly contradicts).>
         try:
             content = run_llm(
                 [{"role": "user", "content": prompt}],
@@ -1678,14 +1690,32 @@ Score: <a precise number between -1.0 and 1.0 giving the evidence a score of how
             for line in content.splitlines():
                 if line.lower().startswith("evaluation:"):
                     eval_val = line.split(":", 1)[1].strip().lower()
+                    if eval_val == "neutral": # Using the Evans scale with -1 to 1
+                        confidence_val = 0
+                    elif "positive" in eval_val:
+                        if "very strong" in eval_val:
+                            confidence_val = 1.0
+                        elif "strong" in eval_val:
+                            confidence_val = 0.8
+                        elif "moderate" in eval_val:
+                            confidence_val = 0.6
+                        elif "weak" in eval_val:
+                            confidence_val = 0.4
+                        elif "very weak" in eval_val:
+                            confidence_val = 0.2
+                    elif "negative" in eval_val:
+                        if "very strong" in eval_val:
+                            confidence_val = -1.0
+                        elif "strong" in eval_val:
+                            confidence_val = -0.8
+                        elif "moderate" in eval_val:
+                            confidence_val = -0.6
+                        elif "weak" in eval_val:
+                            confidence_val = -0.4
+                        elif "very weak" in eval_val:
+                            confidence_val = -0.2
                 if line.lower().startswith("reasoning:"):
                     reasoning = line.split(":", 1)[1].strip()
-                if line.lower().startswith("score:"):
-                    try:
-                        confidence_val = float(line.split(":", 1)[1].strip())
-                        confidence_val = min(max(confidence_val, -1.0), 1.0)
-                    except Exception:
-                        confidence_val = 0.0
             results.append(EvidenceEvaluation(
                 node_id=node.id,
                 evidence_id=evidence.id,

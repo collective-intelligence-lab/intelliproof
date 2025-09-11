@@ -6111,7 +6111,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         "Evidence ID" in msg.content &&
                         "Evaluation" in msg.content &&
                         "Reasoning" in msg.content &&
-                        "Confidence" in msg.content
+                        "Score" in msg.content
                     )}
                   />
                 )}

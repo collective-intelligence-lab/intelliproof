@@ -51,16 +51,23 @@ except Exception as e:
     print("AI endpoints will not be available")
 
 # Include Audio API router with error handling
-try:
-    import audio_api
-    app.include_router(audio_api.router)
-    print("Audio API router loaded successfully")
-except ImportError as e:
-    print(f"Warning: Could not import Audio API router: {e}")
-    print("Audio endpoints will not be available")
-except Exception as e:
-    print(f"Warning: Error loading Audio API router: {e}")
-    print("Audio endpoints will not be available")
+# try:
+#     import audio_api
+#     app.include_router(audio_api.router)
+#     print("Audio API router loaded successfully")
+# except ImportError as e:
+#     print(f"Warning: Could not import Audio API router: {e}")
+#     print("Audio endpoints will not be available")
+# except Exception as e:
+#     print(f"Warning: Error loading Audio API router: {e}")
+#     print("Audio endpoints will not be available")
+# If you want to use this, import with 
+# Audio processing libraries
+# SpeechRecognition==3.14.3
+# faster-whisper==1.2.0
+# gtts==2.5.4
+# edge-tts==7.2.1
+# pydub==0.25.1 
 
 # Supabase configuration
 try:

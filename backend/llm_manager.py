@@ -75,11 +75,11 @@ def select_model_for_task(messages: List[Dict[str, str]], mcp: LLMManager = TASK
         selected_model = response.choices[0].message.content.strip()
         print(f"[llm_manager] select_model_for_task: Selected model - {selected_model}")
 
-        if selected_model == "gpt-5.4-nano":
+        if selected_model.lower() == "gpt-5.4-nano":
             return mcp.default_model
-        elif selected_model == "gpt-5.4-mini":
+        elif selected_model.lower() == "gpt-5.4-mini":
             return mcp.advanced_model
-        elif selected_model == "gpt-5.4":
+        elif selected_model.lower() == "gpt-5.4":
             return mcp.full_model
         else : 
             print("[llm_manager] select_model_for_task: Unexpected model selection response, defaulting to nano.")

@@ -344,6 +344,13 @@ class ProcessArgumentTextResponse(BaseModel):
     converted_graph: dict | None = None
     error: str | None = None
 
+def _is_gpt5_model(model_name: str) -> bool:
+    if not model_name:
+        return False
+    model_name = model_name.lower().strip()
+    return model_name.startswith("gpt-5") or "gpt-5" in model_name
+
+
 @router.post("/api/ai/process-argument-text", response_model=ProcessArgumentTextResponse)
 def process_argument_text(data: ProcessArgumentTextRequest = Body(...)):
     """
@@ -357,15 +364,21 @@ def process_argument_text(data: ProcessArgumentTextRequest = Body(...)):
         openai.api_key = OPENAI_API_KEY
 
         # Call OpenAI Chat Completions
-        response = openai.chat.completions.create(
-            model=data.model,
-            messages=[
+        completion_kwargs = {
+            "model": data.model,
+            "messages": [
                 {"role": "system", "content": data.system_prompt},
                 {"role": "user", "content": data.user_input},
             ],
-            temperature=0.3,
-            max_tokens=5000,
-        )
+            "temperature": 0.3,
+        }
+
+        if _is_gpt5_model(data.model):
+            completion_kwargs["max_completion_tokens"] = 5000
+        else:
+            completion_kwargs["max_tokens"] = 5000
+
+        response = openai.chat.completions.create(**completion_kwargs)
 
         llm_output = response.choices[0].message.content
         if not isinstance(llm_output, str):
@@ -828,9 +841,9 @@ Summary: <2-3 sentences explaining what these assumptions collectively accomplis
     try:
         # Create a custom MCP with higher token limit for assumption generation
         assumption_mcp = ModelControlProtocol(
-            model_name="gpt-4o-mini",
+            model_name="gpt-5.4-nano-2026-03-17",
             temperature=0.2,
-            max_tokens=1024,  # Increased from 256 to 1024 for longer responses
+            max_completion_tokens=1024,  # Increased from 256 to 1024 for longer responses
             system_prompt=DEFAULT_MCP.system_prompt
         )
         
@@ -1089,12 +1102,12 @@ def critique_graph(data: CritiqueGraphRequest = Body(...)):
         
         print(f"[ai_api] critique_graph: Sending request to OpenAI")
         response = openai.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-nano-2026-03-17",
             messages=[
                 {"role": "system", "content": "You are an expert argument analyst and critical thinking specialist. Analyze argument graphs for logical flaws, fallacies, and pattern matches."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000,
+            max_completion_tokens=2000,
             temperature=0.1
         )
         
@@ -1280,12 +1293,12 @@ Format your response exactly as:
         print(f"[ai_api] generate_comprehensive_report: Sending request to OpenAI")
         
         response = openai.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-nano-2026-03-17",
             messages=[
                 {"role": "system", "content": "You are an expert intelligence analyst specializing in argument analysis and critical thinking. Create professional, detailed reports that follow intelligence analysis standards. Be comprehensive and thorough in your analysis."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=16384,
+            max_completion_tokens=16384,
             temperature=0.3
         )
         
@@ -1421,7 +1434,7 @@ async def extract_text_from_image(
         openai.api_key = OPENAI_API_KEY
         prompt = "Extract all readable text from this image. If no text is present, describe the image in detail in 3-6 sentences."
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.4-nano-2026-03-17",
             messages=[
                 {"role": "system", "content": "You are an expert OCR and summarizer."},
                 {
@@ -1432,7 +1445,7 @@ async def extract_text_from_image(
                     ]
                 }
             ],
-            max_tokens=512
+            max_completion_tokens=512
         )
         result = response.choices[0].message.content
         print(f"[ai_api] extract_text_from_image: Function finished.")
@@ -1535,12 +1548,12 @@ Reasoning: <explain why this text supports the claim, including how it relates t
         print(f"[ai_api] suggest_evidence_text: Calling OpenAI API...")
         
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.4-nano-2026-03-17",
             messages=[
                 {"role": "system", "content": "You are an expert document analyst and evidence finder."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000
+            max_completion_tokens=1000
         )
         
         result = response.choices[0].message.content
@@ -2006,9 +2019,9 @@ Assistant: "The relationship between your claims forms a logical progression fro
         
         # Create a specialized MCP for chat
         chat_mcp = ModelControlProtocol(
-            model_name="gpt-4o-mini",
+            model_name="gpt-5.4-nano-2026-03-17",
             temperature=0.7,  # Increased for more conversational and varied responses
-            max_tokens=500,
+            max_completion_tokens=500,
             system_prompt=system_prompt
         )
         

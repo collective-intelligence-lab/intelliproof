@@ -2,12 +2,37 @@ import os
 import openai
 from typing import List, Dict, Any
 
+class LLMManager: # This class uses a strong LLM to decide which model to use for the task, if the task is simple, it defaults to 5.4 nano, otherwise, it can either choose 5.4 mini or 5.4 normal.
+    def __init__(
+        self, 
+        judge_model = "gpt-5.4",  # A strong model to judge task complexity and select appropriate model
+        default_model = "gpt-5.4-nano",
+        advanced_model = "gpt-5.4-mini",
+        full_model = "gpt-5.4",
+        temperature = 0.2, 
+        max_completion_tokens = 32, # Short response for model selection
+        system_prompt = (
+            "You are an expert task classifier and model selector for Intelliproof. "
+            "Given a task description and the user input, determine if it is simple, moderately complex, or complex. "
+            "Simpler tasks can be handled by gpt-5.4-nano, moderately complex tasks should use gpt-5.4-mini, and complex tasks require gpt-5.4."
+            "If the task is relatively straightforward and doesn't require deep reasoning or extensive context, classify it for gpt-5.4-nano. If the task involves some reasoning or context but is not too complex, classify it for gpt-5.4-mini. If the task is complex, requires deep reasoning, or extensive context, classify it for gpt-5.4."
+            "Return only the model name (gpt-5.4-nano, gpt-5.4-mini, or gpt-5.4) as the output and nothing else."
+        ),
+    ) :
+        self.judge_model = judge_model
+        self.default_model = default_model
+        self.advanced_model = advanced_model
+        self.full_model = full_model
+        self.temperature = temperature
+        self.max_completion_tokens = max_completion_tokens
+        self.system_prompt = system_prompt
+
 class ModelControlProtocol:
     def __init__(
         self,
-        model_name: str = "gpt-4o-mini",
+        model_name: str = "gpt-5.4-nano-2026-03-17",
         temperature: float = 0.2,
-        max_tokens: int = 256,
+        max_completion_tokens: int = 256,
         system_prompt: str = (
             "You are an expert fact-checker and argument analyst working for Intelliproof.\n"
             "Intelliproof is a platform for collaborative, transparent, and AI-assisted argument analysis. "
@@ -19,17 +44,18 @@ class ModelControlProtocol:
     ):
         self.model_name = model_name
         self.temperature = temperature
-        self.max_tokens = max_tokens
+        self.max_completion_tokens = max_completion_tokens
         self.system_prompt = system_prompt
 
 # Define a single, project-wide MCP instance
 DEFAULT_MCP = ModelControlProtocol()
+TASK_JUDGE_MCP = LLMManager()
 
-def run_llm(messages: List[Dict[str, str]], mcp: ModelControlProtocol = DEFAULT_MCP):
-    print(f"[llm_manager] run_llm: Running LLM with {len(messages)} messages.")
-    
-    # Set up OpenAI client
+def select_model_for_task(messages: List[Dict[str, str]], mcp: LLMManager = TASK_JUDGE_MCP) -> str:
+    # Use the judge model to determine which model to use for the task
     openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    print(f"[llm_manager] select_model_for_task: Evaluating task with {len(messages)} messages.")
     
     # Prepare messages for OpenAI API
     openai_messages = []
@@ -41,13 +67,61 @@ def run_llm(messages: List[Dict[str, str]], mcp: ModelControlProtocol = DEFAULT_
     
     try:
         response = openai.chat.completions.create(
+            model=mcp.judge_model,
+            messages=openai_messages,
+            temperature=mcp.temperature,
+            max_completion_tokens=mcp.max_completion_tokens,
+        )
+        selected_model = response.choices[0].message.content.strip()
+        print(f"[llm_manager] select_model_for_task: Selected model - {selected_model}")
+
+        if selected_model == "gpt-5.4-nano":
+            return mcp.default_model
+        elif selected_model == "gpt-5.4-mini":
+            return mcp.advanced_model
+        elif selected_model == "gpt-5.4":
+            return mcp.full_model
+        else : 
+            print("[llm_manager] select_model_for_task: Unexpected model selection response, defaulting to nano.")
+            return mcp.default_model  # Fallback to default if the response is unexpected
+
+        #return selected_model
+    except Exception as e:
+        print(f"[llm_manager] select_model_for_task: Error calling OpenAI API: {e}")
+        raise e
+
+def run_llm(messages: List[Dict[str, str]], mcp: ModelControlProtocol = DEFAULT_MCP):
+
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    print(f"[llm_manager] run_llm: Running LLM with {len(messages)} messages.")
+    
+    # Set up OpenAI client
+    
+    # Prepare messages for OpenAI API
+    openai_messages = []
+    if mcp.system_prompt:
+        openai_messages.append({"role": "system", "content": mcp.system_prompt})
+    
+    for msg in messages:
+        openai_messages.append({"role": "user", "content": msg["content"]})
+    
+    try:
+
+        mcp.model_name = select_model_for_task(messages)  # Dynamically select model based on task complexity
+        print(f"[llm_manager] run_llm: Selected model - {mcp.model_name}")
+
+        response = openai.chat.completions.create(
             model=mcp.model_name,
             messages=openai_messages,
             temperature=mcp.temperature,
-            max_tokens=mcp.max_tokens,
+            max_completion_tokens=mcp.max_completion_tokens,
         )
         print(f"[llm_manager] run_llm: LLM call finished.")
-        return response.choices[0].message.content
+
+        response = response.choices[0].message.content.strip()  + "\n [Dynamic Model Used] " + mcp.model_name.capitalize()  # Append model used to the response for debugging
+
+        return response # Return the response from the LLM, along with the model used for debugging
     except Exception as e:
         print(f"[llm_manager] run_llm: Error calling OpenAI API: {e}")
         raise e 

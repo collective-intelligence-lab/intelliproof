@@ -78,8 +78,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
         console.log('📤 [AudioRecorder] Starting audio upload...');
         console.log('🔍 [AudioRecorder] Audio blob details:', {
             size: audioBlob.size,
-            type: audioBlob.type,
-            lastModified: audioBlob.lastModified
+            type: audioBlob.type
         });
 
         try {

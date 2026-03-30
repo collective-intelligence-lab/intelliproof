@@ -6419,9 +6419,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     fontFamily: "DM Sans, sans-serif",
                                     fontWeight: "400",
                                     lineHeight: "1.5",
+                                    whiteSpace: "pre-wrap",
                                   }}
                                 >
-                                  {msg.content}
+                                  {msg.content.split("\n").map((line, lineIndex, arr) => (
+                                    <span key={lineIndex}>
+                                      <span
+                                        className={
+                                          line.includes("[Dynamic Model Used]")
+                                            ? "text-xs font-semibold text-purple-800"
+                                            : ""
+                                        }
+                                      >
+                                        {line}
+                                      </span>
+                                      {lineIndex < arr.length - 1 && <br />}
+                                    </span>
+                                  ))}
                                 </p>
                               </div>
                             </>
@@ -6437,9 +6451,23 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     fontFamily: "DM Sans, sans-serif",
                                     fontWeight: "400",
                                     lineHeight: "1.5",
+                                    whiteSpace: "pre-wrap",
                                   }}
                                 >
-                                  {msg.content}
+                                  {msg.content.split("\n").map((line, lineIndex, arr) => (
+                                    <span key={lineIndex}>
+                                      <span
+                                        className={
+                                          line.includes("[Dynamic Model Used]")
+                                            ? "text-xs font-semibold text-purple-800"
+                                            : ""
+                                        }
+                                      >
+                                        {line}
+                                      </span>
+                                      {lineIndex < arr.length - 1 && <br />}
+                                    </span>
+                                  ))}
                                 </p>
                               </div>
                             </>

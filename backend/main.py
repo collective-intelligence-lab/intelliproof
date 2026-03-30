@@ -10,6 +10,9 @@ from supabase import create_client, Client
 import ai_api
 from models import SignupRequest, SignupResponse, SigninRequest, SigninResponse, SignoutResponse, UserData
 import sys
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
+from faster_whisper import WhisperModel
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +27,15 @@ if missing_vars:
 # Initialize FastAPI app
 app = FastAPI()
 
+# Initialize the Whisper model once at startup (you can choose the model size based on your needs)
+
+audio_model = WhisperModel(
+    "tiny", 
+    device = "cpu", # Change to "cuda" if you have a compatible GPU and the necessary drivers installed
+    cpu_threads = 2,
+    compute_type="float32", # This should work on our Threadripper without needing to worry about GPU
+)
+
 # CORS middleware configuration - Open access for development
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +44,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.post("/api/audio/transcribe-file")
+async def transcribe_audio(audio_file: UploadFile = File(...)):
+    print(f"🎤 Received audio file: {audio_file.filename}")
+    
+    try:
+        # 1. Read the incoming audio bytes from the JavaScript
+        contents = await audio_file.read()
+        
+        # 2. Save it to a temporary file so your ML model can read it
+        temp_file_path = f"temp_{audio_file.filename}"
+        with open(temp_file_path, "wb") as f:
+            f.write(contents)
+            
+        # 3. ---> YOUR AI MAGIC GOES HERE <---
+
+        segments, info = audio_model.transcribe(temp_file_path, beam_size=5) # You can adjust the beam_size for better accuracy at the cost of speed
+
+        
+        # (Dummy text for testing the connection)
+        transcribed_text = " ".join([segment.text for segment in segments])
+        print(f"✅ Transcription successful: {transcribed_text}")
+        
+        # 4. Clean up the temporary file
+        os.remove(temp_file_path)
+        
+        # 5. Send the exact JSON format the JavaScript is waiting for
+        return {
+            "success": True, 
+            "text": transcribed_text.strip() # Remove any leading/trailing whitespace just in case
+        }
+        
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return JSONResponse(
+            status_code=500, 
+            content={"success": False, "error": str(e)}
+        )
 
 # Add explicit CORS preflight handler
 @app.options("/{full_path:path}")

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserName } from "../hooks/useUserName";
 import Image from "next/image";
@@ -13,6 +13,24 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const router = useRouter();
   const userName = useUserName();
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedTheme = localStorage.getItem("theme");
+    setTheme(savedTheme === "dark" ? "dark" : "light");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.body.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  };
 
   const handleSignOut = async () => {
     try {
@@ -83,6 +101,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             {userName}
           </Link>
         )}
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className="flex items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors duration-200"
+        >
+          <span>{theme === "dark" ? "🌙" : "☀️"}</span>
+          <span>{theme === "dark" ? "Dark" : "Light"}</span>
+        </button>
         <div className="relative group">
           <button
             onClick={onMenuClick}

@@ -99,7 +99,7 @@ export async function persistApiCallsToSupabase() {
         }))
     );
     if (error) {
-        apiCalls.unshift(...batch);
+        // apiCalls.unshift(...batch);
         // eslint-disable-next-line no-console
         console.warn("[api_call_logs] insert failed:", error);
     }
@@ -136,6 +136,7 @@ export type FetchLoggerMeta = {
 };
 
 export async function logApiCall(entry: ApiCall) {
+    console.trace("Tracing API call"); // 
     apiCalls.push(entry);
     // fire-and-forget streaming to DB is optional; keep client responsive
     // do not await here to avoid blocking UI
@@ -151,8 +152,18 @@ export function installFetchLogger(getMeta?: () => FetchLoggerMeta) {
         init?: RequestInit & { meta?: FetchLoggerMeta }
     ) => {
         const tStart = performance.now();
-        const endpoint = init?.meta?.endpoint ?? (typeof input === "string" ? input : String(input));
+        const endpoint = init?.meta?.endpoint ?? ( // Attempt to extract endpoint from input via string, Request, or URL
+        typeof input === "string" ? input : 
+        (input instanceof Request ? input.url : String(input))
+        );
         const method = init?.meta?.method ?? init?.method ?? "GET";
+
+        // Bailout if the request is to our logging endpoint to avoid infinite loops
+        if (endpoint.includes("supabase.co")) {
+            return original(input, init);
+        }
+
+
         try {
             const res = await original(input, init);
             const tEnd = performance.now();

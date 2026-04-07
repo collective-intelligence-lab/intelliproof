@@ -7,6 +7,9 @@
 :root {
     --foreground-rgb: 0, 0, 0;
     --background-rgb: 255, 255, 255;
+    --surface-rgb: 255, 255, 255;
+    --surface-alt-rgb: 249, 250, 251;
+    --border-rgb: 209, 213, 219;
 }
 
 body {
@@ -15,4 +18,47 @@ body {
     font-family: 'Josefin Sans', sans-serif;
     font-weight: 100;
     background-color: #FAFAFA;
+}
+
+body.dark {
+    --foreground-rgb: 241, 245, 249;
+    --background-rgb: 15, 23, 42;
+    --surface-rgb: 30, 41, 59;
+    --surface-alt-rgb: 51, 65, 85;
+    --border-rgb: 71, 85, 105;
+    background-color: #0f172a;
+    color: rgb(var(--foreground-rgb));
+}
+
+body.dark header {
+    background-color: #1f2937;
+}
+
+body.dark a {
+    color: #e2e8f0;
+}
+
+body.dark .text-gray-700 {
+    color: #d1d5db;
+}
+
+body.dark .bg-gray-50 {
+    background-color: #111827;
+}
+
+body.dark .bg-white {
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+body.dark .border-gray-200 {
+    border-color: #334155;
+}
+
+body.dark .bg-gray-100 {
+    background-color: #1f2937;
+}
+
+body.dark .text-gray-800 {
+    color: #e2e8f0;
 }

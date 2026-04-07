@@ -122,10 +122,10 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <div className="bg-white shadow rounded-lg p-6">
-                            <h2 className="text-2xl font-bold mb-4">Your Graphs</h2>
+                        <div className="bg-white shadow rounded-lg p-6 dark:bg-slate-800 dark:border dark:border-slate-700">
+                            <h2 className="text-2xl font-bold mb-4 text-black dark:text-white">Your Graphs</h2>
                             {graphs.length === 0 ? (
-                                <p className="text-gray-500">No graphs created yet</p>
+                                <p className="text-gray-500 dark:text-slate-300">No graphs created yet</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
                                     {graphs.map((graph: Graph) => (

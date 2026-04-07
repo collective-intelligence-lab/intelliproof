@@ -121,11 +121,11 @@ export default function GraphManagerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-black p-4">
+      <div className="min-h-screen bg-white text-black dark:bg-slate-950 dark:text-white p-4">
         <Header onMenuClick={() => setNavbarOpen(true)} />
         <Navbar isOpen={isNavbarOpen} onClose={() => setNavbarOpen(false)} />
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
         </div>
       </div>
     );
@@ -133,7 +133,7 @@ export default function GraphManagerPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white text-black p-4">
+      <div className="min-h-screen bg-white text-black dark:bg-slate-950 dark:text-white p-4">
         <Header onMenuClick={() => setNavbarOpen(true)} />
         <Navbar isOpen={isNavbarOpen} onClose={() => setNavbarOpen(false)} />
         <div className="flex items-center justify-center h-full">
@@ -144,13 +144,13 @@ export default function GraphManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-white text-black dark:bg-slate-950 dark:text-white">
       <Header onMenuClick={() => setNavbarOpen(true)} />
       <Navbar isOpen={isNavbarOpen} onClose={() => setNavbarOpen(false)} />
       <div className="p-4">
         <div className="flex justify-between items-center mb-6">
           <h1
-            className="text-3xl font-bold text-black"
+            className="text-3xl font-bold text-black dark:text-white"
             style={{ fontFamily: "DM Sans, sans-serif" }}
           >
             Your Graphs
@@ -254,71 +254,71 @@ export default function GraphManagerPage() {
       {selected && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div
-            className="bg-white rounded-lg p-8 max-w-lg w-full mx-4"
+            className="bg-white dark:bg-slate-900 rounded-lg p-8 max-w-lg w-full mx-4"
             style={{ fontFamily: "DM Sans, sans-serif" }}
           >
             {currentGraph && currentGraph.id === selected ? (
               <>
-                <h2 className="text-2xl font-bold mb-6 text-black">
+                <h2 className="text-2xl font-bold mb-6 text-black dark:text-white">
                   {currentGraph.graph_name}
                 </h2>
-                <p className="text-black text-lg mb-6 font-normal">
+                <p className="text-black dark:text-slate-300 text-lg mb-6 font-normal">
                   Graph Details
                 </p>
 
                 <div className="flex gap-4 mb-6">
-                  <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="text-gray-600 text-base font-medium mb-1">
+                  <div className="flex-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+                    <div className="text-gray-600 dark:text-slate-300 text-base font-medium mb-1">
                       Nodes
                     </div>
-                    <div className="text-xl font-bold text-black">
+                    <div className="text-xl font-bold text-black dark:text-white">
                       {currentGraph.graph_data?.nodes?.length || 0}
                     </div>
                   </div>
-                  <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="text-gray-600 text-base font-medium mb-1">
+                  <div className="flex-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+                    <div className="text-gray-600 dark:text-slate-300 text-base font-medium mb-1">
                       Connections
                     </div>
-                    <div className="text-xl font-bold text-black">
+                    <div className="text-xl font-bold text-black dark:text-white">
                       {currentGraph.graph_data?.edges?.length || 0}
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-4 mb-6">
-                  <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="text-gray-600 text-base font-medium mb-1">
+                  <div className="flex-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+                    <div className="text-gray-600 dark:text-slate-300 text-base font-medium mb-1">
                       Evidence
                     </div>
-                    <div className="text-xl font-bold text-black">
+                    <div className="text-xl font-bold text-black dark:text-white">
                       {currentGraph.graph_data?.evidence?.length || 0}
                     </div>
                   </div>
-                  <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="text-gray-600 text-base font-medium mb-1">
+                  <div className="flex-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+                    <div className="text-gray-600 dark:text-slate-300 text-base font-medium mb-1">
                       Supporting Documents
                     </div>
-                    <div className="text-xl font-bold text-black">
+                    <div className="text-xl font-bold text-black dark:text-white">
                       {supportingDocCount !== null
                         ? supportingDocCount
                         : "Loading..."}
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                  <div className="text-gray-600 text-base font-medium mb-1">
+                <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                  <div className="text-gray-600 dark:text-slate-300 text-base font-medium mb-1">
                     Created On
                   </div>
-                  <div className="text-black">
+                  <div className="text-black dark:text-white">
                     {currentGraph.created_at
                       ? new Date(currentGraph.created_at).toLocaleString()
                       : "N/A"}
                   </div>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                  <div className="text-gray-600 text-base font-medium mb-1">
+                <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4 mb-6">
+                  <div className="text-gray-600 dark:text-slate-300 text-base font-medium mb-1">
                     Last Modified
                   </div>
-                  <div className="text-black">
+                  <div className="text-black dark:text-white">
                     {currentGraph.updated_at
                       ? new Date(currentGraph.updated_at).toLocaleString()
                       : "N/A"}
@@ -335,7 +335,7 @@ export default function GraphManagerPage() {
                   <div className="flex gap-4">
                     <button
                       onClick={() => dispatch(setSelectedGraph(null))}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                      className="px-4 py-2 text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white font-medium"
                     >
                       Close
                     </button>
@@ -353,7 +353,7 @@ export default function GraphManagerPage() {
             ) : (
               <div className="flex flex-col items-center justify-center min-h-[200px]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#232F3E] mb-4"></div>
-                <div className="text-black font-medium">
+                <div className="text-black dark:text-white font-medium">
                   Loading graph details...
                 </div>
               </div>

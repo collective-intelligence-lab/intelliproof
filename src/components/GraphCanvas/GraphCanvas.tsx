@@ -2913,6 +2913,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
+  const [chatMode, setChatMode] = useState<"chat" | "agent">("chat");
+  const [isChatModeMenuOpen, setIsChatModeMenuOpen] = useState(false);
 
   // Handler for chat input changes
   const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6502,13 +6504,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         value={chatInput}
                         onChange={handleChatInputChange}
                         placeholder="Ask me anything about your graph..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-24"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-36"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
                           fontWeight: "400",
                         }}
                       />
-                      <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-20 top-1/2 -translate-y-1/2">
                         <AudioRecorder
                           onTranscription={(transcribedText) => {
                             // Set transcribed text as chat input
@@ -6521,6 +6523,72 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           className="p-2 text-purple-500 hover:text-purple-600"
                         />
                       </div>
+
+                      <div className="absolute right-11 top-1/2 -translate-y-1/2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsChatModeMenuOpen((prevOpen) => !prevOpen)
+                          }
+                          className="p-2 text-purple-400 hover:text-purple-500"
+                          title="Select mode"
+                          aria-label="Select mode"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            className="w-5 h-5"
+                          >
+                            <path
+                              d="M4 7h16M4 12h16M4 17h16"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+
+                        {isChatModeMenuOpen && (
+                          <div className="absolute bottom-12 right-0 min-w-[140px] rounded-md border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChatMode("chat");
+                                setIsChatModeMenuOpen(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors ${
+                                chatMode === "chat"
+                                  ? "bg-purple-50 text-purple-700"
+                                  : "text-gray-700 hover:bg-gray-50"
+                              }`}
+                            >
+                              <span>Chat</span>
+                              {chatMode === "chat" && (
+                                <CheckIcon className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChatMode("agent");
+                                setIsChatModeMenuOpen(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors ${
+                                chatMode === "agent"
+                                  ? "bg-purple-50 text-purple-700"
+                                  : "text-gray-700 hover:bg-gray-50"
+                              }`}
+                            >
+                              <span>Agent</span>
+                              {chatMode === "agent" && (
+                                <CheckIcon className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <button
                         type="submit"
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"

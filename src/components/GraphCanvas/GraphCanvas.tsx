@@ -2954,8 +2954,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         supportingDocuments: supportingDocuments,
       };
 
-      // Call AI chat API
-      const response = await fetch("/api/ai/chat", {
+      // Call AI chat API based on selected mode
+      const chatApiEndpoint =
+        chatMode === "agent" ? "/api/ai/agentic-chat" : "/api/ai/chat";
+      const response = await fetch(chatApiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

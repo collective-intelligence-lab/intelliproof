@@ -57,7 +57,7 @@ from ai_models import (
     ChatRequest,  # NEW
     ChatResponse  # NEW
 )
-from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol
+from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol, run_llm_agentic
 from datetime import datetime
 from graph_conversion import convert_graph_format
 
@@ -2043,3 +2043,177 @@ Assistant: "The relationship between your claims forms a logical progression fro
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
+    
+@router.post("/api/ai/agentic-chat", response_model=ChatResponse)
+def agentic_chat(data: ChatRequest = Body(...)):
+    """
+    Future endpoint for agentic chat that can perform actions based on user input.
+    This will allow the AI to not only answer questions but also take actions like
+    modifying the graph, adding evidence, or generating reports based on commands.
+    """
+    
+    try : 
+        # prepare context and system prompt for agentic behavior
+        # implement action parsing and execution logic
+
+        nodes = data.graph_data.get("nodes", []) 
+        edges = data.graph_data.get("edges", [])
+        evidence = data.graph_data.get("evidence", [])
+        documents = data.graph_data.get("supportingDocuments", [])
+
+        agent_prompt = agent_prompt = f"""You are the IntelliProof Graph Construction Agent, an expert in logical reasoning and argument mapping. Your task is to translate user requests into structured argument graphs. 
+
+You do not engage in conversation. You output ONLY valid, parsable JSON representing the desired state of the argument graph based on the user's instructions.
+
+**CURRENT GRAPH STATE:**
+NODES ({len(nodes)} total):
+{chr(10).join([f"- ID: {node.get('id', 'Unknown')} | Text: {node.get('text', 'No text')}" for node in nodes]) if nodes else "Empty"}
+
+EDGES ({len(edges)} total):
+{chr(10).join([f"- ID: {edge.get('id', 'Unknown')} | {edge.get('source', 'Unknown')} → {edge.get('target', 'Unknown')}" for edge in edges]) if edges else "Empty"}
+
+EVIDENCE ({len(evidence)} total):
+{chr(10).join([f"- ID: {ev.get('id', 'Unknown')} | Title: {ev.get('title', 'No title')} | Excerpt: {ev.get('excerpt', 'No excerpt')[:100]}..." for ev in evidence]) if evidence else "Empty"}
+
+SUPPORTING DOCUMENTS ({len(documents)} total):
+{chr(10).join([f"- ID: {doc.get('id', 'Unknown')} | Name: {doc.get('name', 'No name')} | Type: {doc.get('type', 'Unknown type')}" for doc in documents]) if documents else "Empty"}
+
+**YOUR INSTRUCTIONS:**
+1. Analyze the user's request to determine if you need to create a new graph from scratch, or modify/add to the current graph state.
+2. Formulate the logical claims as concise, independent sentences (Nodes).
+3. Determine the logical relationships between these claims (Edges). A source node usually supports, attacks, or leads to a target node.
+4. Output the final graph in the exact JSON format specified below.
+
+**JSON SCHEMA STRICT REQUIREMENTS:**
+You must return a JSON object with exactly three top-level keys: `evidence`, `nodes`, and `edges`.
+- `evidence`: MUST ALWAYS be an empty array `[]`. (Downstream tools will populate this).
+- `nodes`: An array of objects. Each object MUST have:
+  - `id`: A simple string integer (e.g., "1", "2", "3"). If adding to an existing graph, continue the ID sequence or generate a new one.
+  - `text`: The text of the claim or argument.
+- `edges`: An array of objects representing relationships. Each object MUST have:
+  - `id`: A string combining the source and target (e.g., "e1-2").
+  - `source`: The `id` of the source node.
+  - `target`: The `id` of the target node.
+  - `weight`: MUST ALWAYS be 0. (Downstream tools will calculate this).
+
+**FEW-SHOT EXAMPLES:**
+
+User: "Create an argument that remote work is good for the environment because it reduces commuting."
+Current State: Empty
+Assistant:
+{{
+  "evidence": [],
+  "nodes": [
+    {{
+      "id": "1",
+      "text": "Remote work is highly beneficial for the environment."
+    }},
+    {{
+      "id": "2",
+      "text": "Working from home significantly reduces daily commuter traffic."
+    }},
+    {{
+      "id": "3",
+      "text": "Fewer commuting vehicles leads to a drop in greenhouse gas emissions."
+    }}
+  ],
+  "edges": [
+    {{
+      "id": "e2-3",
+      "source": "2",
+      "target": "3",
+      "weight": 0
+    }},
+    {{
+      "id": "e3-1",
+      "source": "3",
+      "target": "1",
+      "weight": 0
+    }}
+  ]
+}}
+
+User: "Add a counter-argument to node 1 that remote work increases home energy consumption."
+Current State: (Assume the graph from the previous example is provided in the state above)
+Assistant:
+{{
+  "evidence": [],
+  "nodes": [
+    {{
+      "id": "1",
+      "text": "Remote work is highly beneficial for the environment."
+    }},
+    {{
+      "id": "2",
+      "text": "Working from home significantly reduces daily commuter traffic."
+    }},
+    {{
+      "id": "3",
+      "text": "Fewer commuting vehicles leads to a drop in greenhouse gas emissions."
+    }},
+    {{
+      "id": "4",
+      "text": "Remote work increases residential energy consumption due to home heating and cooling."
+    }}
+  ],
+  "edges": [
+    {{
+      "id": "e2-3",
+      "source": "2",
+      "target": "3",
+      "weight": 0
+    }},
+    {{
+      "id": "e3-1",
+      "source": "3",
+      "target": "1",
+      "weight": 0
+    }},
+    {{
+      "id": "e4-1",
+      "source": "4",
+      "target": "1",
+      "weight": 0
+    }}
+  ]
+}}
+
+**FINAL RULE:**
+Do not include markdown blocks like ```json or any conversational text. Output ONLY the raw, valid JSON object.**"""
+        
+        # Prepare conversation history
+        messages = []
+        for msg in data.chat_history[-10:]:  # Keep last 10 messages for context, this is higher than the regular chat to give the agent more context for decision making
+            messages.append({"role": msg.role, "content": msg.content})
+        
+        # Add the current user message
+        messages.append({"role": "user", "content": data.user_message})
+        
+        # Create a specialized MCP for agentic behavior
+        agent_mcp = ModelControlProtocol(
+            model_name="gpt-5.4",
+            temperature=0.0,  # Deterministic output for structured JSON
+            max_completion_tokens=2048,
+            system_prompt=agent_prompt
+        )
+        
+        # Get AI response
+        response = run_llm_agentic(messages, agent_mcp)
+        
+        return ChatResponse(
+            assistant_message=response,
+            reasoning="Generated based on graph analysis and user instructions",
+            confidence=1.0,
+            suggested_actions=[
+                "Check evidence for claims",
+                "Validate edge relationships", 
+                "Generate assumptions",
+                "Analyze argument structure",
+                "Modify graph structure",
+                "Add new claims or evidence",
+                "Reconstruct argument flow",
+            ]
+        )
+    except Exception as e:
+        print(f"Error in agentic chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Agentic chat processing failed: {str(e)}")

@@ -124,4 +124,32 @@ def run_llm(messages: List[Dict[str, str]], mcp: ModelControlProtocol = DEFAULT_
         return response # Return the response from the LLM, along with the model used for debugging
     except Exception as e:
         print(f"[llm_manager] run_llm: Error calling OpenAI API: {e}")
-        raise e 
+        raise e
+
+def run_llm_agentic(messages: List[Dict[str, str]], mcp: ModelControlProtocol = DEFAULT_MCP) : 
+    # This function is for running agentic LLM calls, it is mainly use to generate an argument track from a given input text, it uses the same model selection process as run_llm but with a different system prompt that is more focused on argument generation and analysis.
+
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    openai_messages = []
+    if mcp.system_prompt:
+        openai_messages.append({"role": "system", "content": mcp.system_prompt})
+    for msg in messages:
+        openai_messages.append({"role": "user", "content": msg["content"]})
+    
+    MODEL_NAME = "gpt-5.4" # Use the full model for agentic calls
+
+    try:
+        response = openai.chat.completions.create(
+            model=MODEL_NAME,
+            messages=openai_messages,
+            temperature=mcp.temperature,
+            max_completion_tokens=mcp.max_completion_tokens,
+        )
+
+        response = response.choices[0].message.content.strip()  # Append model used to the response for debugging
+
+        return response
+    except Exception as e:
+        print(f"[llm_manager] run_llm_agentic: Error calling OpenAI API: {e}")
+        raise e

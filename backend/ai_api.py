@@ -2094,7 +2094,7 @@ You must return a JSON object with exactly three top-level keys: `evidence`, `no
   - `id`: A string combining the source and target (e.g., "e1-2").
   - `source`: The `id` of the source node.
   - `target`: The `id` of the target node.
-  - `weight`: MUST ALWAYS be 0. (Downstream tools will calculate this).
+  - `weight`: A number between -1 and 1 indicating the strength and polarity of the relationship, where positive values indicate support and negative values indicate attack relationships.
 
 **FEW-SHOT EXAMPLES:**
 
@@ -2122,13 +2122,13 @@ Assistant:
       "id": "e2-3",
       "source": "2",
       "target": "3",
-      "weight": 0
+      "weight": 0.8
     }},
     {{
       "id": "e3-1",
       "source": "3",
       "target": "1",
-      "weight": 0
+      "weight": 0.6
     }}
   ]
 }}
@@ -2161,19 +2161,19 @@ Assistant:
       "id": "e2-3",
       "source": "2",
       "target": "3",
-      "weight": 0
+      "weight": 0.8
     }},
     {{
       "id": "e3-1",
       "source": "3",
       "target": "1",
-      "weight": 0
+      "weight": 0.6
     }},
     {{
       "id": "e4-1",
       "source": "4",
       "target": "1",
-      "weight": 0
+      "weight": -0.8
     }}
   ]
 }}

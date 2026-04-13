@@ -2509,19 +2509,31 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           }
           return isValid;
         })
-        .map((edgeData) => ({
-          id: edgeData.id,
-          source: edgeData.source,
-          target: edgeData.target,
-          type: "custom" as const,
-          data: {
-            confidence: edgeData.weight || 0,
-            edgeType: "supporting" as const, // Default to supporting, can be enhanced later
-            edgeScore: 0, // Default value
-          },
-        }));
+        .map((edgeData) => {
+          const normalizedWeight = clamp(edgeData.weight ?? 0, -1, 1);
+          const importedEdgeType: EdgeType =
+            normalizedWeight < 0 ? "attacking" : "supporting";
+
+          return {
+            id: edgeData.id,
+            source: edgeData.source,
+            target: edgeData.target,
+            type: "custom" as const,
+            data: {
+              confidence: normalizedWeight,
+              edgeType: importedEdgeType,
+              edgeScore: normalizedWeight,
+              reasoning: "",
+            },
+            markerStart: {
+              type: MarkerType.ArrowClosed,
+              color: getDiscreteEdgeColor(normalizedWeight),
+            },
+          };
+        });
       setEdges(importedEdges);
 
+      
       console.log("Graph imported successfully:", {
         evidenceCount: data.evidence?.length || 0,
         nodeCount: data.nodes?.length || 0,
@@ -3033,7 +3045,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Add state for chat input
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<
-    { role: "user" | "assistant"; content: string; mode?: "chat" | "agent" }[]
+    {
+      role: "user" | "assistant";
+      content: string;
+      mode?: "chat" | "agent";
+      isActioned?: boolean;
+    }[]
   >([]);
   const [chatMode, setChatMode] = useState<"chat" | "agent">("chat");
   const [isChatModeMenuOpen, setIsChatModeMenuOpen] = useState(false);
@@ -5212,7 +5229,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       Add Evidence
                     </h2>
                     <p className="text-black text-sm mb-3 font-normal">
-                      Create evidence from your supporting documents
+                      Create evidence from a supporting document or add standalone text evidence
                     </p>
                     <form
                       onSubmit={(e) => {
@@ -5220,14 +5237,19 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         const doc = supportingDocuments.find(
                           (d) => d.id === newEvidence.supportingDocId
                         );
-                        if (!doc) return;
+
+                        const normalizedSupportingDocId =
+                          doc?.id || `manual-text-${uuidv4()}`;
+                        const normalizedSupportingDocName =
+                          doc?.name || "Manual Text";
+
                         setEvidenceCards((prev) => [
                           ...prev,
                           {
                             id: uuidv4(),
                             title: newEvidence.title,
-                            supportingDocId: doc.id,
-                            supportingDocName: doc.name,
+                            supportingDocId: normalizedSupportingDocId,
+                            supportingDocName: normalizedSupportingDocName,
                             excerpt: newEvidence.excerpt,
                             confidence: 0,
                           },
@@ -5285,7 +5307,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                           className="text-black text-sm font-medium"
                           htmlFor="supportingDoc"
                         >
-                          Supporting Document
+                          Supporting Document (Optional)
                         </label>
                         <select
                           id="supportingDoc"
@@ -5299,10 +5321,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               excerpt: "",
                             }))
                           }
-                          required
                         >
-                          <option value="" disabled>
-                            Select a document...
+                          <option value="">
+                            No document (add pure text evidence)
                           </option>
                           {supportingDocuments.map((doc) => (
                             <option key={doc.id} value={doc.id}>
@@ -5654,7 +5675,49 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             </div>
                           );
                         }
-                        return null;
+                        return (
+                          <div className="flex flex-col">
+                            <label className="text-black text-sm font-medium mb-1">
+                              Evidence Text
+                            </label>
+                            <div className="relative">
+                              <textarea
+                                className="w-full px-3 py-2 pr-12 bg-white border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                style={{
+                                  color: "#000000",
+                                  fontWeight: 500,
+                                  height: "220px",
+                                }}
+                                placeholder="Type or paste standalone evidence text here..."
+                                value={newEvidence.excerpt}
+                                onChange={(e) =>
+                                  setNewEvidence((ev) => ({
+                                    ...ev,
+                                    excerpt: e.target.value,
+                                  }))
+                                }
+                                required
+                              />
+                              <div className="absolute right-2 top-2">
+                                <AudioRecorder
+                                  onTranscription={(transcribedText) => {
+                                    const newExcerpt = newEvidence.excerpt
+                                      ? `${newEvidence.excerpt} ${transcribedText}`
+                                      : transcribedText;
+                                    setNewEvidence((ev) => ({
+                                      ...ev,
+                                      excerpt: newExcerpt,
+                                    }));
+                                  }}
+                                  onError={(error) => {
+                                    console.error('Audio transcription error:', error);
+                                  }}
+                                  className="p-1.5"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
                       })()}
 
                       {/* Actions */}
@@ -6603,13 +6666,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   ))}
                                 </p>
 
-                                {msg.mode === "agent" && (
+                                {msg.mode === "agent" && !msg.isActioned && (
                                   <div className="mt-3 flex items-center justify-end gap-2">
                                     <button
                                       type="button"
                                       className="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
                                       onClick={async () => {
                                         await HandleImportFromString(msg.content);
+                                        setChatMessages((prev) =>
+                                          prev.map((message, messageIndex) =>
+                                            messageIndex === idx
+                                              ? { ...message, isActioned: true }
+                                              : message
+                                          )
+                                        );
                                       }}
                                     >
                                       Inject

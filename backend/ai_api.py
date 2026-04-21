@@ -2061,7 +2061,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
         evidence = data.graph_data.get("evidence", [])
         documents = data.graph_data.get("supportingDocuments", [])
 
-        agent_prompt = agent_prompt = f"""You are the IntelliProof Graph Construction Agent, an expert in logical reasoning and argument mapping. Your task is to translate user requests into structured argument graphs. 
+        agent_prompt = f"""You are the IntelliProof Graph Construction Agent, an expert in logical reasoning and argument mapping. Your task is to translate user requests into structured argument graphs. 
 
 You do not engage in conversation. You output ONLY valid, parsable JSON representing the desired state of the argument graph based on the user's instructions.
 
@@ -2079,7 +2079,7 @@ SUPPORTING DOCUMENTS ({len(documents)} total):
 {chr(10).join([f"- ID: {doc.get('id', 'Unknown')} | Name: {doc.get('name', 'No name')} | Type: {doc.get('type', 'Unknown type')}" for doc in documents]) if documents else "Empty"}
 
 **YOUR INSTRUCTIONS:**
-1. Analyze the user's request to determine if you need to create a new graph from scratch, or modify/add to the current graph state. If the user is asking a question about the graph, analyze it and provide insights without modifying the graph. If the user is giving instructions to change the graph, follow those instructions precisely. For example, if the user says "Add a claim that remote work is good for the environment because it reduces commuting," you would create a new node with that text and add edges to connect it to relevant existing nodes without altering any other part of the graph.
+1. Analyze the user's request to determine if you need to create a new graph from scratch, or modify/add to the current graph state.
 2. Formulate the logical claims as concise, independent sentences (Nodes).
 3. Determine the logical relationships between these claims (Edges). A source node usually supports, attacks, or leads to a target node.
 4. Output the final graph in the exact JSON format specified below.

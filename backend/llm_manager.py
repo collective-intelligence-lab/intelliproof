@@ -2,6 +2,30 @@ import os
 import openai
 from typing import List, Dict, Any
 
+class AgentManager : # This class is responsible for managing the different agents in the system, it can be used to select agents based on the task at hand, and to run agentic calls to the LLM.
+    def __init__(
+            self,
+            judge_model = "gpt-5.4-nano", # Nano model to select the task type
+            default_task_type = "graph construction", # Default task type if the judge model fails to classify
+            edit_task_type = "graph editing", # Task type for graph editing tasks
+            question_task_type = "graph analysis", # Task type for graph analysis tasks
+            temperature = 0.2,
+            max_completion_tokens = 32, # Short response for task type selection
+            system_prompt = (
+                "You are an expert task classifier for Intelliproof. "
+                "Given the user input, determine if the task is a graph construction task, a graph editing task, or a graph analysis task. "
+                "If the user is asking to create a new graph from scratch, classify it as a graph construction task. If the user is asking to modify or add to an existing graph, classify it as a graph editing task. If the user is asking a question about the graph or requesting insights without modifying the graph, classify it as a graph analysis task. "
+                "Return only the task type (graph construction, graph editing, or graph analysis) as the output and nothing else."
+            ),
+        ) :
+        self.judge_model = judge_model
+        self.default_task_type = default_task_type
+        self.edit_task_type = edit_task_type
+        self.question_task_type = question_task_type
+        self.temperature = temperature
+        self.max_completion_tokens = max_completion_tokens
+        self.system_prompt = system_prompt
+
 class LLMManager: # This class uses a strong LLM to decide which model to use for the task, if the task is simple, it defaults to 5.4 nano, otherwise, it can either choose 5.4 mini or 5.4 normal.
     def __init__(
         self, 

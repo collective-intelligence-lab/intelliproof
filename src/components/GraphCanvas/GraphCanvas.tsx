@@ -5135,7 +5135,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
               {/* Evidence Management Section */}
               <div className="p-4 border-b-0 flex flex-col min-h-0">
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log("[Auto Link] Placeholder action triggered");
+                    }}
+                    className="px-3 py-1.5 rounded-md text-sm font-[DM Sans] font-medium text-[#F3F4F6] bg-gradient-to-r from-[#374151] to-[#232F3E] border border-[#4b5563] shadow-sm hover:from-[#2f3b4a] hover:to-[#1A2330] hover:shadow transition-all"
+                    title="Automatically link evidence to nodes (coming soon)"
+                  >
+                    Auto Link
+                  </button>
                   <button
                     className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm font-[DM Sans] font-normal"
                     onClick={() => setIsAddEvidenceOpen(true)}

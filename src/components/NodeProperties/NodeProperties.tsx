@@ -251,7 +251,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
 
   return (
     <div
-      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50 font-[DM Sans] font-normal"
+      className="fixed top-24 w-[300px] bg-white rounded-lg shadow-lg p-6 z-50 font-[DM Sans] font-normal max-h-[calc(100vh-7rem)] overflow-hidden flex flex-col"
       style={{
         right:
           typeof copilotOffsetPx === "number" && copilotOffsetPx > 0
@@ -273,7 +273,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
       </div>
 
       {/* Content */}
-      <div className="space-y-6">
+      <div className="space-y-6 flex-1 min-h-0 overflow-y-auto pr-1">
         {/* Claim Credibility Score */}
         <div className="relative">
           <label className="block text-base font-medium mb-2">

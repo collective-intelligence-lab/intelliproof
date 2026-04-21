@@ -30,9 +30,9 @@ app = FastAPI()
 # Initialize the Whisper model once at startup (you can choose the model size based on your needs)
 
 audio_model = WhisperModel(
-    "tiny", 
+    "base", 
     device = "cpu", # Change to "cuda" if you have a compatible GPU and the necessary drivers installed
-    cpu_threads = 2,
+    cpu_threads = 4, # Adjust based on your CPU capabilities
     compute_type="float32", # This should work on our Threadripper without needing to worry about GPU
 )
 

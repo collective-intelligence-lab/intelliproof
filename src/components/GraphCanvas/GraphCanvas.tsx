@@ -5134,7 +5134,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               </div>
 
               {/* Evidence Management Section */}
-              <div className="p-4 border-b-0">
+              <div className="p-4 border-b-0 flex flex-col min-h-0">
                 <div className="flex justify-end mb-2">
                   <button
                     className="px-3 py-1.5 bg-[#232F3E] text-[#F3F4F6] rounded-md hover:bg-[#1A2330] transition-colors text-sm font-[DM Sans] font-normal"
@@ -5144,7 +5144,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   </button>
                 </div>
                 {/* Evidence cards */}
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[36vh] overflow-y-auto pr-1">
                   {evidenceCards.filter((card) => !card.id.includes("_"))
                     .length === 0 ? (
                     <div className="p-4 bg-[#FAFAFA] rounded-md border border-gray-300 text-center text-gray-500 text-sm font-medium">
@@ -6563,7 +6563,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               {activeTab === "chat" ? (
                 <>
                   {/* Chat Area */}
-                  <div className="flex-1 overflow-auto p-4">
+                  <div className="flex-1 min-h-0 overflow-auto p-4">
                     <div
                       className="text-center text-gray-500 mt-2 mb-4"
                       style={{
@@ -6581,13 +6581,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                           <SparklesIcon className="w-4 h-4 text-white" />
                         </div>
-                        <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
+                        <div className="min-w-0 bg-purple-50 rounded-lg p-3 max-w-[80%]">
                           <p
-                            className="text-sm text-gray-800"
+                            className="text-sm text-gray-800 break-words"
                             style={{
                               fontFamily: "DM Sans, sans-serif",
                               fontWeight: "400",
                               lineHeight: "1.5",
+                              overflowWrap: "anywhere",
                             }}
                           >
                             Hello! I'm your AI Copilot. I can help you analyze
@@ -6608,14 +6609,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   U
                                 </span>
                               </div>
-                              <div className="bg-gray-100 rounded-lg p-3 max-w-[80%] ml-auto">
+                              <div className="min-w-0 bg-gray-100 rounded-lg p-3 max-w-[80%] ml-auto">
                                 <p
-                                  className="text-sm text-gray-800"
+                                  className="text-sm text-gray-800 break-words"
                                   style={{
                                     fontFamily: "DM Sans, sans-serif",
                                     fontWeight: "400",
                                     lineHeight: "1.5",
                                     whiteSpace: "pre-wrap",
+                                    overflowWrap: "anywhere",
                                   }}
                                 >
                                   {msg.content.split("\n").map((line, lineIndex, arr) => (
@@ -6640,14 +6642,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                               <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                                 <SparklesIcon className="w-4 h-4 text-white" />
                               </div>
-                              <div className="bg-purple-50 rounded-lg p-3 max-w-[80%]">
+                              <div className="min-w-0 bg-purple-50 rounded-lg p-3 max-w-[80%]">
                                 <p
-                                  className="text-sm text-gray-800"
+                                  className="text-sm text-gray-800 break-words"
                                   style={{
                                     fontFamily: "DM Sans, sans-serif",
                                     fontWeight: "400",
                                     lineHeight: "1.5",
                                     whiteSpace: "pre-wrap",
+                                    overflowWrap: "anywhere",
                                   }}
                                 >
                                   {msg.content.split("\n").map((line, lineIndex, arr) => (

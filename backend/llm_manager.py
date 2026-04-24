@@ -74,6 +74,46 @@ class ModelControlProtocol:
 # Define a single, project-wide MCP instance
 DEFAULT_MCP = ModelControlProtocol()
 TASK_JUDGE_MCP = LLMManager()
+DEFAULT_AGENT_MANAGER = AgentManager()
+
+def select_agent_for_task(messages: List[Dict[str, str]], am: AgentManager = DEFAULT_AGENT_MANAGER) -> str:
+    # Use the judge model to determine which agent to use for the task
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    print(f"[agent_manager] select_agent_for_task: Evaluating task with {len(messages)} messages.")
+    
+    # Prepare messages for OpenAI API
+    openai_messages = []
+    if am.system_prompt:
+        openai_messages.append({"role": "system", "content": am.system_prompt})
+    
+    for msg in messages:
+        openai_messages.append({"role": "user", "content": msg["content"]})
+    
+    try:
+        response = openai.chat.completions.create(
+            model=am.judge_model,
+            messages=openai_messages,
+            temperature=am.temperature,
+            max_completion_tokens=am.max_completion_tokens,
+        )
+        selected_task_type = response.choices[0].message.content.strip()
+        print(f"[agent_manager] select_agent_for_task: Selected task type - {selected_task_type}")
+
+        if selected_task_type.lower() == "graph construction":
+            return am.default_task_type
+        elif selected_task_type.lower() == "graph editing":
+            return am.edit_task_type
+        elif selected_task_type.lower() == "graph analysis":
+            return am.question_task_type
+        else : 
+            print("[agent_manager] select_agent_for_task: Unexpected task type response, defaulting to graph construction.")
+            return am.default_task_type  # Fallback to default if the response is unexpected
+
+        #return selected_task_type
+    except Exception as e:
+        print(f"[agent_manager] select_agent_for_task: Error calling OpenAI API: {e}")
+        raise e
 
 def select_model_for_task(messages: List[Dict[str, str]], mcp: LLMManager = TASK_JUDGE_MCP) -> str:
     # Use the judge model to determine which model to use for the task

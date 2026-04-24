@@ -2468,7 +2468,41 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
     try {
       const parsed = JSON.parse(content);
-      return validateGraphData(parsed).isValid;
+      if (!parsed || typeof parsed !== "object") return false;
+
+      if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+        return false;
+      }
+
+      if (
+        parsed.evidence !== undefined &&
+        !Array.isArray(parsed.evidence)
+      ) {
+        return false;
+      }
+
+      for (const node of parsed.nodes) {
+        if (!node || typeof node !== "object") return false;
+        if (typeof node.id !== "string" || typeof node.text !== "string") {
+          return false;
+        }
+      }
+
+      for (const edge of parsed.edges) {
+        if (!edge || typeof edge !== "object") return false;
+        if (
+          typeof edge.id !== "string" ||
+          typeof edge.source !== "string" ||
+          typeof edge.target !== "string" ||
+          typeof edge.weight !== "number" ||
+          edge.weight < -1 ||
+          edge.weight > 1
+        ) {
+          return false;
+        }
+      }
+
+      return true;
     } catch {
       return false;
     }

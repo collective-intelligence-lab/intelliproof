@@ -2061,7 +2061,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
         evidence = data.graph_data.get("evidence", [])
         documents = data.graph_data.get("supportingDocuments", [])
 
-        GRAPH_CONSTRUCTION_PROMPT = f"""
+        GRAPH_CONSTRUCTION_PROMPT = """
         You are the IntelliProof Graph Construction Agent, a highly specialized expert in logical reasoning and argument mapping. Your exclusive task is to build completely new, structured argument graphs from scratch based on user requests or provided text.
 
         You do not engage in conversation, explanations, or pleasantries. You output ONLY valid, parsable JSON representing the initial state of the argument graph.
@@ -2202,37 +2202,37 @@ def agentic_chat(data: ChatRequest = Body(...)):
 
         User: "Delete node 3. Then add a new claim that UBI encourages entrepreneurship, and have it support node 1."
         Assistant:
-        {
+        {{
         "evidence": [],
         "nodes": [
-            {
+            {{
             "id": "1",
             "text": "Universal Basic Income reduces poverty."
-            },
-            {
+            }},
+            {{
             "id": "2",
             "text": "UBI guarantees a safety net for all citizens."
-            },
-            {
+            }}
+            {{
             "id": "4",
             "text": "Universal Basic Income encourages entrepreneurship by removing the fear of destitution."
-            }
+            }}
         ],
         "edges": [
-            {
+            {{
             "id": "e2-1",
             "source": "2",
             "target": "1",
             "weight": 0.9
-            },
-            {
+            }},
+            {{
             "id": "e4-1",
             "source": "4",
             "target": "1",
             "weight": 0.7
-            }
+            }}
         ]
-        }
+        }}
 
         **FINAL RULE:**
         Do not include markdown blocks like ```json or any conversational text. Output ONLY the raw, valid JSON object of the fully updated graph.
@@ -2291,16 +2291,18 @@ def agentic_chat(data: ChatRequest = Body(...)):
         # Create the agent manager
 
         agent_manager_mcp = AgentManager()
-        task_type = select_agent_for_task(data.user_message, agent_manager_mcp)
+        task_type = select_agent_for_task(messages, agent_manager_mcp)
 
-        if task_type == "graph_construction":
+        if "graph construction" in task_type:
             agent_prompt = GRAPH_CONSTRUCTION_PROMPT
             messages = [{"role": "user", "content": data.user_message}]  # For construction, we only need the current message
-        elif task_type == "graph_editing":
+        elif "graph editing" in task_type:
             agent_prompt = GRAPH_EDITING_PROMPT
             messages = [{"role": "user", "content": data.user_message}]  # For editing, we also only need the current message
-        elif task_type == "graph_analysis":
+        elif "graph analysis" in task_type:
             agent_prompt = RESEARCH_PROMPT
+        else : 
+            print(task_type)
         
         # Create a specialized MCP for agentic behavior
         agent_mcp = ModelControlProtocol(

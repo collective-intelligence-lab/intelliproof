@@ -87,9 +87,9 @@ def select_agent_for_task(messages: List[Dict[str, str]], am: AgentManager = DEF
     if am.system_prompt:
         openai_messages.append({"role": "system", "content": am.system_prompt})
     
-    for msg in messages:
-        openai_messages.append({"role": "user", "content": msg["content"]})
+    openai_messages.append({"role": "user", "content": messages[-1]['content']})  # Use only the latest user message for task classification
     
+
     try:
         response = openai.chat.completions.create(
             model=am.judge_model,

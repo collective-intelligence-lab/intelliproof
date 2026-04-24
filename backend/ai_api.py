@@ -2275,7 +2275,6 @@ def agentic_chat(data: ChatRequest = Body(...)):
         - Do not answer anything that is not related to the argument or the graph
 
         **RESPONSE STYLE:**
-        - Be direct and to the point (2-3 sentences max)
         - Speak like an experienced consultant who is knowledgeable about the argument
         - Give specific, actionable insights and information
         - Be encouraging but honest about weaknesses

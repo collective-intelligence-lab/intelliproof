@@ -2463,6 +2463,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     return { isValid: true };
   };
 
+  const canInjectAgentResponse = (content: string): boolean => {
+    if (typeof content !== "string") return false;
+
+    try {
+      const parsed = JSON.parse(content);
+      return validateGraphData(parsed).isValid;
+    } catch {
+      return false;
+    }
+  };
+
   // Import graph data function
   const importGraphData = (data: ExportedGraphData) => {
     try {
@@ -6679,7 +6690,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                   ))}
                                 </p>
 
-                                {msg.mode === "agent" && !msg.isActioned && (
+                                {msg.mode === "agent" &&
+                                  !msg.isActioned &&
+                                  canInjectAgentResponse(msg.content) && (
                                   <div className="mt-3 flex items-center justify-end gap-2">
                                     <button
                                       type="button"

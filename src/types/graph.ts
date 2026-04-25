@@ -19,6 +19,7 @@ export interface ClaimData {
     credibilityScore?: number;
     belief?: number;
     created_on?: string;
+    isAIInjected?: boolean;
     onChange?: (newText: string) => void;
     evidenceIds?: string[];
     onEvidenceDrop?: (evidenceId: string) => void;
@@ -118,6 +119,7 @@ export type ExportedGraphData = {
         belief: number;
         position: { x: number; y: number };
         created_on: string;
+        isAIInjected?: boolean;
         evidenceIds: string[];
         style?: React.CSSProperties;
     }>;

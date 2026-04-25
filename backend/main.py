@@ -14,6 +14,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from faster_whisper import WhisperModel
 
+# Local AI implementations go into this file. API calls go to ai_api.py.
+
 # Load environment variables
 load_dotenv()
 

@@ -318,6 +318,9 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const CHARACTER_LIMIT = 200;
+  const isAIInjected = Boolean(
+    (data as ClaimData & { isAIInjected?: boolean }).isAIInjected
+  );
 
   const colors = (() => {
     switch (data.type) {
@@ -437,7 +440,9 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         }}
       />
       <div
-        className={`flex flex-col w-full p-0 m-0 group relative transition-all duration-200 ${isDragOver ? "ring-2 ring-[#7283D9] ring-opacity-50 bg-[#F0F4FF]" : ""
+        className={`flex flex-col w-full p-0 m-0 group relative transition-all duration-200 ${
+          isAIInjected ? "ring-2 ring-purple-500 animate-pulse" : ""
+        } ${isDragOver ? "ring-2 ring-[#7283D9] ring-opacity-50 bg-[#F0F4FF]" : ""
           }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -985,6 +990,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               belief: nodeData.belief ?? 0,
               credibilityScore: nodeData.credibilityScore ?? 0,
               created_on: nodeData.created_on || new Date().toISOString(),
+              isAIInjected: Boolean(nodeData.isAIInjected),
               onChange: (newText: string) => {
                 setNodes((nds) =>
                   nds.map((n) =>
@@ -1712,6 +1718,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         belief: clamp(node.data.belief ?? 0.5, 0, 1),
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
+        isAIInjected: Boolean(node.data.isAIInjected),
         evidenceIds: node.data.evidenceIds || [],
       })),
       edges: edges.map((edge) => {
@@ -2106,6 +2113,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         credibilityScore: node.data.credibilityScore ?? 0,
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
+        isAIInjected: Boolean(node.data.isAIInjected),
         evidenceIds: node.data.evidenceIds || [],
       })),
       edges: edges.map((edge) => ({
@@ -2158,6 +2166,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             : 0.5,
         credibilityScore:
           typeof node?.credibilityScore === "number" ? node.credibilityScore : 0,
+        isAIInjected: Boolean(node?.isAIInjected),
         position: {
           x:
             typeof node?.position?.x === "number"
@@ -2235,7 +2244,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         setToast(`Invalid graph data: ${validationResult.error}`);
         console.log("Imported data:", data);
       } else {
-        importGraphData(data);
+        importGraphData(data, { markAsAIInjected: true });
         const stats = {
           evidence: data.evidence?.length || 0,
           nodes: data.nodes?.length || 0,
@@ -2509,7 +2518,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   // Import graph data function
-  const importGraphData = (data: ExportedGraphData) => {
+  const importGraphData = (
+    data: ExportedGraphData,
+    options?: { markAsAIInjected?: boolean }
+  ) => {
     try {
       // Clear current graph
       takeSnapshot();
@@ -2534,6 +2546,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           credibilityScore: nodeData.credibilityScore || 0,
           created_on: nodeData.created_on || new Date().toISOString(),
           evidenceIds: nodeData.evidenceIds || [],
+          isAIInjected: options?.markAsAIInjected
+            ? true
+            : Boolean(nodeData.isAIInjected),
         },
       }));
       setNodes(importedNodes);

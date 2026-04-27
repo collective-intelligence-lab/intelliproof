@@ -318,9 +318,9 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const CHARACTER_LIMIT = 200;
+  const isLocked = Boolean((data as ClaimData & { isLocked?: boolean }).isLocked);
   const isAIInjected = Boolean(
-    (data as ClaimData & { isAIInjected?: boolean }).isAIInjected
-  );
+    (data as ClaimData & { isAIInjected?: boolean }).isAIInjected);
 
   const colors = (() => {
     switch (data.type) {
@@ -1015,6 +1015,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               credibilityScore: nodeData.credibilityScore ?? 0,
               created_on: nodeData.created_on || new Date().toISOString(),
               isAIInjected: Boolean(nodeData.isAIInjected),
+              isLocked: Boolean(nodeData.isLocked),
               onChange: (newText: string) => {
                 setNodes((nds) =>
                   nds.map((n) =>
@@ -1766,6 +1767,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
         isAIInjected: Boolean(node.data.isAIInjected),
+        isLocked: Boolean(node.data.isLocked),
         evidenceIds: node.data.evidenceIds || [],
       })),
       edges: edges.map((edge) => {
@@ -2160,6 +2162,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         credibilityScore: node.data.credibilityScore ?? 0,
         position: node.position,
         created_on: node.data.created_on || new Date().toISOString(),
+        isLocked: Boolean(node.data.isLocked),
         isAIInjected: Boolean(node.data.isAIInjected),
         evidenceIds: node.data.evidenceIds || [],
       })),
@@ -2214,6 +2217,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         credibilityScore:
           typeof node?.credibilityScore === "number" ? node.credibilityScore : 0,
         isAIInjected: Boolean(node?.isAIInjected),
+        isLocked: Boolean(node?.isLocked),
         position: {
           x:
             typeof node?.position?.x === "number"
@@ -2596,6 +2600,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           isAIInjected: options?.markAsAIInjected
             ? true
             : Boolean(nodeData.isAIInjected),
+          isLocked: Boolean(nodeData.isLocked),
           onConfirmAIInjection: () => {
             setNodes((nds) =>
               nds.map((n) =>

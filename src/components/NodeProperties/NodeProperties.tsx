@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { ClaimNode, ClaimType } from "../../types/graph";
 import ContinueButton from "../ContinueButton";
-import { InformationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, XMarkIcon, LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
 import AudioRecorder from "../AudioRecorder";
 
 // Add score classification function
@@ -165,12 +165,15 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
   const [expandedEvidenceId, setExpandedEvidenceId] = useState<string | null>(
     null
   );
+  const [isLocked, setIsLocked] = useState(false); // Track lock state (default: unlocked)
 
   useEffect(() => {
     if (node) {
       setText(node.data.text);
+      // Sync lock state from node data
+      setIsLocked(node.data.isLocked || false);
     }
-  }, [node?.data.text]);
+  }, [node?.id, node?.data.isLocked]);
 
   if (!node) return null;
 
@@ -263,13 +266,37 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold">Claim Properties</h2>
-        <button
-          onClick={onClose}
-          className="text-2xl text-gray-500 hover:text-gray-700"
-          aria-label="Close properties panel"
-        >
-          ×
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const newLockedState = !isLocked;
+              setIsLocked(newLockedState);
+              // Update the node data with the new locked state
+              onUpdate(node.id, {
+                data: {
+                  ...node.data,
+                  isLocked: newLockedState,
+                },
+              });
+            }}
+            className="text-lg text-gray-500 hover:text-gray-700 transition-colors p-1"
+            aria-label={isLocked ? "Unlock node" : "Lock node"}
+            title={isLocked ? "Node is locked" : "Node is unlocked"}
+          >
+            {isLocked ? (
+              <LockClosedIcon className="w-5 h-5" />
+            ) : (
+              <LockOpenIcon className="w-5 h-5" />
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="text-2xl text-gray-500 hover:text-gray-700"
+            aria-label="Close properties panel"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {/* Content */}

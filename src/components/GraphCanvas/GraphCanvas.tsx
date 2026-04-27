@@ -424,6 +424,11 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
     return text.slice(0, CHARACTER_LIMIT) + "...";
   };
 
+  const handleConfirmAIInjection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    data.onConfirmAIInjection?.();
+  };
+
   return (
     <>
       <Handle
@@ -448,6 +453,25 @@ const CustomNode = ({ data, id, selected }: NodeProps<ClaimData>) => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {isAIInjected && (
+          <button
+            type="button"
+            onClick={handleConfirmAIInjection}
+            className="absolute right-[-6px] top-[-6px] z-20 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm transition-transform hover:scale-110"
+            title="Confirm AI-generated content"
+            aria-label="Confirm AI-generated content"
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="h-2.5 w-2.5">
+              <path
+                d="M4.5 10.5l3 3L15.5 5.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        )}
 
 
         {/* Score Classification Bar - replacing the black line */}
@@ -1016,6 +1040,29 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               evidenceIds: nodeData.evidenceIds || [],
               onEvidenceDrop: (evidenceId: string) => {
                 handleNodeEvidenceDrop(node.id, evidenceId);
+              },
+              onConfirmAIInjection: () => {
+                setNodes((nds) =>
+                  nds.map((n) =>
+                    n.id === node.id
+                      ? {
+                        ...n,
+                        data: { ...n.data, isAIInjected: false },
+                      }
+                      : n
+                  )
+                );
+                setSelectedNode((currentSelected) =>
+                  currentSelected?.id === node.id
+                    ? {
+                      ...currentSelected,
+                      data: {
+                        ...currentSelected.data,
+                        isAIInjected: false,
+                      },
+                    }
+                    : currentSelected
+                );
               },
             },
             style: getNodeStyle(nodeData.type || node.type), // Always use getNodeStyle
@@ -2549,6 +2596,29 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           isAIInjected: options?.markAsAIInjected
             ? true
             : Boolean(nodeData.isAIInjected),
+          onConfirmAIInjection: () => {
+            setNodes((nds) =>
+              nds.map((n) =>
+                n.id === nodeData.id
+                  ? {
+                    ...n,
+                    data: { ...n.data, isAIInjected: false },
+                  }
+                  : n
+              )
+            );
+            setSelectedNode((currentSelected) =>
+              currentSelected?.id === nodeData.id
+                ? {
+                  ...currentSelected,
+                  data: {
+                    ...currentSelected.data,
+                    isAIInjected: false,
+                  },
+                }
+                : currentSelected
+            );
+          },
         },
       }));
       setNodes(importedNodes);

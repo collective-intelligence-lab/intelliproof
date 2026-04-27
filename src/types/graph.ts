@@ -23,6 +23,7 @@ export interface ClaimData {
     onChange?: (newText: string) => void;
     evidenceIds?: string[];
     onEvidenceDrop?: (evidenceId: string) => void;
+    onConfirmAIInjection?: () => void;
 }
 
 export interface ClaimNode extends Node<ClaimData> {

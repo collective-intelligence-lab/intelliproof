@@ -3222,6 +3222,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           id: node.id,
           text: node.data.text,
           type: node.data.type,
+          isLocked: Boolean(node.data.isLocked),
           evidenceIds: node.data.evidenceIds || [],
         })),
         edges: edges.map((edge) => ({

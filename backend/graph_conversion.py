@@ -44,6 +44,7 @@ def convert_graph_format(graph) :
         node["author"] = "LLM"
         node["belief"] = 0.5
         node["credibilityScore"] = 0
+        node["isLocked"] = bool(node.get("isLocked", node.get("is_locked", False)))
          # Better positioning logic for a well-spaced graph
         if i == 0:
             # Main claim centered on the left

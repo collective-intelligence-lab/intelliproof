@@ -2166,7 +2166,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
 
         **CURRENT GRAPH STATE:**
         NODES ({len(nodes)} total):
-        {chr(10).join([f"- ID: {node.get('id', 'Unknown')} | Text: {node.get('text', 'No text')}" for node in nodes]) if nodes else "Empty"}
+        {chr(10).join([f"- ID: {node.get('id', 'Unknown')} | Text: {node.get('text', 'No text')} | Locked: {node.get('isLocked', node.get('is_locked', False))}" for node in nodes]) if nodes else "Empty"}
 
         EDGES ({len(edges)} total):
         {chr(10).join([f"- ID: {edge.get('id', 'Unknown')} | {edge.get('source', 'Unknown')} → {edge.get('target', 'Unknown')}" for edge in edges]) if edges else "Empty"}
@@ -2183,12 +2183,14 @@ def agentic_chat(data: ChatRequest = Body(...)):
         3. DELETION RULE: If you delete a node, you MUST also delete any edges connected to that node.
         4. ADDITION RULE: When creating new nodes, assign them a simple string integer ID that is greater than the highest current ID in the graph. 
         5. Output the FULL, updated graph in the exact JSON format specified below.
+        6. LOCK RULE: If a node is marked as "Locked: True", it is strictly immutable. You CANNOT modify its text, and you CANNOT delete it. If the user explicitly asks you to change or delete a locked node, you must ignore that part of the request, preserve the node exactly as it is, and explain the refusal in the `message` field. This rule is absolute constraint on your behavior.
 
         **JSON SCHEMA STRICT REQUIREMENTS:**
-        You must return a JSON object with exactly three top-level keys: `evidence`, `nodes`, and `edges`.
+        You must return a JSON object with exactly four top-level keys: `message`, `evidence`, `nodes`, and `edges`.
+        - `message`: A brief string explaining what you did. If you were asked to modify a locked node, explain here that you couldn't do it because it is locked.
         - `evidence`: MUST ALWAYS be an empty array `[]`.
-        - `nodes`: An array of objects (`id`, `text`).
-        - `edges`: An array of objects (`id`, `source`, `target`, `weight`). `weight` is a number between -1.0 and 1.0 (positive = support, negative = attack).
+        - `nodes`: An array of objects (`id`, `text`, `isLocked`).
+        - `edges`: An array of objects (`id`, `source`, `target`, `weight`).
 
         **FEW-SHOT EXAMPLES:**
 
@@ -2232,6 +2234,21 @@ def agentic_chat(data: ChatRequest = Body(...)):
             "weight": 0.7
             }}
         ]
+        }}
+
+        User: "Change the text of Node 1 to say UBI is bad, and delete Node 2."
+        Assistant:
+        {{
+        "message": "I deleted Node 2. However, I could not modify Node 1 because it is currently locked.",
+        "evidence": [],
+        "nodes": [
+            {{
+            "id": "1",
+            "text": "Universal Basic Income reduces poverty.",
+            "isLocked": true
+            }}
+        ],
+        "edges": []
         }}
 
         **FINAL RULE:**

@@ -42,6 +42,7 @@ class NodeModel(BaseModel):
     id: str
     text: Optional[str] = None
     type: Optional[str] = None
+    isLocked: Optional[bool] = False
     evidence: Optional[List[float]] = None  # Accept list of floats for this endpoint
     evidence_min: Optional[float] = None
     evidence_max: Optional[float] = None
@@ -115,6 +116,7 @@ class NodeWithEvidenceModel(BaseModel):
     id: str
     text: str
     type: str
+    isLocked: Optional[bool] = False
     evidenceIds: Optional[List[str]] = []
 
 

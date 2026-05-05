@@ -1,9 +1,8 @@
 // API Configuration
 export const API_CONFIG = {
-    // Backend URL for auth endpoints
-    BACKEND_URL: process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production'
-        ? 'https://intelliproofbackend.vercel.app'
-        : 'http://localhost:8000'),
+    // Empty string forces all API calls to be relative (e.g., '/api/...')
+    // This allows the Next.js next.config.js proxy to catch and route the traffic.
+    BACKEND_URL: '', 
 } as const;
 
 // Helper function to build backend API URLs

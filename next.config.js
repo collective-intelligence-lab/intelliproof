@@ -1,21 +1,38 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    return [
-      {
-        source: '/api/ai/:path*',
-        destination: process.env.NODE_ENV === 'production' 
-          ? 'https://intelliproofbackend.vercel.app/api/ai/:path*'
-          : 'http://127.0.0.1:8000/api/ai/:path*',
+        return [
+          // AI & Audio (Wildcards are safe here)
+          {
+            source: '/api/ai/:path*',
+            destination: 'http://127.0.0.1:8000/api/ai/:path*',
+          },
+          {
+            source: '/api/audio/:path*',
+            destination: 'http://127.0.0.1:8000/api/audio/:path*',
+          },
+          
+          // Exact match for Python Auth endpoints
+          {
+            source: '/api/signin', 
+            destination: 'http://127.0.0.1:8000/api/signin',
+          },
+          {
+            source: '/api/signup', 
+            destination: 'http://127.0.0.1:8000/api/signup',
+          },
+          {
+            source: '/api/signout', 
+            destination: 'http://127.0.0.1:8000/api/signout',
+          },
+          
+          // Exact match for Python User Data endpoint (Protects /api/user/me)
+          {
+            source: '/api/user/data', 
+            destination: 'http://127.0.0.1:8000/api/user/data',
+          }
+        ];
       },
-      {
-        source: '/api/audio/:path*',
-        destination: process.env.NODE_ENV === 'production' 
-          ? 'https://intelliproofbackend.vercel.app/api/audio/:path*'
-          : 'http://127.0.0.1:8000/api/audio/:path*',
-      },
-    ];
-  },
   // Temporarily disable TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,

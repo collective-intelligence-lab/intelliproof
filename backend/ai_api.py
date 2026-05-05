@@ -2074,6 +2074,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
 
         **JSON SCHEMA STRICT REQUIREMENTS:**
         You must return a JSON object with exactly three top-level keys: `evidence`, `nodes`, and `edges`.
+        - `message`: A brief string explaining what you did to construct the graph (reasoning behind the structure).
         - `evidence`: MUST ALWAYS be an empty array `[]`. (Downstream tools will populate this).
         - `nodes`: An array of objects. Each object MUST have:
         - `id`: A simple string integer starting from "1" (e.g., "1", "2", "3"). 
@@ -2331,6 +2332,19 @@ def agentic_chat(data: ChatRequest = Body(...)):
         
         # Get AI response
         response = run_llm_agentic(messages, agent_mcp)
+
+        if "graph editing" in task_type:
+            # If the task was graph editing, check if a locked mode violation occurred and adjust the response accordingly
+            try : 
+                for node in nodes : 
+                    if node.get("isLocked", node.get("is_locked", False)) : 
+                        if node["text"] not in response : 
+                            # If the locked node's text is not in the response, it means the agent likely modified or deleted it, which is a violation of the locked node constraint. We need to inform the user about this.
+                            response_json = json.loads(response)
+                            response_json["message"] = response_json.get("message", "") + " \n Important Note: The agent attempted to modify a locked node, check the changes carefully before accepting them."
+                            response = json.dumps(response_json)
+            except Exception as e :
+                print(f"Error checking for locked node violations: {e}")
         
         return ChatResponse(
             assistant_message=response,

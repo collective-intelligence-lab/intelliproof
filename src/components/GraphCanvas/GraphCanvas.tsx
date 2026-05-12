@@ -40,6 +40,7 @@ import {
   type ExportedGraphData,
 } from "../../types/graph";
 import type { ClaimEdge, EdgeType } from "../../types/edges";
+import { getLayoutedElements } from "../Layout/layoututils";
 import NodeProperties from "../NodeProperties/NodeProperties";
 import EdgeProperties from "../Edges/EdgeProperties";
 import CustomEdge from "../Edges/CustomEdge";
@@ -945,7 +946,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   }, [supportingDocumentsRedux, supportingDocuments]);
 
   // Add effect to handle URL params
-  const graphs = useSelector((state: RootState) => state.graphs.items);
+  const graphs = useSelector(
+    (state: RootState) => (state as RootState & { graphs: { items: GraphItem[] } }).graphs.items
+  );
 
   useEffect(() => {
     if (graphId && !currentGraph?.id) {
@@ -2666,14 +2669,43 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             },
           };
         });
-      setEdges(importedEdges);
 
-      
+      // Apply graph beautification for agent-injected graphs
+      // This ensures automatically generated graphs have a clear hierarchical layout
+      let finalNodes = importedNodes;
+      let finalEdges = importedEdges;
+
+      if (options?.markAsAIInjected && importedNodes.length > 0) {
+        try {
+          const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+            importedNodes,
+            importedEdges,
+            {
+              direction: 'TB',
+              nodeWidth: 160,
+              nodeHeight: 70,
+              nodeSeparation: 60,
+              rankSeparation: 120,
+            }
+          );
+          finalNodes = layoutedNodes as typeof importedNodes;
+          finalEdges = layoutedEdges as typeof importedEdges;
+          console.log("Graph beautification applied for agent-injected content");
+        } catch (error) {
+          console.warn("Graph beautification failed, using original layout:", error);
+          // Fall back to original layout if beautification fails
+        }
+      }
+
+      setEdges(finalEdges);
+      setNodes(finalNodes);
+
       console.log("Graph imported successfully:", {
         evidenceCount: data.evidence?.length || 0,
         nodeCount: data.nodes?.length || 0,
-        edgeCount: importedEdges.length,
-        skippedEdges: (data.edges?.length || 0) - importedEdges.length,
+        edgeCount: finalEdges.length,
+        skippedEdges: (data.edges?.length || 0) - finalEdges.length,
+        beautified: options?.markAsAIInjected ? "yes" : "no",
       });
     } catch (error) {
       console.error("Error during graph import:", error);

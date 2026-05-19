@@ -2574,7 +2574,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   // Import graph data function
   const importGraphData = (
     data: ExportedGraphData,
-    options?: { markAsAIInjected?: boolean }
+    options?: { markAsAIInjected?: boolean; applyLayout?: boolean }
   ) => {
     try {
       // Clear current graph
@@ -2675,7 +2675,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       let finalNodes = importedNodes;
       let finalEdges = importedEdges;
 
-      if (options?.markAsAIInjected && importedNodes.length > 0) {
+      if ((options?.markAsAIInjected || options?.applyLayout) && importedNodes.length > 0) {
         try {
           const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
             importedNodes,
@@ -3217,6 +3217,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       content: string;
       mode?: "chat" | "agent";
       isActioned?: boolean;
+      previousGraphState?: any;
     }[]
   >([]);
   const [chatMode, setChatMode] = useState<"chat" | "agent">("chat");
@@ -3293,6 +3294,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         role: "assistant" as const,
         content: data.assistant_message,
         mode: requestMode,
+        previousGraphState:
+          requestMode === "agent" ? data.previous_graph_state : undefined,
       };
       setChatMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
@@ -6848,8 +6851,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                 </p>
 
                                 {msg.mode === "agent" &&
-                                  !msg.isActioned &&
-                                  canInjectAgentResponse(msg.content) && (
+                                  canInjectAgentResponse(msg.content) &&
+                                  !msg.isActioned && (
                                   <div className="mt-3 flex items-center justify-end gap-2">
                                     <button
                                       type="button"
@@ -6877,6 +6880,47 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                       }}
                                     >
                                       Ignore
+                                    </button>
+                                  </div>
+                                )}
+
+                                {msg.mode === "agent" &&
+                                  canInjectAgentResponse(msg.content) &&
+                                  msg.isActioned && (
+                                  <div className="mt-3">
+                                    <button
+                                      type="button"
+                                      className="w-full rounded-md border border-dashed border-amber-300 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
+                                      onClick={() => {
+                                        if (!msg.previousGraphState) return;
+
+                                        try {
+                                          const restoredGraph = normalizeImportGraphData(
+                                            msg.previousGraphState
+                                          );
+                                          importGraphData(restoredGraph, {
+                                            applyLayout: true,
+                                          });
+
+                                          setChatMessages((prev) =>
+                                            prev.map((message, messageIndex) =>
+                                              messageIndex === idx
+                                                ? {
+                                                  ...message,
+                                                  isActioned: false,
+                                                }
+                                                : message
+                                            )
+                                          );
+                                        } catch (error) {
+                                          console.error(
+                                            "Failed to revert to previous graph state:",
+                                            error
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      Revert to Previous State
                                     </button>
                                   </div>
                                 )}

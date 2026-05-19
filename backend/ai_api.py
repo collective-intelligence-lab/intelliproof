@@ -2061,6 +2061,8 @@ def agentic_chat(data: ChatRequest = Body(...)):
         evidence = data.graph_data.get("evidence", [])
         documents = data.graph_data.get("supportingDocuments", [])
 
+        previous_graph_state = data.graph_data # This should include nodes, edges, evidence, and supporting documents
+
         GRAPH_CONSTRUCTION_PROMPT = """
         You are the IntelliProof Graph Construction Agent, a highly specialized expert in logical reasoning and argument mapping. Your exclusive task is to build completely new, structured argument graphs from scratch based on user requests or provided text.
 
@@ -2185,6 +2187,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
         4. ADDITION RULE: When creating new nodes, assign them a simple string integer ID that is greater than the highest current ID in the graph. 
         5. Output the FULL, updated graph in the exact JSON format specified below.
         6. LOCK RULE: If a node is marked as "Locked: True", it is strictly immutable. You CANNOT modify its text, and you CANNOT delete it. If the user explicitly asks you to change or delete a locked node, you must ignore that part of the request, preserve the node exactly as it is, and explain the refusal in the `message` field. This rule is absolute constraint on your behavior.
+        7. WEIGHT RULE: When adding edges, assign a weight based on the logical relationship. Use positive values for support and negative values for attacks. The strength of the relationship should be reflected in the magnitude (e.g., 0.9 for very strong support, -0.8 for strong attack). Additionally, do not change the weight of existing edges unless explicitly instructed by the user. Only assign weights to new edges you create, or if deleting a node or an edge has a cascading effect that requires you to remove or modify related edges, then you can adjust the weights of those edges accordingly. However, if the user does not explicitly ask for weight changes, you should preserve existing edge weights as much as possible while still maintaining logical consistency in the graph structure.
 
         **JSON SCHEMA STRICT REQUIREMENTS:**
         You must return a JSON object with exactly four top-level keys: `message`, `evidence`, `nodes`, and `edges`.
@@ -2358,7 +2361,8 @@ def agentic_chat(data: ChatRequest = Body(...)):
                 "Modify graph structure",
                 "Add new claims or evidence",
                 "Reconstruct argument flow",
-            ]
+            ],
+            previous_graph_state=previous_graph_state 
         )
     except Exception as e:
         print(f"Error in agentic chat endpoint: {e}")

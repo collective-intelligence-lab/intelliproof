@@ -2329,7 +2329,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
         agent_mcp = ModelControlProtocol(
             model_name="gpt-5.4",
             temperature=0.0,  # Deterministic output for structured JSON
-            max_completion_tokens=2048,
+            max_completion_tokens=8192, # Allow for longer responses since the agent may need to output a full graph structure
             system_prompt=agent_prompt
         )
         

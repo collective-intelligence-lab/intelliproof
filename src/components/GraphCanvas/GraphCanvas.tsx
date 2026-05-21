@@ -3222,18 +3222,26 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   >([]);
   const [chatMode, setChatMode] = useState<"chat" | "agent">("chat");
   const [isChatModeMenuOpen, setIsChatModeMenuOpen] = useState(false);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Handler for chat input changes
-  const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setChatInput(e.target.value);
+  const adjustChatInputHeight = (element: HTMLTextAreaElement | null) => {
+    if (!element) {
+      return;
+    }
+
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, 220)}px`;
   };
 
-  // Handler for chat form submission
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  useEffect(() => {
+    adjustChatInputHeight(chatInputRef.current);
+  }, [chatInput]);
 
-    // Add user message
+  const submitChatMessage = async () => {
+    if (!chatInput.trim()) {
+      return;
+    }
+
     const requestMode = chatMode;
     const userMessage = {
       role: "user" as const,
@@ -3241,15 +3249,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       mode: requestMode,
     };
     setChatMessages((prev) => [...prev, userMessage]);
-
-    // Clear input
     setChatInput("");
-
-    // Show loading state
     setCopilotLoading(true);
 
     try {
-      // Prepare graph data
       const graphData = {
         nodes: nodes.map((node) => ({
           id: node.id,
@@ -3267,7 +3270,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         supportingDocuments: supportingDocuments,
       };
 
-      // Call AI chat API based on selected mode
       const chatApiEndpoint =
         requestMode === "agent" ? "/api/ai/agentic-chat" : "/api/ai/chat";
       const response = await fetch(chatApiEndpoint, {
@@ -3289,7 +3291,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       const data = await response.json();
 
-      // Add AI response
       const aiResponse = {
         role: "assistant" as const,
         content: data.assistant_message,
@@ -3300,16 +3301,24 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       setChatMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
       console.error("Chat error:", error);
-      // Add error message
       const errorResponse = {
         role: "assistant" as const,
-        content: "Sorry, I encountered an error. Please try again.",
+        content: "Sorry, I encountered an error processing your message.",
         mode: requestMode,
       };
       setChatMessages((prev) => [...prev, errorResponse]);
     } finally {
       setCopilotLoading(false);
     }
+  };
+
+  const handleChatInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setChatInput(e.target.value);
+  };
+
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitChatMessage();
   };
 
   // Handler for chat clear
@@ -6952,18 +6961,25 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   {/* Chat Input */}
                   <div className="border-t border-gray-200 p-4">
                     <form onSubmit={handleChatSubmit} className="relative mb-2">
-                      <input
-                        type="text"
+                      <textarea
+                        ref={chatInputRef}
                         value={chatInput}
                         onChange={handleChatInputChange}
-                        placeholder="Ask me anything about your graph..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-36"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void submitChatMessage();
+                          }
+                        }}
+                        placeholder="Ask me anything about your graph... (Enter to send, Shift+Enter for a new line)"
+                        rows={1}
+                        className="w-full min-h-[52px] max-h-[220px] resize-none overflow-y-auto px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-36 pb-12 leading-6"
                         style={{
                           fontFamily: "DM Sans, sans-serif",
                           fontWeight: "400",
                         }}
                       />
-                      <div className="absolute right-20 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-20 bottom-3">
                         <AudioRecorder
                           onTranscription={(transcribedText) => {
                             // Set transcribed text as chat input
@@ -6977,7 +6993,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                         />
                       </div>
 
-                      <div className="absolute right-11 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-11 bottom-3">
                         <button
                           type="button"
                           onClick={() =>
@@ -7044,7 +7060,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
                       <button
                         type="submit"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600"
+                        className="absolute right-2 bottom-3 p-2 text-purple-500 hover:text-purple-600"
                         disabled={!chatInput.trim()}
                       >
                         <SparklesIcon className="w-5 h-5" />

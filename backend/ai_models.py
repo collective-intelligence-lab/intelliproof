@@ -387,6 +387,7 @@ class ChatResponse(BaseModel):
     confidence: Optional[float] = None
     suggested_actions: Optional[List[str]] = None
     previous_graph_state: Optional[Dict[str, Any]] = None # Previous graph state before the chat interaction
+    model_used: Optional[str] = None
 
 
 class LinkerEvidenceItem(BaseModel):

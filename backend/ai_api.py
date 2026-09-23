@@ -8,7 +8,7 @@ This module handles AI-powered features including:
 - Future AI features (placeholders)
 
 Dependencies:
-- OpenAI API for GPT-4 powered analysis
+- OpenAI API for GPT-6 powered analysis
 - FastAPI for REST endpoints
 - Pydantic for data validation
 """
@@ -58,7 +58,17 @@ from ai_models import (
     ChatResponse,  # NEW
     LinkerResponse,
 )
-from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol, AgentManager, run_llm_agentic, select_agent_for_task
+from llm_manager import (
+    run_llm,
+    DEFAULT_MCP,
+    MODEL_LUNA,
+    MODEL_SOL,
+    ModelControlProtocol,
+    AgentManager,
+    route_model,
+    run_llm_agentic,
+    select_agent_for_task,
+)
 from datetime import datetime
 from graph_conversion import convert_graph_format
 
@@ -66,8 +76,34 @@ from graph_conversion import convert_graph_format
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# Edge validation needs enough reasoning budget to emit the required
+# evaluation, explanation, assumptions, and score in one response.
+EDGE_VALIDATION_MCP = ModelControlProtocol(max_completion_tokens=2048)
+
 # Create FastAPI router for AI endpoints
 router = APIRouter()
+
+PENDING_EVIDENCE_SCORE = 0.2
+
+
+def _normalized_evidence_score(
+    node: NodeModel,
+    request_min: Optional[float],
+    request_max: Optional[float],
+) -> float:
+    """Return a claim's initial evidence score, including pending evidence."""
+    min_value = node.evidence_min if node.evidence_min is not None else request_min
+    max_value = node.evidence_max if node.evidence_max is not None else request_max
+    min_value = min_value if min_value is not None else -1.0
+    max_value = max_value if max_value is not None else 1.0
+
+    evidence = node.evidence or [PENDING_EVIDENCE_SCORE]
+    normalized = [
+        PENDING_EVIDENCE_SCORE if value == 0 else value
+        for value in evidence
+    ]
+    clamped = [max(min(value, max_value), min_value) for value in normalized]
+    return sum(clamped) / len(clamped)
 
 # =============================================================================
 # PYDANTIC MODELS - Data validation and serialization
@@ -96,26 +132,10 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
     # Step 1: Compute E_i (initial evidence score) for each node
     E = {}
     for node in data.nodes:
-        # Explicitly initialize to 0.0
-        E[node.id] = 0.0
-        print(f"DEBUG: Initially set Node {node.id} E_i = 0.0")
-
-        evidence = node.evidence or []
-        print(f"DEBUG: Node {node.id} has evidence: {evidence}")
-
-        # Only update E if there is actual evidence
-        if evidence:
-            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
-            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
-            
-            clamped_evidence = [
-                max(min(ev, max_val), min_val) for ev in evidence
-            ]
-            
-            N_i = len(clamped_evidence)
-            if N_i > 0:
-                E[node.id] = sum(clamped_evidence) / N_i
-                print(f"DEBUG: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+        E[node.id] = _normalized_evidence_score(
+            node, data.evidence_min, data.evidence_max
+        )
+        print(f"DEBUG: Node {node.id} initial evidence score E_i = {E[node.id]}")
 
     # Verify final evidence scores
     print("DEBUG: Final evidence scores:")
@@ -345,11 +365,11 @@ class ProcessArgumentTextResponse(BaseModel):
     converted_graph: dict | None = None
     error: str | None = None
 
-def _is_gpt5_model(model_name: str) -> bool:
+def _is_gpt6_model(model_name: str) -> bool:
     if not model_name:
         return False
-    model_name = model_name.lower().strip()
-    return model_name.startswith("gpt-5") or "gpt-5" in model_name
+    model_name = route_model(model_name)
+    return model_name in {MODEL_LUNA, MODEL_SOL}
 
 
 @router.post("/api/ai/process-argument-text", response_model=ProcessArgumentTextResponse)
@@ -365,19 +385,20 @@ def process_argument_text(data: ProcessArgumentTextRequest = Body(...)):
         openai.api_key = OPENAI_API_KEY
 
         # Call OpenAI Chat Completions
+        routed_model = route_model(data.model)
         completion_kwargs = {
-            "model": data.model,
+            "model": routed_model,
             "messages": [
                 {"role": "system", "content": data.system_prompt},
                 {"role": "user", "content": data.user_input},
             ],
-            "temperature": 0.3,
+            "temperature": 1,
         }
 
-        if _is_gpt5_model(data.model):
-            completion_kwargs["max_completion_tokens"] = 5000
+        if _is_gpt6_model(routed_model):
+            completion_kwargs["max_completion_tokens"] = 16982
         else:
-            completion_kwargs["max_tokens"] = 5000
+            completion_kwargs["max_tokens"] = 16982
 
         response = openai.chat.completions.create(**completion_kwargs)
 
@@ -639,8 +660,8 @@ Implicit Assumptions: Production safety requires absence of critical security vu
 
 Now analyze these claims:
 
-SOURCE CLAIM: {getattr(data.target_node, 'text', '')}
-TARGET CLAIM: {getattr(data.source_node, 'text', '')}
+SOURCE CLAIM: {getattr(data.source_node, 'text', '')}
+TARGET CLAIM: {getattr(data.target_node, 'text', '')}
 
 SCORING GUIDELINES:
 
@@ -716,28 +737,57 @@ Score: <float between -1 and 1, following the scoring guide above>
 """
 
     try:
-        content = run_llm([
+        raw_content = run_llm([
             {"role": "user", "content": prompt}
-        ], DEFAULT_MCP)
+        ], EDGE_VALIDATION_MCP)
+        # run_llm appends a model diagnostic to its response. It is not part of
+        # the validator's reasoning and must not be shown as claim analysis.
+        content = re.sub(
+            r"\s*\[Dynamic Model Used\].*$", "", raw_content,
+            flags=re.IGNORECASE | re.DOTALL,
+        ).strip()
+        lines = [line.strip() for line in content.splitlines()]
         evaluation = "unsure"
-        reasoning = content
-        confidence = 0.0
-        for line in content.splitlines():
-            if line.lower().startswith("evaluation:"):
-                evaluation = line.split(":", 1)[1].strip().lower()
-            if line.lower().startswith("reasoning:"):
-                reasoning = line.split(":", 1)[1].strip()
-            if line.lower().startswith("score:"):
-                try:
-                    confidence = float(line.split(":", 1)[1].strip())
-                    confidence = min(max(confidence, -1.0), 1.0)
-                except Exception:
-                    confidence = 0.0
+        reasoning_lines: List[str] = []
+        confidence: Optional[float] = None
+        in_reasoning = False
+
+        for line in lines:
+            label_match = re.match(r"^(evaluation|reasoning|score|implicit assumptions):\s*(.*)$", line, re.IGNORECASE)
+            if label_match:
+                label, value = label_match.groups()
+                label = label.lower()
+                if label == "evaluation":
+                    evaluation = value.lower()
+                    in_reasoning = False
+                elif label == "reasoning":
+                    reasoning_lines = [value] if value else []
+                    in_reasoning = True
+                elif label == "score":
+                    score_match = re.search(r"[-+]?\d+(?:\.\d+)?", value)
+                    if score_match:
+                        confidence = min(max(float(score_match.group()), -1.0), 1.0)
+                    in_reasoning = False
+                else:
+                    in_reasoning = False
+                continue
+
+            if in_reasoning and line:
+                reasoning_lines.append(line)
+
+        reasoning = " ".join(reasoning_lines).strip()
+        if not reasoning or confidence is None:
+            raise HTTPException(
+                status_code=502,
+                detail="Edge validator returned an incomplete evaluation.",
+            )
         return ValidateEdgeResponse(
             evaluation=evaluation,
             reasoning=reasoning,
             confidence=confidence
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -842,8 +892,8 @@ Summary: <2-3 sentences explaining what these assumptions collectively accomplis
     try:
         # Create a custom MCP with higher token limit for assumption generation
         assumption_mcp = ModelControlProtocol(
-            model_name="gpt-5.4-nano-2026-03-17",
-            temperature=0.2,
+            model_name=MODEL_LUNA,
+            temperature=1.0,
             max_completion_tokens=1024,  # Increased from 256 to 1024 for longer responses
             system_prompt=DEFAULT_MCP.system_prompt
         )
@@ -1103,13 +1153,13 @@ def critique_graph(data: CritiqueGraphRequest = Body(...)):
         
         print(f"[ai_api] critique_graph: Sending request to OpenAI")
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert argument analyst and critical thinking specialist. Analyze argument graphs for logical flaws, fallacies, and pattern matches."},
                 {"role": "user", "content": prompt}
             ],
             max_completion_tokens=2000,
-            temperature=0.1
+            temperature=1.0
         )
         
         result = response.choices[0].message.content
@@ -1294,13 +1344,13 @@ Format your response exactly as:
         print(f"[ai_api] generate_comprehensive_report: Sending request to OpenAI")
         
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert intelligence analyst specializing in argument analysis and critical thinking. Create professional, detailed reports that follow intelligence analysis standards. Be comprehensive and thorough in your analysis."},
                 {"role": "user", "content": prompt}
             ],
             max_completion_tokens=16384,
-            temperature=0.3
+            temperature=1.0
         )
         
         result = response.choices[0].message.content
@@ -1435,7 +1485,7 @@ async def extract_text_from_image(
         openai.api_key = OPENAI_API_KEY
         prompt = "Extract all readable text from this image. If no text is present, describe the image in detail in 3-6 sentences."
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert OCR and summarizer."},
                 {
@@ -1549,7 +1599,7 @@ Reasoning: <explain why this text supports the claim, including how it relates t
         print(f"[ai_api] suggest_evidence_text: Calling OpenAI API...")
         
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert document analyst and evidence finder."},
                 {"role": "user", "content": prompt}
@@ -1836,25 +1886,12 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
     # Step 3: Calculate initial evidence scores for affected nodes
     E = {}
     for node in affected_nodes:
-        E[node.id] = 0.0
-        print(f"[ai_api] get_node_credibility: Initially set Node {node.id} E_i = 0.0")
-
-        evidence = node.evidence or []
-        print(f"[ai_api] get_node_credibility: Node {node.id} has evidence: {evidence}")
-
-        # Only update E if there is actual evidence
-        if evidence:
-            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
-            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
-            
-            clamped_evidence = [
-                max(min(ev, max_val), min_val) for ev in evidence
-            ]
-            
-            N_i = len(clamped_evidence)
-            if N_i > 0:
-                E[node.id] = sum(clamped_evidence) / N_i
-                print(f"[ai_api] get_node_credibility: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+        E[node.id] = _normalized_evidence_score(
+            node, data.evidence_min, data.evidence_max
+        )
+        print(
+            f"[ai_api] get_node_credibility: Node {node.id} initial evidence score E_i = {E[node.id]}"
+        )
     
     target_node = next((node for node in affected_nodes if node.id == data.target_node_id), None)
     if target_node:
@@ -1889,7 +1926,9 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
     for edge in affected_edges:
         if edge.target not in incoming_edges:
             incoming_edges[edge.source] = []
-        incoming_edges[edge.source].append((edge.target, edge.weight or 1.0))
+        incoming_edges[edge.source].append(
+            (edge.target, 1.0 if edge.weight is None else edge.weight)
+        )
     
     print(f"[ai_api] get_node_credibility: Incoming edges: {incoming_edges}")
     
@@ -2020,9 +2059,14 @@ Assistant: "The relationship between your claims forms a logical progression fro
         
         # Create a specialized MCP for chat
         chat_mcp = ModelControlProtocol(
-            model_name="gpt-5.4-nano-2026-03-17",
-            temperature=0.7,  # Increased for more conversational and varied responses
-            max_completion_tokens=500,
+            model_name=MODEL_LUNA,
+            temperature=1.0,  # Increased for more conversational and varied responses
+            # Leave room for reasoning tokens while keeping chat responses
+            # bounded; llm_manager performs one targeted retry if needed.
+            max_completion_tokens=1024,
+            # Chat is intentionally kept on Luna. The separate complexity
+            # judge adds latency and can select a larger model unnecessarily.
+            dynamic_model_selection=False,
             system_prompt=system_prompt
         )
         
@@ -2328,8 +2372,8 @@ def agentic_chat(data: ChatRequest = Body(...)):
         
         # Create a specialized MCP for agentic behavior
         agent_mcp = ModelControlProtocol(
-            model_name="gpt-5.4",
-            temperature=0.0,  # Deterministic output for structured JSON
+            model_name=MODEL_SOL,
+            temperature=1.0,  # Deterministic output for structured JSON
             max_completion_tokens=8192, # Allow for longer responses since the agent may need to output a full graph structure
             system_prompt=agent_prompt
         )
@@ -2354,6 +2398,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
             assistant_message=response,
             reasoning="Generated based on graph analysis and user instructions",
             confidence=1.0,
+            model_used=agent_mcp.model_name,
             suggested_actions=[
                 "Check evidence for claims",
                 "Validate edge relationships", 
@@ -2502,8 +2547,8 @@ def linker_model(data: ChatRequest = Body(...)):
 """
 
         linker_mcp = ModelControlProtocol(
-            model_name="gpt-5.4",
-            temperature=0.0,
+            model_name=MODEL_SOL,
+            temperature=1.0,
             max_completion_tokens=8192,
             system_prompt=(
                 "You are the IntelliProof Evidence Linking Agent. "

@@ -4,7 +4,10 @@ import {
   DEFAULT_RELATIONSHIP_CONFIDENCE,
   RELATIONSHIP_CONFIDENCE_OPTIONS,
 } from "../../types/edges";
-import { HandRaisedIcon } from "@heroicons/react/24/outline";
+import {
+  CheckIcon,
+  HandRaisedIcon,
+} from "@heroicons/react/24/outline";
 
 // Add edge score classification function
 const getEdgeScoreClassification = (edgeScore: number) => {
@@ -113,7 +116,7 @@ interface EdgePropertiesProps {
   evidenceCards: any[];
   supportingDocuments: any[];
   edgeReasoning?: string;
-  onValidateEdge?: () => void;
+  onValidateEdge?: () => void | Promise<void>;
 }
 
 const EdgeProperties: React.FC<EdgePropertiesProps> = ({
@@ -130,6 +133,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 }) => {
   const [assumptions, setAssumptions] = useState<Assumption[]>([]);
   const [isGeneratingAssumptions, setIsGeneratingAssumptions] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [assumptionsSummary, setAssumptionsSummary] = useState<any>(null);
 
   if (!edge) return null;
@@ -159,6 +163,16 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
   const displayType = score < 0 ? "Attacking" : "Supporting";
   const relationshipConfidence =
     edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE;
+
+  const handleValidate = async () => {
+    if (!onValidateEdge || isValidating) return;
+    setIsValidating(true);
+    try {
+      await onValidateEdge();
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const handleGenerateAssumptions = async () => {
     setIsGeneratingAssumptions(true);
@@ -564,6 +578,22 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               ))}
             </div>
           )}
+
+          <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleValidate}
+              disabled={!onValidateEdge || isValidating}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-colors ${isValidating
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#232F3E] hover:bg-[#1a252f]"
+                }`}
+              title="Validate this edge"
+            >
+              <CheckIcon className="w-4 h-4" />
+              {isValidating ? "Validating..." : "Validate"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

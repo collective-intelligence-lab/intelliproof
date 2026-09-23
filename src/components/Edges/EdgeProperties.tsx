@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import type { ClaimEdge } from "../../types/edges";
-import { EDGE_COLORS } from "../../types/edges";
+import {
+  DEFAULT_RELATIONSHIP_CONFIDENCE,
+  RELATIONSHIP_CONFIDENCE_OPTIONS,
+} from "../../types/edges";
 import { HandRaisedIcon } from "@heroicons/react/24/outline";
 
 // Add edge score classification function
@@ -154,6 +157,8 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 
   const displayColor = getDiscreteEdgeColor(score);
   const displayType = score < 0 ? "Attacking" : "Supporting";
+  const relationshipConfidence =
+    edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE;
 
   const handleGenerateAssumptions = async () => {
     setIsGeneratingAssumptions(true);
@@ -291,6 +296,39 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               </span>
             </div>
           </label>
+        </div>
+
+        <div className="relative">
+          <label
+            htmlFor="relationship-confidence"
+            className="block text-base font-medium mb-2"
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontWeight: "500",
+            }}
+          >
+            Confidence in relationship
+          </label>
+          <select
+            id="relationship-confidence"
+            value={relationshipConfidence}
+            onChange={(event) =>
+              onUpdate(edge.id, {
+                data: {
+                  ...edge.data,
+                  relationshipConfidence: event.target.value as typeof relationshipConfidence,
+                },
+              })
+            }
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#232F3E] focus:outline-none focus:ring-2 focus:ring-[#232F3E]/20"
+            aria-label="Confidence in relationship"
+          >
+            {RELATIONSHIP_CONFIDENCE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Edge Score Classification */}

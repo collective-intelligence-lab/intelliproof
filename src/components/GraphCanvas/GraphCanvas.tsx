@@ -39,7 +39,12 @@ import {
   type Evidence,
   type ExportedGraphData,
 } from "../../types/graph";
-import type { ClaimEdge, EdgeType } from "../../types/edges";
+import {
+  DEFAULT_RELATIONSHIP_CONFIDENCE,
+  isRelationshipConfidence,
+  type ClaimEdge,
+  type EdgeType,
+} from "../../types/edges";
 import { getLayoutedElements } from "../Layout/layoututils";
 import NodeProperties from "../NodeProperties/NodeProperties";
 import EdgeProperties from "../Edges/EdgeProperties";
@@ -1088,6 +1093,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         (edge) => {
           let edgeType: EdgeType = "supporting";
           let confidence: number = 0;
+          let relationshipConfidence = DEFAULT_RELATIONSHIP_CONFIDENCE;
           let edgeScore: number | undefined;
           let reasoning: string | undefined;
 
@@ -1095,6 +1101,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           if ("edgeScore" in edge && edge.edgeScore !== undefined) {
             edgeType = (edge as any).edgeType || "supporting";
             confidence = (edge as any).confidence ?? 0;
+            relationshipConfidence = isRelationshipConfidence(
+              (edge as any).relationshipConfidence
+            )
+              ? (edge as any).relationshipConfidence
+              : DEFAULT_RELATIONSHIP_CONFIDENCE;
             edgeScore = (edge as any).edgeScore;
             reasoning = (edge as any).reasoning;
 
@@ -1110,6 +1121,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             // If edge is a ClaimEdge (has 'data'), use its data
             edgeType = edge.data.edgeType || "supporting";
             confidence = edge.data.confidence ?? 0;
+            relationshipConfidence = isRelationshipConfidence(
+              (edge.data as any).relationshipConfidence
+            )
+              ? (edge.data as any).relationshipConfidence
+              : DEFAULT_RELATIONSHIP_CONFIDENCE;
             edgeScore = edge.data.edgeScore ?? 0;
             reasoning = edge.data.reasoning;
           } else if ("weight" in edge && typeof edge.weight === "number") {
@@ -1132,6 +1148,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             data: {
               edgeType,
               confidence,
+              relationshipConfidence,
               edgeScore,
               reasoning,
             },
@@ -1356,6 +1373,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         data: {
           edgeType: edgeCreationType,
           confidence: 0,
+          relationshipConfidence: DEFAULT_RELATIONSHIP_CONFIDENCE,
           // tiny negative score for attacking so it renders red immediately; 0 for supporting
           edgeScore: isAttacking ? -0.01 : 0,
           reasoning: "",
@@ -1481,6 +1499,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           data: {
             edgeType: edgeCreationType,
             confidence: 0,
+            relationshipConfidence: DEFAULT_RELATIONSHIP_CONFIDENCE,
             edgeScore: isAttackingNew ? -0.01 : 0,
           },
           markerStart: {
@@ -1798,6 +1817,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           // Save edge validation data
           edgeType: edge.data.edgeType,
           confidence: edge.data.confidence,
+          relationshipConfidence:
+            edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE,
           edgeScore: edge.data.edgeScore,
           reasoning: edge.data.reasoning,
         };
@@ -2319,6 +2340,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         source: edge.source,
         target: edge.target,
         weight: clamp(edge.data.confidence, -1, 1),
+        relationshipConfidence:
+          edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE,
       })),
     };
 
@@ -2415,12 +2438,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               : String(edge?.label ?? "").toLowerCase() === "attack"
                 ? -1
                 : 1;
+        const relationshipConfidence = isRelationshipConfidence(
+          edge?.relationshipConfidence
+        )
+          ? edge.relationshipConfidence
+          : DEFAULT_RELATIONSHIP_CONFIDENCE;
 
         return {
           id: String(edge?.id ?? `e-${source}-${target}-${index}`),
           source,
           target,
           weight: normalizedWeight,
+          relationshipConfidence,
         };
       })
       .filter((edge) => validNodeIdSet.has(edge.source) && validNodeIdSet.has(edge.target));
@@ -2666,6 +2695,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           error: `Edge ${i} has invalid weight value (must be a number between -1 and 1)`,
         };
       }
+      if (
+        edge.relationshipConfidence !== undefined &&
+        !isRelationshipConfidence(edge.relationshipConfidence)
+      ) {
+        return {
+          isValid: false,
+          error: `Edge ${i} has invalid relationshipConfidence value`,
+        };
+      }
     }
 
     return { isValid: true };
@@ -2804,6 +2842,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             type: "custom" as const,
             data: {
               confidence: normalizedWeight,
+              relationshipConfidence:
+                edgeData.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE,
               edgeType: importedEdgeType,
               edgeScore: normalizedWeight,
               reasoning: "",

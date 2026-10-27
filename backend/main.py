@@ -10,9 +10,10 @@ from supabase import create_client, Client
 import ai_api
 from models import SignupRequest, SignupResponse, SigninRequest, SigninResponse, SignoutResponse, UserData
 import sys
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import JSONResponse
 from faster_whisper import WhisperModel
+from rag_ingestion import ingest_document
 
 # Local AI implementations go into this file. API calls go to ai_api.py.
 
@@ -28,6 +29,13 @@ if missing_vars:
 
 # Initialize FastAPI app
 app = FastAPI()
+
+
+class RAGIngestionRequest(BaseModel):
+    document_id: str
+    document_url: str
+    document_name: str
+    document_type: str
 
 # Initialize the Whisper model once at startup (you can choose the model size based on your needs)
 
@@ -136,6 +144,117 @@ except Exception as e:
 @app.get("/")
 async def health_check():
     return {"status": "healthy", "message": "Intelliproof Backend API is running"}
+
+
+def _run_document_ingestion(request: RAGIngestionRequest, user_id: str) -> None:
+    email = None
+    try:
+        print(f"[rag] Worker started for document {request.document_id}")
+        email = _user_email_for_id(user_id)
+        processing_payload = {"indexing_status": "processing", "indexing_progress": 0, "indexing_error": None}
+        processing_result = supabase.table("supporting_documents").update(processing_payload).eq(
+            "id", request.document_id
+        ).eq("uploader_email", email).execute()
+        if getattr(processing_result, "error", None):
+            print(f"[rag] Progress column unavailable; continuing without progress persistence: {processing_result.error}")
+            processing_result = supabase.table("supporting_documents").update(
+                {"indexing_status": "processing", "indexing_error": None}
+            ).eq("id", request.document_id).eq("uploader_email", email).execute()
+            if getattr(processing_result, "error", None):
+                raise RuntimeError(f"Could not mark document as processing: {processing_result.error}")
+        print(f"[rag] Document {request.document_id} marked as processing")
+
+        def update_progress(progress: int, stage: str) -> None:
+            try:
+                result = supabase.table("supporting_documents").update(
+                    {"indexing_progress": progress, "indexing_status": "processing"}
+                ).eq("id", request.document_id).eq("uploader_email", email).execute()
+                if getattr(result, "error", None):
+                    print(f"[rag] Progress update failed at {progress}%: {result.error}")
+            except Exception as progress_error:
+                print(f"[rag] Progress update failed at {progress}% ({stage}): {progress_error}")
+
+        ingest_document(
+            document_id=request.document_id,
+            user_id=user_id,
+            document_url=request.document_url,
+            document_name=request.document_name,
+            document_type=request.document_type,
+            supabase=supabase,
+            progress_callback=update_progress,
+        )
+        print(f"[rag] Persist complete; marking document {request.document_id} ready")
+        ready_payload = {"indexing_status": "ready", "indexing_progress": 100, "indexed_at": datetime.now().astimezone().isoformat(), "indexing_error": None}
+        ready_result = supabase.table("supporting_documents").update(ready_payload).eq(
+            "id", request.document_id
+        ).eq("uploader_email", email).execute()
+        if getattr(ready_result, "error", None):
+            print(f"[rag] Progress column unavailable during completion; marking ready without progress: {ready_result.error}")
+            ready_result = supabase.table("supporting_documents").update(
+                {"indexing_status": "ready", "indexed_at": datetime.now().astimezone().isoformat(), "indexing_error": None}
+            ).eq("id", request.document_id).eq("uploader_email", email).execute()
+            if getattr(ready_result, "error", None):
+                raise RuntimeError(f"Could not mark document as ready: {ready_result.error}")
+        print(f"[rag] Document {request.document_id} is ready for retrieval")
+    except Exception as error:
+        print(f"RAG ingestion failed for {request.document_id}: {error}")
+        if supabase and email:
+            try:
+                failure_result = supabase.table("supporting_documents").update(
+                    {"indexing_status": "failed", "indexing_error": str(error)[:1000]}
+                ).eq("id", request.document_id).eq("uploader_email", email).execute()
+                if getattr(failure_result, "error", None):
+                    print(f"[rag] Could not mark document as failed: {failure_result.error}")
+            except Exception as failure_error:
+                print(f"[rag] Failure status update failed: {failure_error}")
+
+
+def _user_email_for_id(user_id: str) -> str:
+    profile = supabase.table("profiles").select("email").eq("user_id", user_id).single().execute()
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="User profile not found")
+    return profile.data["email"]
+
+
+@app.post("/api/rag/ingest", status_code=202)
+async def start_document_ingestion(
+    request: RAGIngestionRequest,
+    background_tasks: BackgroundTasks,
+    authorization: str = Header(None),
+):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database service not available")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
+
+    try:
+        user = supabase.auth.get_user(authorization.removeprefix("Bearer "))
+    except Exception as error:
+        raise HTTPException(status_code=401, detail="Invalid or expired session") from error
+    if not user or not user.user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    user_id = str(user.user.id)
+    email = _user_email_for_id(user_id)
+    document = (
+        supabase.table("supporting_documents")
+        .select("id, url, name, type")
+        .eq("id", request.document_id)
+        .eq("uploader_email", email)
+        .single()
+        .execute()
+    )
+    if not document.data:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    ingestion_request = RAGIngestionRequest(
+        document_id=request.document_id,
+        document_url=document.data["url"],
+        document_name=document.data["name"],
+        document_type=document.data["type"],
+    )
+    background_tasks.add_task(_run_document_ingestion, ingestion_request, user_id)
+    return {"document_id": request.document_id, "indexing_status": "pending"}
 
 # Models
 

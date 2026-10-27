@@ -73,6 +73,9 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   CheckIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   CursorArrowRaysIcon,
   HandRaisedIcon,
   MagnifyingGlassPlusIcon,
@@ -763,6 +766,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       uploadDate: Date;
       uploader: string;
       size?: number;
+      indexingStatus?: SupportingDocument["indexing_status"];
+      indexingProgress?: number;
     }>
   >([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -982,6 +987,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       uploadDate: doc.upload_date ? new Date(doc.upload_date) : new Date(),
       uploader: doc.uploader_email || "Unknown",
       size: doc.size,
+      indexingStatus: doc.indexing_status,
+      indexingProgress: doc.indexing_progress,
     }));
 
     // Only update if the documents have actually changed
@@ -1015,6 +1022,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       dispatch(fetchSupportingDocuments(currentGraphId));
     }
   }, [currentGraphId, dispatch]);
+
+  useEffect(() => {
+    if (!currentGraphId) return;
+    const hasActiveIndexing = supportingDocuments.some(
+      (doc) => doc.indexingStatus === "pending" || doc.indexingStatus === "processing"
+    );
+    if (!hasActiveIndexing) return;
+
+    const refreshTimer = window.setInterval(() => {
+      dispatch(fetchSupportingDocuments(currentGraphId));
+    }, 2000);
+
+    return () => window.clearInterval(refreshTimer);
+  }, [currentGraphId, dispatch, supportingDocuments]);
 
   // After graph loads, set currentGraphId and log profile
   useEffect(() => {
@@ -6332,6 +6353,35 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     ({doc.type})
                                   </span>
                                 </div>
+                                  {doc.indexingStatus === "ready" ? (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700" aria-label="File Ready for Retrieval">
+                                      <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+                                      <span>File Ready for Retrieval</span>
+                                    </div>
+                                  ) : doc.indexingStatus === "failed" ? (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700" aria-label="Retrieval Preparation Failed">
+                                      <ExclamationCircleIcon className="h-4 w-4" aria-hidden="true" />
+                                      <span>Retrieval Preparation Failed</span>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-yellow-700" aria-label="Retrieval Preparation in Process">
+                                      <ExclamationTriangleIcon className="h-4 w-4" aria-hidden="true" />
+                                      <span>Retrieval Preparation in Process</span>
+                                    </div>
+                                  )}
+                                  {doc.indexingStatus !== "ready" && doc.indexingStatus !== "failed" && (
+                                    <div className="mt-1.5 flex items-center gap-2" aria-label={`Retrieval preparation ${Math.round(doc.indexingProgress ?? 0)} percent complete`}>
+                                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={doc.indexingProgress ?? 0}>
+                                        <div
+                                          className="h-full rounded-full bg-yellow-500 transition-[width] duration-500"
+                                          style={{ width: `${Math.min(100, Math.max(0, doc.indexingProgress ?? 0))}%` }}
+                                        />
+                                      </div>
+                                      <span className="w-9 text-right text-[11px] font-medium text-gray-500">
+                                        {Math.round(doc.indexingProgress ?? 0)}%
+                                      </span>
+                                    </div>
+                                  )}
                                 <p className="text-xs text-gray-400 mt-0.5 font-normal">
                                   Uploaded by {doc.uploader}
                                 </p>

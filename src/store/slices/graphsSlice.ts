@@ -14,6 +14,10 @@ export interface SupportingDocument {
     upload_date?: string;
     uploader_email?: string;
     metadata?: any;
+    indexing_status?: 'pending' | 'processing' | 'ready' | 'failed';
+    indexing_progress?: number;
+    indexing_error?: string | null;
+    indexed_at?: string | null;
 }
 
 export interface GraphItem {

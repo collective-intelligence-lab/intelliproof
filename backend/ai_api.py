@@ -8,12 +8,12 @@ This module handles AI-powered features including:
 - Future AI features (placeholders)
 
 Dependencies:
-- OpenAI API for GPT-4 powered analysis
+- OpenAI API for GPT-6 powered analysis
 - FastAPI for REST endpoints
 - Pydantic for data validation
 """
 
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Header
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import math
@@ -27,6 +27,7 @@ import io
 import json
 import re
 import ast
+from supabase import create_client
 from ai_models import (
     NodeModel,
     EdgeModel,
@@ -55,9 +56,22 @@ from ai_models import (
     GenerateComprehensiveReportResponse,  # NEW
     ChatMessage,  # NEW
     ChatRequest,  # NEW
-    ChatResponse  # NEW
+    ChatResponse,  # NEW
+    LinkerResponse,
+    RAGLinkerRequest,
 )
-from llm_manager import run_llm, DEFAULT_MCP, ModelControlProtocol, AgentManager, run_llm_agentic, select_agent_for_task
+from rag_linker import run_rag_linker
+from llm_manager import (
+    run_llm,
+    DEFAULT_MCP,
+    MODEL_LUNA,
+    MODEL_SOL,
+    ModelControlProtocol,
+    AgentManager,
+    route_model,
+    run_llm_agentic,
+    select_agent_for_task,
+)
 from datetime import datetime
 from graph_conversion import convert_graph_format
 
@@ -65,8 +79,42 @@ from graph_conversion import convert_graph_format
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# Edge validation needs enough reasoning budget to emit the required
+# evaluation, explanation, assumptions, and score in one response.
+EDGE_VALIDATION_MCP = ModelControlProtocol(max_completion_tokens=2048)
+
 # Create FastAPI router for AI endpoints
 router = APIRouter()
+
+
+def _rag_supabase_client():
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        raise HTTPException(status_code=500, detail="Database service not available")
+    return create_client(url, key)
+
+PENDING_EVIDENCE_SCORE = 0.2
+
+
+def _normalized_evidence_score(
+    node: NodeModel,
+    request_min: Optional[float],
+    request_max: Optional[float],
+) -> float:
+    """Return a claim's initial evidence score, including pending evidence."""
+    min_value = node.evidence_min if node.evidence_min is not None else request_min
+    max_value = node.evidence_max if node.evidence_max is not None else request_max
+    min_value = min_value if min_value is not None else -1.0
+    max_value = max_value if max_value is not None else 1.0
+
+    evidence = node.evidence or [PENDING_EVIDENCE_SCORE]
+    normalized = [
+        PENDING_EVIDENCE_SCORE if value == 0 else value
+        for value in evidence
+    ]
+    clamped = [max(min(value, max_value), min_value) for value in normalized]
+    return sum(clamped) / len(clamped)
 
 # =============================================================================
 # PYDANTIC MODELS - Data validation and serialization
@@ -95,26 +143,10 @@ def get_claim_credibility(data: CredibilityPropagationRequest):
     # Step 1: Compute E_i (initial evidence score) for each node
     E = {}
     for node in data.nodes:
-        # Explicitly initialize to 0.0
-        E[node.id] = 0.0
-        print(f"DEBUG: Initially set Node {node.id} E_i = 0.0")
-
-        evidence = node.evidence or []
-        print(f"DEBUG: Node {node.id} has evidence: {evidence}")
-
-        # Only update E if there is actual evidence
-        if evidence:
-            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
-            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
-            
-            clamped_evidence = [
-                max(min(ev, max_val), min_val) for ev in evidence
-            ]
-            
-            N_i = len(clamped_evidence)
-            if N_i > 0:
-                E[node.id] = sum(clamped_evidence) / N_i
-                print(f"DEBUG: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+        E[node.id] = _normalized_evidence_score(
+            node, data.evidence_min, data.evidence_max
+        )
+        print(f"DEBUG: Node {node.id} initial evidence score E_i = {E[node.id]}")
 
     # Verify final evidence scores
     print("DEBUG: Final evidence scores:")
@@ -344,11 +376,11 @@ class ProcessArgumentTextResponse(BaseModel):
     converted_graph: dict | None = None
     error: str | None = None
 
-def _is_gpt5_model(model_name: str) -> bool:
+def _is_gpt6_model(model_name: str) -> bool:
     if not model_name:
         return False
-    model_name = model_name.lower().strip()
-    return model_name.startswith("gpt-5") or "gpt-5" in model_name
+    model_name = route_model(model_name)
+    return model_name in {MODEL_LUNA, MODEL_SOL}
 
 
 @router.post("/api/ai/process-argument-text", response_model=ProcessArgumentTextResponse)
@@ -364,19 +396,20 @@ def process_argument_text(data: ProcessArgumentTextRequest = Body(...)):
         openai.api_key = OPENAI_API_KEY
 
         # Call OpenAI Chat Completions
+        routed_model = route_model(data.model)
         completion_kwargs = {
-            "model": data.model,
+            "model": routed_model,
             "messages": [
                 {"role": "system", "content": data.system_prompt},
                 {"role": "user", "content": data.user_input},
             ],
-            "temperature": 0.3,
+            "temperature": 1,
         }
 
-        if _is_gpt5_model(data.model):
-            completion_kwargs["max_completion_tokens"] = 5000
+        if _is_gpt6_model(routed_model):
+            completion_kwargs["max_completion_tokens"] = 16982
         else:
-            completion_kwargs["max_tokens"] = 5000
+            completion_kwargs["max_tokens"] = 16982
 
         response = openai.chat.completions.create(**completion_kwargs)
 
@@ -638,8 +671,8 @@ Implicit Assumptions: Production safety requires absence of critical security vu
 
 Now analyze these claims:
 
-SOURCE CLAIM: {getattr(data.target_node, 'text', '')}
-TARGET CLAIM: {getattr(data.source_node, 'text', '')}
+SOURCE CLAIM: {getattr(data.source_node, 'text', '')}
+TARGET CLAIM: {getattr(data.target_node, 'text', '')}
 
 SCORING GUIDELINES:
 
@@ -715,28 +748,57 @@ Score: <float between -1 and 1, following the scoring guide above>
 """
 
     try:
-        content = run_llm([
+        raw_content = run_llm([
             {"role": "user", "content": prompt}
-        ], DEFAULT_MCP)
+        ], EDGE_VALIDATION_MCP)
+        # run_llm appends a model diagnostic to its response. It is not part of
+        # the validator's reasoning and must not be shown as claim analysis.
+        content = re.sub(
+            r"\s*\[Dynamic Model Used\].*$", "", raw_content,
+            flags=re.IGNORECASE | re.DOTALL,
+        ).strip()
+        lines = [line.strip() for line in content.splitlines()]
         evaluation = "unsure"
-        reasoning = content
-        confidence = 0.0
-        for line in content.splitlines():
-            if line.lower().startswith("evaluation:"):
-                evaluation = line.split(":", 1)[1].strip().lower()
-            if line.lower().startswith("reasoning:"):
-                reasoning = line.split(":", 1)[1].strip()
-            if line.lower().startswith("score:"):
-                try:
-                    confidence = float(line.split(":", 1)[1].strip())
-                    confidence = min(max(confidence, -1.0), 1.0)
-                except Exception:
-                    confidence = 0.0
+        reasoning_lines: List[str] = []
+        confidence: Optional[float] = None
+        in_reasoning = False
+
+        for line in lines:
+            label_match = re.match(r"^(evaluation|reasoning|score|implicit assumptions):\s*(.*)$", line, re.IGNORECASE)
+            if label_match:
+                label, value = label_match.groups()
+                label = label.lower()
+                if label == "evaluation":
+                    evaluation = value.lower()
+                    in_reasoning = False
+                elif label == "reasoning":
+                    reasoning_lines = [value] if value else []
+                    in_reasoning = True
+                elif label == "score":
+                    score_match = re.search(r"[-+]?\d+(?:\.\d+)?", value)
+                    if score_match:
+                        confidence = min(max(float(score_match.group()), -1.0), 1.0)
+                    in_reasoning = False
+                else:
+                    in_reasoning = False
+                continue
+
+            if in_reasoning and line:
+                reasoning_lines.append(line)
+
+        reasoning = " ".join(reasoning_lines).strip()
+        if not reasoning or confidence is None:
+            raise HTTPException(
+                status_code=502,
+                detail="Edge validator returned an incomplete evaluation.",
+            )
         return ValidateEdgeResponse(
             evaluation=evaluation,
             reasoning=reasoning,
             confidence=confidence
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -841,8 +903,8 @@ Summary: <2-3 sentences explaining what these assumptions collectively accomplis
     try:
         # Create a custom MCP with higher token limit for assumption generation
         assumption_mcp = ModelControlProtocol(
-            model_name="gpt-5.4-nano-2026-03-17",
-            temperature=0.2,
+            model_name=MODEL_LUNA,
+            temperature=1.0,
             max_completion_tokens=1024,  # Increased from 256 to 1024 for longer responses
             system_prompt=DEFAULT_MCP.system_prompt
         )
@@ -1102,13 +1164,13 @@ def critique_graph(data: CritiqueGraphRequest = Body(...)):
         
         print(f"[ai_api] critique_graph: Sending request to OpenAI")
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert argument analyst and critical thinking specialist. Analyze argument graphs for logical flaws, fallacies, and pattern matches."},
                 {"role": "user", "content": prompt}
             ],
             max_completion_tokens=2000,
-            temperature=0.1
+            temperature=1.0
         )
         
         result = response.choices[0].message.content
@@ -1293,13 +1355,13 @@ Format your response exactly as:
         print(f"[ai_api] generate_comprehensive_report: Sending request to OpenAI")
         
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert intelligence analyst specializing in argument analysis and critical thinking. Create professional, detailed reports that follow intelligence analysis standards. Be comprehensive and thorough in your analysis."},
                 {"role": "user", "content": prompt}
             ],
             max_completion_tokens=16384,
-            temperature=0.3
+            temperature=1.0
         )
         
         result = response.choices[0].message.content
@@ -1434,7 +1496,7 @@ async def extract_text_from_image(
         openai.api_key = OPENAI_API_KEY
         prompt = "Extract all readable text from this image. If no text is present, describe the image in detail in 3-6 sentences."
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert OCR and summarizer."},
                 {
@@ -1548,7 +1610,7 @@ Reasoning: <explain why this text supports the claim, including how it relates t
         print(f"[ai_api] suggest_evidence_text: Calling OpenAI API...")
         
         response = openai.chat.completions.create(
-            model="gpt-5.4-nano-2026-03-17",
+            model=MODEL_LUNA,
             messages=[
                 {"role": "system", "content": "You are an expert document analyst and evidence finder."},
                 {"role": "user", "content": prompt}
@@ -1835,25 +1897,12 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
     # Step 3: Calculate initial evidence scores for affected nodes
     E = {}
     for node in affected_nodes:
-        E[node.id] = 0.0
-        print(f"[ai_api] get_node_credibility: Initially set Node {node.id} E_i = 0.0")
-
-        evidence = node.evidence or []
-        print(f"[ai_api] get_node_credibility: Node {node.id} has evidence: {evidence}")
-
-        # Only update E if there is actual evidence
-        if evidence:
-            min_val = node.evidence_min if node.evidence_min is not None else data.evidence_min
-            max_val = node.evidence_max if node.evidence_max is not None else data.evidence_max
-            
-            clamped_evidence = [
-                max(min(ev, max_val), min_val) for ev in evidence
-            ]
-            
-            N_i = len(clamped_evidence)
-            if N_i > 0:
-                E[node.id] = sum(clamped_evidence) / N_i
-                print(f"[ai_api] get_node_credibility: Updated Node {node.id} E_i to {E[node.id]} (from {N_i} evidence items)")
+        E[node.id] = _normalized_evidence_score(
+            node, data.evidence_min, data.evidence_max
+        )
+        print(
+            f"[ai_api] get_node_credibility: Node {node.id} initial evidence score E_i = {E[node.id]}"
+        )
     
     target_node = next((node for node in affected_nodes if node.id == data.target_node_id), None)
     if target_node:
@@ -1888,7 +1937,9 @@ def get_node_credibility(data: NodeCredibilityRequest = Body(...)):
     for edge in affected_edges:
         if edge.target not in incoming_edges:
             incoming_edges[edge.source] = []
-        incoming_edges[edge.source].append((edge.target, edge.weight or 1.0))
+        incoming_edges[edge.source].append(
+            (edge.target, 1.0 if edge.weight is None else edge.weight)
+        )
     
     print(f"[ai_api] get_node_credibility: Incoming edges: {incoming_edges}")
     
@@ -2019,9 +2070,14 @@ Assistant: "The relationship between your claims forms a logical progression fro
         
         # Create a specialized MCP for chat
         chat_mcp = ModelControlProtocol(
-            model_name="gpt-5.4-nano-2026-03-17",
-            temperature=0.7,  # Increased for more conversational and varied responses
-            max_completion_tokens=500,
+            model_name=MODEL_LUNA,
+            temperature=1.0,  # Increased for more conversational and varied responses
+            # Leave room for reasoning tokens while keeping chat responses
+            # bounded; llm_manager performs one targeted retry if needed.
+            max_completion_tokens=1024,
+            # Chat is intentionally kept on Luna. The separate complexity
+            # judge adds latency and can select a larger model unnecessarily.
+            dynamic_model_selection=False,
             system_prompt=system_prompt
         )
         
@@ -2327,8 +2383,8 @@ def agentic_chat(data: ChatRequest = Body(...)):
         
         # Create a specialized MCP for agentic behavior
         agent_mcp = ModelControlProtocol(
-            model_name="gpt-5.4",
-            temperature=0.0,  # Deterministic output for structured JSON
+            model_name=MODEL_SOL,
+            temperature=1.0,  # Deterministic output for structured JSON
             max_completion_tokens=8192, # Allow for longer responses since the agent may need to output a full graph structure
             system_prompt=agent_prompt
         )
@@ -2353,6 +2409,7 @@ def agentic_chat(data: ChatRequest = Body(...)):
             assistant_message=response,
             reasoning="Generated based on graph analysis and user instructions",
             confidence=1.0,
+            model_used=agent_mcp.model_name,
             suggested_actions=[
                 "Check evidence for claims",
                 "Validate edge relationships", 
@@ -2367,3 +2424,243 @@ def agentic_chat(data: ChatRequest = Body(...)):
     except Exception as e:
         print(f"Error in agentic chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Agentic chat processing failed: {str(e)}")
+
+
+def _extract_document_content(document: dict, max_chars: int = 12000) -> str:
+    """Return bounded text for a supporting document supplied by the client."""
+    existing_content = document.get("content") or document.get("text")
+    if existing_content:
+        return str(existing_content)[:max_chars]
+
+    document_url = document.get("url")
+    if not document_url:
+        return ""
+
+    response = requests.get(document_url, timeout=20, stream=True)
+    response.raise_for_status()
+    content_type = (response.headers.get("content-type") or "").lower()
+    chunks = []
+    total_bytes = 0
+    max_bytes = 8 * 1024 * 1024
+    for chunk in response.iter_content(chunk_size=64 * 1024):
+        if not chunk:
+            continue
+        total_bytes += len(chunk)
+        if total_bytes > max_bytes:
+            raise ValueError("Supporting document exceeds the 8MB linker limit")
+        chunks.append(chunk)
+    document_data = b"".join(chunks)
+
+    is_pdf = "pdf" in content_type or str(document_url).lower().split("?", 1)[0].endswith(".pdf")
+    if is_pdf:
+        pdf = fitz.open(stream=document_data, filetype="pdf")
+        try:
+            return "\n\n".join(page.get_text() for page in pdf)[:max_chars]
+        finally:
+            pdf.close()
+
+    is_text = content_type.startswith("text/") or str(document_url).lower().split("?", 1)[0].endswith((".txt", ".md", ".csv"))
+    if is_text:
+        return document_data.decode("utf-8", errors="replace")[:max_chars]
+
+    return ""
+
+
+@router.post("/api/ai/linker", response_model=LinkerResponse)
+def linker_model(data: ChatRequest = Body(...)):
+    """
+    This model handles the auto-linking of nodes with evidence based on supporting documents. Specifically, it does the following: 
+    1. For each node in the argument graph, it analyzes the text of the node and compares it with the titles and excerpts of the supporting documents.
+    2. It identifies potential matches where the content of a supporting document is relevant to the claim made in the node.
+    3. It reads through the potentially relevant supporting documents and extracts key excerpts that substantiate or provide context for the node's claim.
+    4. It generates a list of evidence items that can be linked to each node, including the document ID, title, and relevant excerpt.
+    5. It returns a structured output that maps each node to its corresponding evidence items, facilitating the automatic linking of evidence to claims in the argument graph.
+    This model is designed to enhance the argument graph by ensuring that each claim is supported by relevant evidence, improving the overall credibility and persuasiveness of the argument structure.
+    """
+
+    try:
+        nodes = data.graph_data.get("nodes", [])
+        documents = data.graph_data.get("supportingDocuments", [])
+        enriched_documents = []
+        for document in documents:
+            enriched_document = dict(document)
+            try:
+                enriched_document["content"] = _extract_document_content(document)
+            except Exception as error:
+                print(
+                    f"[ai_api] linker_model: Could not extract "
+                    f"{document.get('name', 'document')}: {error}"
+                )
+                enriched_document["content"] = ""
+            enriched_documents.append(enriched_document)
+
+        auto_link_prompt = f"""
+                You are the IntelliProof Evidence Linking Agent, a precision reasoning engine designed to ground argument graphs in empirical source material. Your sole function is to evaluate claims (graph nodes) against supporting documents, identify relevant textual substantiation or refutation, extract exact quotes, and produce structured node-to-evidence links.
+
+                You do not engage in conversation. You output ONLY valid, parsable JSON matching the schema below.
+
+                **CURRENT GRAPH NODES ({len(nodes)} total):**
+                {chr(10).join([f"- Node ID: {node.get('id', 'Unknown')} | Type: {node.get('data', {}).get('type', 'factual')} | Claim: {node.get('data', {}).get('text', node.get('text', 'No text'))}" for node in nodes]) if nodes else "Empty"}
+
+                **AVAILABLE SUPPORTING DOCUMENTS ({len(documents)} total):**
+                {chr(10).join([f"--- DOCUMENT ID: {doc.get('id', 'Unknown')} | NAME: {doc.get('name', 'Untitled')} ---{chr(10)}CONTENT:{chr(10)}{doc.get('content', 'No content')}{chr(10)}" for doc in enriched_documents]) if enriched_documents else "Empty"}
+
+                **LINKING INSTRUCTIONS:**
+                1. RELEVANCE MATCHING: For each node, scan all supporting documents to determine whether any section directly supports, contextualizes, or challenges the claim.
+                2. VERBATIM EXTRACTION: The `excerpt` field MUST be an exact, continuous quote taken directly from the document content. Do not paraphrase, summarize, or alter the excerpt text.
+                3. GROUNDING CONSTRAINT: Never fabricate an excerpt or cite a document that does not explicitly mention the relevant fact. If a node has no supporting or conflicting evidence in the provided documents, return an empty array `[]` for that node.
+                4. CONFIDENCE ESTIMATION: Assign a `confidence` score between 0.0 and 1.0:
+                - 0.85 - 1.00: Direct proof, exact empirical statistic, or explicit confirmation.
+                - 0.60 - 0.84: Strong contextual evidence, related case study, or partial support.
+                - 0.40 - 0.59: Tangential or indirect context requiring inference.
+                5. IDENTIFIER FORMAT: Assign each evidence item an ID using the format `ev_<node_id>_<doc_id_short>_<index>`.
+
+                **JSON SCHEMA STRICT REQUIREMENTS:**
+                Your response must be a single JSON object with one top-level key: `"links"`.
+                - `"links"`: An array of objects, each containing:
+                - `"node_id"`: String matching the exact target Node ID.
+                - `"evidence_items"`: Array of evidence objects containing:
+                    - `"id"`: Unique evidence ID string (`"ev_<node_id>_<doc_id>_<index>"`).
+                    - `"supportingDocId"`: ID of the source document.
+                    - `"supportingDocName"`: Name/filename of the source document.
+                    - `"title"`: A concise, descriptive title (3-7 words) summarizing what this excerpt demonstrates.
+                    - `"excerpt"`: Exact verbatim quotation from the document.
+                    - `"confidence"`: Float between 0.0 and 1.0.
+
+                **FEW-SHOT EXAMPLE:**
+
+                User: (Provides nodes for UBI and economic growth along with employment survey documents)
+                Assistant:
+                {{
+                "links": [
+                    {{
+                    "node_id": "node-1",
+                    "evidence_items": [
+                        {{
+                        "id": "ev_node-1_docA_1",
+                        "supportingDocId": "doc-001-abc",
+                        "supportingDocName": "Stockton_SEI_Report_2021.pdf",
+                        "title": "Full-Time Employment Increase",
+                        "excerpt": "Recipients of the unconditional cash transfers showed a 12 percentage point increase in full-time employment within one year, rising from 28% to 40%.",
+                        "confidence": 0.94
+                        }}
+                    ]
+                    }},
+                    {{
+                    "node_id": "node-2",
+                    "evidence_items": []
+                    }}
+                ]
+                }}
+
+                **FINAL RULE:**
+                Do not include markdown code block wrappers (such as ```json or ```). Output ONLY raw, valid JSON.
+"""
+
+        linker_mcp = ModelControlProtocol(
+            model_name=MODEL_SOL,
+            temperature=1.0,
+            max_completion_tokens=8192,
+            system_prompt=(
+                "You are the IntelliProof Evidence Linking Agent. "
+                "Follow the user's linking instructions exactly and return only "
+                "the requested raw JSON object."
+            ),
+        )
+
+        print(
+            f"[ai_api] linker_model: Linking {len(nodes)} nodes against "
+            f"{len(documents)} supporting documents"
+        )
+        response = run_llm_agentic(
+            [{"role": "user", "content": auto_link_prompt}],
+            linker_mcp,
+        )
+
+        cleaned_response = response.strip()
+        if cleaned_response.startswith("```"):
+            cleaned_response = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned_response).strip()
+
+        parsed_response = json.loads(cleaned_response)
+        linker_response = LinkerResponse(**parsed_response)
+        node_ids = {str(node.get("id")) for node in nodes}
+        document_ids = {str(document.get("id")) for document in documents}
+
+        for node_links in linker_response.links:
+            if node_links.node_id not in node_ids:
+                raise ValueError(f"Linker returned an unknown node ID: {node_links.node_id}")
+            for evidence_item in node_links.evidence_items:
+                if evidence_item.supportingDocId not in document_ids:
+                    raise ValueError(
+                        f"Linker returned an unknown document ID: {evidence_item.supportingDocId}"
+                    )
+                if not evidence_item.excerpt.strip():
+                    raise ValueError("Linker returned an empty evidence excerpt")
+
+        return linker_response
+    except json.JSONDecodeError as error:
+        print(f"[ai_api] linker_model: Invalid JSON from linker agent: {error}")
+        raise HTTPException(status_code=502, detail="Linker agent returned invalid JSON")
+    except Exception as e:
+        print(f"[ai_api] linker_model: Error during evidence linking: {e}")
+        raise HTTPException(status_code=500, detail=f"Evidence linking failed: {str(e)}")
+
+
+@router.post("/api/ai/rag-linker", response_model=LinkerResponse)
+def rag_linker_model(
+    data: RAGLinkerRequest = Body(...),
+    authorization: str | None = Header(default=None),
+):
+    """Link exact graph-local document chunks to claims using vector retrieval."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
+
+    supabase = _rag_supabase_client()
+    token = authorization.removeprefix("Bearer ")
+    try:
+        user_response = supabase.auth.get_user(token)
+    except Exception as error:
+        raise HTTPException(status_code=401, detail="Invalid or expired session") from error
+    if not user_response or not user_response.user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    user_id = str(user_response.user.id)
+    profile = (
+        supabase.table("profiles")
+        .select("email")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="User profile not found")
+
+    graph = (
+        supabase.table("graphs")
+        .select("id")
+        .eq("id", data.graph_id)
+        .eq("owner_email", profile.data["email"])
+        .single()
+        .execute()
+    )
+    if not graph.data:
+        raise HTTPException(status_code=404, detail="Graph not found")
+
+    try:
+        result = run_rag_linker(
+            graph_id=data.graph_id,
+            user_id=user_id,
+            nodes=[node.model_dump() for node in data.nodes],
+            supabase=supabase,
+        )
+        print(
+            f"[rag-linker] Graph {data.graph_id}: "
+            f"{len(result.links)} nodes processed, "
+            f"{len(result.unmatched_node_ids)} unmatched"
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as error:
+        print(f"[rag-linker] Failed for graph {data.graph_id}: {error}")
+        raise HTTPException(status_code=500, detail=f"RAG evidence linking failed: {error}") from error

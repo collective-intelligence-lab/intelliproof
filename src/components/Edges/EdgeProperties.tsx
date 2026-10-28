@@ -1,7 +1,13 @@
 import React, { useState } from "react";
 import type { ClaimEdge } from "../../types/edges";
-import { EDGE_COLORS } from "../../types/edges";
-import { HandRaisedIcon } from "@heroicons/react/24/outline";
+import {
+  DEFAULT_RELATIONSHIP_CONFIDENCE,
+  RELATIONSHIP_CONFIDENCE_OPTIONS,
+} from "../../types/edges";
+import {
+  CheckIcon,
+  HandRaisedIcon,
+} from "@heroicons/react/24/outline";
 
 // Add edge score classification function
 const getEdgeScoreClassification = (edgeScore: number) => {
@@ -110,7 +116,7 @@ interface EdgePropertiesProps {
   evidenceCards: any[];
   supportingDocuments: any[];
   edgeReasoning?: string;
-  onValidateEdge?: () => void;
+  onValidateEdge?: () => void | Promise<void>;
 }
 
 const EdgeProperties: React.FC<EdgePropertiesProps> = ({
@@ -127,6 +133,7 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 }) => {
   const [assumptions, setAssumptions] = useState<Assumption[]>([]);
   const [isGeneratingAssumptions, setIsGeneratingAssumptions] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [assumptionsSummary, setAssumptionsSummary] = useState<any>(null);
 
   if (!edge) return null;
@@ -154,6 +161,18 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
 
   const displayColor = getDiscreteEdgeColor(score);
   const displayType = score < 0 ? "Attacking" : "Supporting";
+  const relationshipConfidence =
+    edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE;
+
+  const handleValidate = async () => {
+    if (!onValidateEdge || isValidating) return;
+    setIsValidating(true);
+    try {
+      await onValidateEdge();
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const handleGenerateAssumptions = async () => {
     setIsGeneratingAssumptions(true);
@@ -291,6 +310,39 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               </span>
             </div>
           </label>
+        </div>
+
+        <div className="relative">
+          <label
+            htmlFor="relationship-confidence"
+            className="block text-base font-medium mb-2"
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontWeight: "500",
+            }}
+          >
+            Confidence in relationship
+          </label>
+          <select
+            id="relationship-confidence"
+            value={relationshipConfidence}
+            onChange={(event) =>
+              onUpdate(edge.id, {
+                data: {
+                  ...edge.data,
+                  relationshipConfidence: event.target.value as typeof relationshipConfidence,
+                },
+              })
+            }
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#232F3E] focus:outline-none focus:ring-2 focus:ring-[#232F3E]/20"
+            aria-label="Confidence in relationship"
+          >
+            {RELATIONSHIP_CONFIDENCE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Edge Score Classification */}
@@ -526,6 +578,22 @@ const EdgeProperties: React.FC<EdgePropertiesProps> = ({
               ))}
             </div>
           )}
+
+          <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleValidate}
+              disabled={!onValidateEdge || isValidating}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-colors ${isValidating
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#232F3E] hover:bg-[#1a252f]"
+                }`}
+              title="Validate this edge"
+            >
+              <CheckIcon className="w-4 h-4" />
+              {isValidating ? "Validating..." : "Validate"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

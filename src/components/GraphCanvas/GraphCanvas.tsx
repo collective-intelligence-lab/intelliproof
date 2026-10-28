@@ -39,7 +39,12 @@ import {
   type Evidence,
   type ExportedGraphData,
 } from "../../types/graph";
-import type { ClaimEdge, EdgeType } from "../../types/edges";
+import {
+  DEFAULT_RELATIONSHIP_CONFIDENCE,
+  isRelationshipConfidence,
+  type ClaimEdge,
+  type EdgeType,
+} from "../../types/edges";
 import { getLayoutedElements } from "../Layout/layoututils";
 import NodeProperties from "../NodeProperties/NodeProperties";
 import EdgeProperties from "../Edges/EdgeProperties";
@@ -68,6 +73,9 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   CheckIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   CursorArrowRaysIcon,
   HandRaisedIcon,
   MagnifyingGlassPlusIcon,
@@ -92,6 +100,8 @@ import {
   ArrowsPointingOutIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
+
+const PENDING_EVIDENCE_SCORE = 0.2;
 
 // Simple floppy disk outline icon for the Save action
 const FloppyDiskIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -614,7 +624,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 const evidenceCard = evidenceCards.find(
                   (card) => card.id === evId
                 );
-                return evidenceCard ? evidenceCard.confidence : 0;
+                return evidenceCard
+                  ? evidenceCard.confidence
+                  : PENDING_EVIDENCE_SCORE;
               })
               : [],
           evidence_min: -1.0,
@@ -711,6 +723,17 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const [isEvidencePanelOpen, setIsEvidencePanelOpen] = useState(true);
   const [nodes, setNodes] = useState<ClaimNode[]>([]);
   const [edges, setEdges] = useState<ClaimEdge[]>([]);
+  const [edgeApiQueue, setEdgeApiQueue] = useState<string[]>([]);
+  const [isEdgeProcessing, setIsEdgeProcessing] = useState(false);
+  const processingEdgeIdRef = useRef<string | null>(null);
+  const queueEdgeValidation = useCallback((edgeId: string) => {
+    setEdgeApiQueue((queue) => {
+      if (queue.includes(edgeId) || processingEdgeIdRef.current === edgeId) {
+        return queue;
+      }
+      return [...queue, edgeId];
+    });
+  }, []);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isAddNodeOpen, setIsAddNodeOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<ClaimNode | null>(null);
@@ -743,6 +766,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       uploadDate: Date;
       uploader: string;
       size?: number;
+      indexingStatus?: SupportingDocument["indexing_status"];
+      indexingProgress?: number;
     }>
   >([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -761,11 +786,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       supportingDocName: string;
       excerpt: string;
       confidence: number;
+      isClone?: boolean;
     }>
   >([]);
   const [selectedEvidenceCard, setSelectedEvidenceCard] = useState<
     null | (typeof evidenceCards)[0]
   >(null);
+  const [linkedNodeIds, setLinkedNodeIds] = useState<string[] | null>(null);
+  const isOriginalEvidenceCard = (card: (typeof evidenceCards)[0]) =>
+    !card.isClone && (card.id.startsWith("ev_") || !card.id.includes("_"));
+  const getLinkedNodeIds = useCallback(
+    (evidenceId: string) =>
+      nodes
+        .filter((node) =>
+          (node.data.evidenceIds || []).some(
+            (linkedEvidenceId) =>
+              linkedEvidenceId === evidenceId ||
+              linkedEvidenceId.startsWith(`${evidenceId}_`)
+          )
+        )
+        .map((node) => node.id),
+    [nodes]
+  );
+  const [isAutoLinking, setIsAutoLinking] = useState(false);
+  const [isAutoLinkMenuOpen, setIsAutoLinkMenuOpen] = useState(false);
+  const [autoLinkMode, setAutoLinkMode] = useState<"full-document" | "rag">(
+    "full-document"
+  );
+  const autoLinkAbortControllerRef = useRef<AbortController | null>(null);
+  const autoLinkOriginalStateRef = useRef<{
+    evidenceCards: typeof evidenceCards;
+    nodes: ClaimNode[];
+  } | null>(null);
 
   // Install global fetch logger for this component lifecycle
   useEffect(() => {
@@ -935,6 +987,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       uploadDate: doc.upload_date ? new Date(doc.upload_date) : new Date(),
       uploader: doc.uploader_email || "Unknown",
       size: doc.size,
+      indexingStatus: doc.indexing_status,
+      indexingProgress: doc.indexing_progress,
     }));
 
     // Only update if the documents have actually changed
@@ -968,6 +1022,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       dispatch(fetchSupportingDocuments(currentGraphId));
     }
   }, [currentGraphId, dispatch]);
+
+  useEffect(() => {
+    if (!currentGraphId) return;
+    const hasActiveIndexing = supportingDocuments.some(
+      (doc) => doc.indexingStatus === "pending" || doc.indexingStatus === "processing"
+    );
+    if (!hasActiveIndexing) return;
+
+    const refreshTimer = window.setInterval(() => {
+      dispatch(fetchSupportingDocuments(currentGraphId));
+    }, 2000);
+
+    return () => window.clearInterval(refreshTimer);
+  }, [currentGraphId, dispatch, supportingDocuments]);
 
   // After graph loads, set currentGraphId and log profile
   useEffect(() => {
@@ -1079,6 +1147,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         (edge) => {
           let edgeType: EdgeType = "supporting";
           let confidence: number = 0;
+          let relationshipConfidence = DEFAULT_RELATIONSHIP_CONFIDENCE;
           let edgeScore: number | undefined;
           let reasoning: string | undefined;
 
@@ -1086,6 +1155,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           if ("edgeScore" in edge && edge.edgeScore !== undefined) {
             edgeType = (edge as any).edgeType || "supporting";
             confidence = (edge as any).confidence ?? 0;
+            relationshipConfidence = isRelationshipConfidence(
+              (edge as any).relationshipConfidence
+            )
+              ? (edge as any).relationshipConfidence
+              : DEFAULT_RELATIONSHIP_CONFIDENCE;
             edgeScore = (edge as any).edgeScore;
             reasoning = (edge as any).reasoning;
 
@@ -1101,6 +1175,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             // If edge is a ClaimEdge (has 'data'), use its data
             edgeType = edge.data.edgeType || "supporting";
             confidence = edge.data.confidence ?? 0;
+            relationshipConfidence = isRelationshipConfidence(
+              (edge.data as any).relationshipConfidence
+            )
+              ? (edge.data as any).relationshipConfidence
+              : DEFAULT_RELATIONSHIP_CONFIDENCE;
             edgeScore = edge.data.edgeScore ?? 0;
             reasoning = edge.data.reasoning;
           } else if ("weight" in edge && typeof edge.weight === "number") {
@@ -1123,6 +1202,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             data: {
               edgeType,
               confidence,
+              relationshipConfidence,
               edgeScore,
               reasoning,
             },
@@ -1340,13 +1420,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       const isAttacking = edgeCreationType === "attacking";
       const newEdge: ClaimEdge = {
-        id: `e${params.source}-${params.target}`,
+        id: `e-${uuidv4()}`,
         source: params.source!,
         target: params.target!,
         type: "custom" as const,
         data: {
           edgeType: edgeCreationType,
           confidence: 0,
+          relationshipConfidence: DEFAULT_RELATIONSHIP_CONFIDENCE,
           // tiny negative score for attacking so it renders red immediately; 0 for supporting
           edgeScore: isAttacking ? -0.01 : 0,
           reasoning: "",
@@ -1360,7 +1441,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
       // Auto-validate the new edge to get reasoning
       setTimeout(() => {
-        setEdgeApiQueue((q) => [...q, newEdge.id]);
+        queueEdgeValidation(newEdge.id);
       }, 100); // Small delay to ensure edge is fully added
 
       // Trigger credibility calculation for the target node only
@@ -1371,7 +1452,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       // Queue only the target node for credibility calculation
       setApiQueue((q) => [...q, params.target!]);
     },
-    [edges]
+    [edges, queueEdgeValidation]
   );
 
   const onConnectStart: OnConnectStart = useCallback(
@@ -1463,7 +1544,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         // Create the edge between the nodes
         const isAttackingNew = edgeCreationType === "attacking";
         const newEdge: ClaimEdge = {
-          id: `e${connectingNodeId}-${newNode.id}`,
+          id: `e-${uuidv4()}`,
           source:
             connectingHandleType === "source" ? connectingNodeId : newNode.id,
           target:
@@ -1472,6 +1553,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           data: {
             edgeType: edgeCreationType,
             confidence: 0,
+            relationshipConfidence: DEFAULT_RELATIONSHIP_CONFIDENCE,
             edgeScore: isAttackingNew ? -0.01 : 0,
           },
           markerStart: {
@@ -1482,9 +1564,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
 
         setNodes((nds) => [...nds, newNode]);
         setEdges((eds) => [...eds, newEdge]);
+        setTimeout(() => queueEdgeValidation(newEdge.id), 0);
       }, 0);
     },
-    [connectingNodeId, connectingHandleType, project]
+    [connectingNodeId, connectingHandleType, project, queueEdgeValidation]
   );
 
   // --- Selection logic: only one selection at a time ---
@@ -1635,6 +1718,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     logAction("delete_edge", { edgeId: selectedEdge.id }, profile?.user_id);
     const edgeToDelete = selectedEdge;
     setEdges((eds) => eds.filter((e) => e.id !== edgeToDelete.id));
+    setEdgeApiQueue((queue) => queue.filter((id) => id !== edgeToDelete.id));
     setSelectedEdge(null);
     // Trigger credibility recalculation for the edge's target node
     if (edgeToDelete.target) {
@@ -1739,7 +1823,11 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const clamp = (val: number, min: number, max: number) =>
     Math.max(min, Math.min(max, val));
 
-  const handleSave = async () => {
+  const handleSave = async (overrides?: {
+    evidenceCards?: typeof evidenceCards;
+    nodes?: ClaimNode[];
+    edges?: ClaimEdge[];
+  }) => {
     logAction(
       "save_graph",
       { graphId: currentGraphId || currentGraph?.id },
@@ -1758,9 +1846,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     }
 
     // Format the graph data according to the required structure
+    const evidenceToSave = overrides?.evidenceCards ?? evidenceCards;
+    const nodesToSave = overrides?.nodes ?? nodes;
+    const edgesToSave = overrides?.edges ?? edges;
     const graphData = {
-      evidence: evidenceCards,
-      nodes: nodes.map((node) => ({
+      evidence: evidenceToSave,
+      nodes: nodesToSave.map((node) => ({
         id: node.id,
         text: node.data.text,
         type: node.data.type,
@@ -1773,7 +1864,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         isLocked: Boolean(node.data.isLocked),
         evidenceIds: node.data.evidenceIds || [],
       })),
-      edges: edges.map((edge) => {
+      edges: edgesToSave.map((edge) => {
         const edgeData = {
           id: edge.id,
           source: edge.source,
@@ -1782,6 +1873,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           // Save edge validation data
           edgeType: edge.data.edgeType,
           confidence: edge.data.confidence,
+          relationshipConfidence:
+            edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE,
           edgeScore: edge.data.edgeScore,
           reasoning: edge.data.reasoning,
         };
@@ -1828,6 +1921,177 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   const handleUpload = async () => {
     setIsUploadModalOpen(true);
   };
+
+  const restoreAutoLinkState = useCallback(() => {
+    const originalState = autoLinkOriginalStateRef.current;
+    if (!originalState) return;
+    setEvidenceCards(originalState.evidenceCards);
+    setNodes(originalState.nodes);
+    autoLinkOriginalStateRef.current = null;
+  }, []);
+
+  const handleCancelAutoLink = useCallback(() => {
+    autoLinkAbortControllerRef.current?.abort();
+    autoLinkAbortControllerRef.current = null;
+    restoreAutoLinkState();
+    setIsAutoLinking(false);
+    setToast("Evidence linking cancelled.");
+    setTimeout(() => setToast(null), 2500);
+  }, [restoreAutoLinkState]);
+
+  const startAutoLink = useCallback(async (mode: "full-document" | "rag") => {
+    if (isAutoLinking) return;
+
+    const originalEvidenceCards = evidenceCards;
+    const originalNodes = nodes;
+    autoLinkOriginalStateRef.current = {
+      evidenceCards: originalEvidenceCards,
+      nodes: originalNodes,
+    };
+    const controller = new AbortController();
+    autoLinkAbortControllerRef.current = controller;
+    setIsAutoLinking(true);
+
+    try {
+      if (mode === "rag" && !currentGraphId) {
+        throw new Error("RAG search requires an active graph.");
+      }
+      const accessToken = mode === "rag" ? localStorage.getItem("access_token") : null;
+      const requestBody = mode === "rag"
+        ? {
+            graph_id: currentGraphId,
+            nodes: originalNodes.map((node) => ({
+              id: node.id,
+              text: node.data.text,
+              type: node.data.type,
+            })),
+          }
+        : {
+            user_message: "Use Full Document search to automatically link supporting documents to relevant graph claims.",
+            chat_history: [],
+            graph_data: {
+              nodes: originalNodes.map((node) => ({
+                id: node.id,
+                text: node.data.text,
+                type: node.data.type,
+              })),
+              supportingDocuments,
+            },
+          };
+      const response = await fetch(mode === "rag" ? "/api/ai/rag-linker" : "/api/ai/linker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.error || "Evidence linking failed");
+      }
+
+      const result: {
+        links: Array<{
+          node_id: string;
+          evidence_items: Array<{
+            id: string;
+            supportingDocId: string;
+            supportingDocName: string;
+            title: string;
+            excerpt: string;
+            confidence: number;
+          }>;
+        }>;
+        unmatched_node_ids?: string[];
+        summary?: string;
+      } = await response.json();
+
+      const nextEvidenceCards = [...originalEvidenceCards];
+      const nextNodes = originalNodes.map((node) => ({
+        ...node,
+        data: { ...node.data, evidenceIds: [...(node.data.evidenceIds || [])] },
+      }));
+
+      for (const nodeLink of result.links || []) {
+        const targetNode = nextNodes.find((node) => node.id === nodeLink.node_id);
+        if (!targetNode) continue;
+
+        for (const item of nodeLink.evidence_items || []) {
+          const existingEvidence = nextEvidenceCards.find(
+            (card) =>
+              card.supportingDocId === item.supportingDocId &&
+              card.excerpt.trim() === item.excerpt.trim()
+          );
+          const originalEvidence = existingEvidence || {
+            id: item.id,
+            title: item.title,
+            supportingDocId: item.supportingDocId,
+            supportingDocName: item.supportingDocName,
+            excerpt: item.excerpt,
+            confidence: item.confidence,
+          };
+
+          if (!existingEvidence) nextEvidenceCards.push(originalEvidence);
+          const cloneId = `${originalEvidence.id}__${targetNode.id}`;
+          const evidenceIds = targetNode.data.evidenceIds || [];
+          if (!evidenceIds.includes(cloneId)) {
+            nextEvidenceCards.push({ ...originalEvidence, id: cloneId, isClone: true });
+            targetNode.data.evidenceIds = [...evidenceIds, cloneId];
+          }
+        }
+      }
+
+      setEvidenceCards(nextEvidenceCards);
+      setNodes(nextNodes);
+      await handleSave({ evidenceCards: nextEvidenceCards, nodes: nextNodes });
+      autoLinkOriginalStateRef.current = null;
+      setIsAutoLinking(false);
+      setToast("Evidence linked successfully.");
+      setToast(
+        mode === "rag"
+          ? `${result.summary || "RAG evidence linking completed."}${
+              result.unmatched_node_ids?.length
+                ? ` Unmatched claims: ${result.unmatched_node_ids
+                    .map((nodeId) => {
+                      const node = originalNodes.find((candidate) => candidate.id === nodeId);
+                      return node?.data.text?.slice(0, 40) || nodeId;
+                    })
+                    .join("; ")}`
+                : ""
+            }`
+          : "Evidence linked successfully."
+      );
+      setTimeout(() => setToast(null), 2500);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      restoreAutoLinkState();
+      setIsAutoLinking(false);
+      setToast(error instanceof Error ? error.message : "Evidence linking failed.");
+      setTimeout(() => setToast(null), 3500);
+    } finally {
+      autoLinkAbortControllerRef.current = null;
+    }
+  }, [
+    evidenceCards,
+    handleSave,
+    isAutoLinking,
+    
+    nodes,
+    restoreAutoLinkState,
+    supportingDocuments,
+  ]);
+
+  const openAutoLinkMenu = useCallback(() => {
+    if (!isAutoLinking) setIsAutoLinkMenuOpen(true);
+  }, [isAutoLinking]);
+
+  const handleAutoLinkModeSubmit = useCallback(() => {
+    setIsAutoLinkMenuOpen(false);
+    void startAutoLink(autoLinkMode);
+  }, [autoLinkMode, startAutoLink]);
 
   const handleDeleteDocument = async (id: string) => {
     try {
@@ -2018,6 +2282,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       ...originalEvidence,
       id: newEvidenceId,
       confidence: originalEvidence.confidence, // Start with same confidence
+      isClone: true,
     };
 
     console.log(`[cloneEvidence] Cloned evidence:`, clonedEvidence);
@@ -2174,6 +2439,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         source: edge.source,
         target: edge.target,
         weight: clamp(edge.data.confidence, -1, 1),
+        relationshipConfidence:
+          edge.data.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE,
       })),
     };
 
@@ -2270,12 +2537,18 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               : String(edge?.label ?? "").toLowerCase() === "attack"
                 ? -1
                 : 1;
+        const relationshipConfidence = isRelationshipConfidence(
+          edge?.relationshipConfidence
+        )
+          ? edge.relationshipConfidence
+          : DEFAULT_RELATIONSHIP_CONFIDENCE;
 
         return {
           id: String(edge?.id ?? `e-${source}-${target}-${index}`),
           source,
           target,
           weight: normalizedWeight,
+          relationshipConfidence,
         };
       })
       .filter((edge) => validNodeIdSet.has(edge.source) && validNodeIdSet.has(edge.target));
@@ -2521,6 +2794,15 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           error: `Edge ${i} has invalid weight value (must be a number between -1 and 1)`,
         };
       }
+      if (
+        edge.relationshipConfidence !== undefined &&
+        !isRelationshipConfidence(edge.relationshipConfidence)
+      ) {
+        return {
+          isValid: false,
+          error: `Edge ${i} has invalid relationshipConfidence value`,
+        };
+      }
     }
 
     return { isValid: true };
@@ -2659,6 +2941,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             type: "custom" as const,
             data: {
               confidence: normalizedWeight,
+              relationshipConfidence:
+                edgeData.relationshipConfidence || DEFAULT_RELATIONSHIP_CONFIDENCE,
               edgeType: importedEdgeType,
               edgeScore: normalizedWeight,
               reasoning: "",
@@ -2745,7 +3029,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       console.log("[GraphCanvas] handleProcessTextWithLLM: Starting LLM call");
 
       const requestBody = {
-        model: "gpt-4.1-mini",
+        model: "gpt-6-luna",
         system_prompt:
           'You are an argument mining bot, given an essay, extract the argument graph of the essay. You should return a Python dictionary containing a list of nodes and a list of edges.Where each element in the list of nodes is in the format of{"text": {span of text corresponding to each node extracted from the essay},"id": {the node number} such as 1, 2, 3,...,"type": Choose from {"Factual", "Policy", or "Value"}} You should return the nodes in the order they appear in the essay.Additionally, the list of edges should be in the format of{"label": {the label of the edge}, ONLY choose from support and attack, where support is a positive relationship between the two nodes and attack is a negative relationship between the two nodes,"source": {the node number} such as 1, 2, 3,...,"target": {the node number} such as 1, 2, 3,...,}You should return the final answer in a dictionary format containing a list of edges and a list of nodes. The format is something like {[], []} RETURN THE DICTIONARY and NOTHING ELSE. DONT MAKE ANYTHING UP THAT IS NOT IN THE INPUT STRING.',
         user_input: textAreaContent,
@@ -3218,6 +3502,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       mode?: "chat" | "agent";
       isActioned?: boolean;
       previousGraphState?: any;
+      modelUsed?: string;
     }[]
   >([]);
   const [chatMode, setChatMode] = useState<"chat" | "agent">("chat");
@@ -3295,6 +3580,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
         role: "assistant" as const,
         content: data.assistant_message,
         mode: requestMode,
+        modelUsed: requestMode === "agent" ? data.model_used : undefined,
         previousGraphState:
           requestMode === "agent" ? data.previous_graph_state : undefined,
       };
@@ -3351,11 +3637,13 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           Array.isArray(node.data.evidenceIds) &&
             node.data.evidenceIds.length > 0
             ? node.data.evidenceIds.map((evId) => {
-              // Find the evidence card and use its confidence, or 0 if not found
+              // Missing cards represent evidence that is pending review.
               const evidenceCard = evidenceCards.find(
                 (card) => card.id === evId
               );
-              return evidenceCard ? evidenceCard.confidence : 0;
+              return evidenceCard
+                ? evidenceCard.confidence
+                : PENDING_EVIDENCE_SCORE;
             })
             : [], // Empty array for no evidence instead of [0.5]
         evidence_min: -1.0,
@@ -3497,7 +3785,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
               const evidenceCard = evidenceCards.find(
                 (card) => card.id === evId
               );
-              return evidenceCard ? evidenceCard.confidence : 0;
+              return evidenceCard
+                ? evidenceCard.confidence
+                : PENDING_EVIDENCE_SCORE;
             })
             : [],
         evidence_min: -1.0,
@@ -3828,7 +4118,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
           console.log(
             `Node ${prevId} has ${connectedEdges.length} connected edges, queuing for validation`
           );
-          setEdgeApiQueue((q) => [...q, ...connectedEdges.map((e) => e.id)]);
+          connectedEdges.forEach((edge) => queueEdgeValidation(edge.id));
         }
 
         // Remove the node from modified set after triggering API calls
@@ -3842,7 +4132,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       }
     }
     prevSelectedNodeRef.current = selectedNode || null;
-  }, [selectedNode, modifiedNodes]);
+  }, [selectedNode, modifiedNodes, queueEdgeValidation]);
 
   // Queue processor effect - modified to run credibility after evidence check
   useEffect(() => {
@@ -4135,7 +4425,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 );
                 const fallbackConfidence = evidenceCard
                   ? evidenceCard.confidence
-                  : 0;
+                  : PENDING_EVIDENCE_SCORE;
                 console.log(
                   `[GraphCanvas] handleClaimCredibilityWithUpdatedEvidence: Using fallback confidence ${fallbackConfidence} for evidence ${evId}`
                 );
@@ -4151,7 +4441,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 const evidenceCard = evidenceCards.find(
                   (card) => card.id === evId
                 );
-                return evidenceCard ? evidenceCard.confidence : 0;
+                return evidenceCard
+                  ? evidenceCard.confidence
+                  : PENDING_EVIDENCE_SCORE;
               })
               : [];
         }
@@ -4520,9 +4812,6 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
   };
 
   // --- Edge validation queue logic ---
-  const [edgeApiQueue, setEdgeApiQueue] = useState<string[]>([]);
-  const [isEdgeProcessing, setIsEdgeProcessing] = useState(false);
-
   // Helper function to find all edges connected to a node
   const getConnectedEdges = (nodeId: string) => {
     return edges.filter(
@@ -4535,7 +4824,9 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     if (!isEdgeProcessing && edgeApiQueue.length > 0) {
       setIsEdgeProcessing(true);
       const edgeId = edgeApiQueue[0];
+      processingEdgeIdRef.current = edgeId;
       triggerValidateEdge(edgeId).finally(() => {
+        processingEdgeIdRef.current = null;
         setEdgeApiQueue((q) => q.slice(1));
         setIsEdgeProcessing(false);
       });
@@ -4651,10 +4942,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       (e) => !prevEdges.some((pe) => pe.id === e.id)
     );
     if (newEdges.length > 0) {
-      setEdgeApiQueue((q) => [...q, ...newEdges.map((e) => e.id)]);
+      newEdges.forEach((edge) => queueEdgeValidation(edge.id));
     }
     prevEdgesRef.current = edges;
-  }, [edges, isInitialLoad]);
+  }, [edges, isInitialLoad, queueEdgeValidation]);
 
   // Add this handler in GraphCanvasInner:
   const handleClearCopilotChat = () => {
@@ -5318,11 +5609,10 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="flex justify-end items-center gap-2 mb-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      console.log("[Auto Link] Placeholder action triggered");
-                    }}
+                    onClick={openAutoLinkMenu}
+                    disabled={isAutoLinking}
                     className="px-3 py-1.5 rounded-md text-sm font-[DM Sans] font-medium text-[#F3F4F6] bg-gradient-to-r from-[#374151] to-[#232F3E] border border-[#4b5563] shadow-sm hover:from-[#2f3b4a] hover:to-[#1A2330] hover:shadow transition-all"
-                    title="Automatically link evidence to nodes (coming soon)"
+                    title="Automatically link evidence to nodes"
                   >
                     Auto Link
                   </button>
@@ -5333,9 +5623,124 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     + Add Evidence
                   </button>
                 </div>
+                {isAutoLinkMenuOpen && !isAutoLinking && (
+                  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
+                    <div
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="auto-link-mode-title"
+                      className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3
+                            id="auto-link-mode-title"
+                            className="text-lg font-semibold text-gray-900"
+                          >
+                            Choose linking method
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Select how IntelliProof should look for evidence in your documents.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsAutoLinkMenuOpen(false)}
+                          className="text-xl leading-none text-gray-500 hover:text-gray-900"
+                          aria-label="Close linking method menu"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <div className="mt-5 space-y-3" role="radiogroup" aria-label="Linking method">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={autoLinkMode === "full-document"}
+                          onClick={() => setAutoLinkMode("full-document")}
+                          className={`w-full rounded-md border p-4 text-left transition-colors ${
+                            autoLinkMode === "full-document"
+                              ? "border-[#232F3E] bg-gray-100"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="block font-medium text-gray-900">
+                            Full Document
+                          </span>
+                          <span className="mt-1 block text-sm text-gray-500">
+                            Review the complete text of each supporting document.
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={autoLinkMode === "rag"}
+                          onClick={() => setAutoLinkMode("rag")}
+                          className={`w-full rounded-md border p-4 text-left transition-colors ${
+                            autoLinkMode === "rag"
+                              ? "border-[#232F3E] bg-gray-100"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="block font-medium text-gray-900">
+                            RAG Based Search
+                          </span>
+                          <span className="mt-1 block text-sm text-gray-500">
+                            Find the most relevant passages first, then select exact evidence for your claims.
+                          </span>
+                        </button>
+                      </div>
+
+                      {autoLinkMode === "rag" && (
+                        <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm leading-5 text-blue-900">
+                          IntelliProof first searches the prepared passages in this graph's documents, then selects the most relevant exact passages as evidence for each claim. Only passages above the relevance threshold are considered, making the results faster to review and keeping unrelated documents out of the search.
+                        </div>
+                      )}
+
+                      <div className="mt-6 flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsAutoLinkMenuOpen(false)}
+                          className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAutoLinkModeSubmit}
+                          className="rounded-md bg-[#232F3E] px-4 py-2 text-sm font-medium text-white hover:bg-[#1A2330]"
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {isAutoLinking && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                    <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+                      <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[#232F3E]" />
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Linking in Progress
+                      </h3>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Reviewing supporting documents and matching evidence to claims.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCancelAutoLink}
+                        className="mt-5 rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* Evidence cards */}
                 <div className="space-y-3 max-h-[36vh] overflow-y-auto pr-1">
-                  {evidenceCards.filter((card) => !card.id.includes("_"))
+                  {evidenceCards.filter(isOriginalEvidenceCard)
                     .length === 0 ? (
                     <div className="p-4 bg-[#FAFAFA] rounded-md border border-gray-300 text-center text-gray-500 text-sm font-medium">
                       No evidence added yet.
@@ -5343,7 +5748,7 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                   ) : (
                     // Only show original (non-cloned) evidence cards
                     evidenceCards
-                      .filter((card) => !card.id.includes("_"))
+                      .filter(isOriginalEvidenceCard)
                       .map((card) => {
                         const doc = supportingDocuments.find(
                           (d) => d.id === card.supportingDocId
@@ -5978,6 +6383,35 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     ({doc.type})
                                   </span>
                                 </div>
+                                  {doc.indexingStatus === "ready" ? (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700" aria-label="File Ready for Retrieval">
+                                      <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+                                      <span>File Ready for Retrieval</span>
+                                    </div>
+                                  ) : doc.indexingStatus === "failed" ? (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700" aria-label="Retrieval Preparation Failed">
+                                      <ExclamationCircleIcon className="h-4 w-4" aria-hidden="true" />
+                                      <span>Retrieval Preparation Failed</span>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-yellow-700" aria-label="Retrieval Preparation in Process">
+                                      <ExclamationTriangleIcon className="h-4 w-4" aria-hidden="true" />
+                                      <span>Retrieval Preparation in Process</span>
+                                    </div>
+                                  )}
+                                  {doc.indexingStatus !== "ready" && doc.indexingStatus !== "failed" && (
+                                    <div className="mt-1.5 flex items-center gap-2" aria-label={`Retrieval preparation ${Math.round(doc.indexingProgress ?? 0)} percent complete`}>
+                                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={doc.indexingProgress ?? 0}>
+                                        <div
+                                          className="h-full rounded-full bg-yellow-500 transition-[width] duration-500"
+                                          style={{ width: `${Math.min(100, Math.max(0, doc.indexingProgress ?? 0))}%` }}
+                                        />
+                                      </div>
+                                      <span className="w-9 text-right text-[11px] font-medium text-gray-500">
+                                        {Math.round(doc.indexingProgress ?? 0)}%
+                                      </span>
+                                    </div>
+                                  )}
                                 <p className="text-xs text-gray-400 mt-0.5 font-normal">
                                   Uploaded by {doc.uploader}
                                 </p>
@@ -6190,6 +6624,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                       title="Critique Graph"
                       loadingText="Critiquing..."
                       successText="Critiqued"
+                    />
+                    <LoadingSuccessButton
+                      onClick={validate_edges}
+                      icon={CheckIcon}
+                      title="Validate All Edges"
+                      loadingText="Validating..."
+                      successText="Validated"
+                      disabled={edges.length === 0}
                     />
                     <LoadingSuccessButton
                       onClick={handleGenerateReport}
@@ -6565,14 +7007,28 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                 <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
                   <button
                     className="absolute top-2 right-2 text-2xl text-gray-400 hover:text-gray-700"
-                    onClick={() => setSelectedEvidenceCard(null)}
+                    onClick={() => {
+                      setSelectedEvidenceCard(null);
+                      setLinkedNodeIds(null);
+                    }}
                     aria-label="Close preview"
                   >
                     ×
                   </button>
-                  <h2 className="text-lg font-semibold mb-2">
-                    {selectedEvidenceCard.title}
-                  </h2>
+                  <div className="mb-2 flex items-start justify-between gap-4 pr-6">
+                    <h2 className="text-lg font-semibold">
+                      {selectedEvidenceCard.title}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLinkedNodeIds(getLinkedNodeIds(selectedEvidenceCard.id))
+                      }
+                      className="mt-1 shrink-0 text-xs font-medium text-[#7283D9] underline hover:text-[#3c4a8c]"
+                    >
+                      Linked Nodes
+                    </button>
+                  </div>
                   <div className="mb-2 text-xs text-gray-500">
                     from: {selectedEvidenceCard.supportingDocName}
                   </div>
@@ -6622,6 +7078,56 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                     return null;
                   })()}
                 </div>
+                {linkedNodeIds !== null && (
+                  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
+                    <div
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="linked-nodes-title"
+                      className="relative w-full max-w-xs rounded-lg bg-white p-5 shadow-xl"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setLinkedNodeIds(null)}
+                        className="absolute right-3 top-2 text-xl text-gray-400 hover:text-gray-700"
+                        aria-label="Close linked nodes"
+                      >
+                        ×
+                      </button>
+                      <h3
+                        id="linked-nodes-title"
+                        className="mb-3 text-base font-semibold text-gray-900"
+                      >
+                        Linked Nodes
+                      </h3>
+                      {linkedNodeIds.length === 0 ? (
+                        <p className="text-sm text-gray-500">No Linked Nodes Found</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {linkedNodeIds.map((nodeId) => (
+                            <button
+                              type="button"
+                              key={nodeId}
+                              onClick={() => {
+                                const linkedNode = nodes.find(
+                                  (node) => node.id === nodeId
+                                );
+                                if (!linkedNode) return;
+                                setSelectedEvidenceCard(null);
+                                setLinkedNodeIds(null);
+                                setSelectedEdge(null);
+                                setSelectedNode(linkedNode);
+                              }}
+                              className="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-[#7283D9] underline hover:bg-gray-100"
+                            >
+                              {nodeId}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -6858,6 +7364,12 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                                     </span>
                                   ))}
                                 </p>
+
+                                {msg.mode === "agent" && msg.modelUsed && (
+                                  <p className="mt-2 text-xs font-semibold text-purple-800">
+                                    Model used: {msg.modelUsed}
+                                  </p>
+                                )}
 
                                 {msg.mode === "agent" &&
                                   canInjectAgentResponse(msg.content) &&

@@ -12,3 +12,6 @@ pydantic-settings==2.1.0
 requests==2.31.0
 PyMuPDF==1.26.4
 PyYAML==6.0.1
+sentence-transformers==5.1.2
+tqdm==4.67.1
+peft

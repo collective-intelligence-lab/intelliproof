@@ -1,5 +1,6 @@
 import type { Node } from 'reactflow';
 import { v4 as uuidv4 } from 'uuid';
+import type { RelationshipConfidence } from './edges';
 
 export type ClaimType = 'factual' | 'value' | 'policy';
 
@@ -131,5 +132,6 @@ export type ExportedGraphData = {
         source: string;
         target: string;
         weight: number;
+        relationshipConfidence?: RelationshipConfidence;
     }>;
 }; 

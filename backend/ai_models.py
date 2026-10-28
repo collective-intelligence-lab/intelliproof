@@ -387,3 +387,38 @@ class ChatResponse(BaseModel):
     confidence: Optional[float] = None
     suggested_actions: Optional[List[str]] = None
     previous_graph_state: Optional[Dict[str, Any]] = None # Previous graph state before the chat interaction
+    model_used: Optional[str] = None
+
+
+class LinkerEvidenceItem(BaseModel):
+    """Evidence extracted from a supporting document for one graph node."""
+    id: str
+    supportingDocId: str
+    supportingDocName: str
+    title: str
+    excerpt: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class LinkerNodeLinks(BaseModel):
+    """Evidence suggestions for a single graph node."""
+    node_id: str
+    evidence_items: List[LinkerEvidenceItem]
+
+
+class LinkerResponse(BaseModel):
+    """Validated output from the evidence linking agent."""
+    links: List[LinkerNodeLinks]
+    unmatched_node_ids: List[str] = Field(default_factory=list)
+    summary: str = ""
+
+
+class RAGLinkerNode(BaseModel):
+    id: str
+    text: str
+    type: Optional[str] = None
+
+
+class RAGLinkerRequest(BaseModel):
+    graph_id: str
+    nodes: List[RAGLinkerNode]

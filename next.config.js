@@ -11,6 +11,10 @@ const nextConfig = {
             source: '/api/audio/:path*',
             destination: 'http://127.0.0.1:8000/api/audio/:path*',
           },
+          {
+            source: '/api/rag/:path*',
+            destination: 'http://127.0.0.1:8000/api/rag/:path*',
+          },
           
           // Exact match for Python Auth endpoints
           {

@@ -45,6 +45,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
 
             console.log('Supporting document saved:', data);
+            const accessToken = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+            const ragBackendUrl = process.env.RAG_BACKEND_URL
+                || (process.env.NODE_ENV === 'production'
+                    ? process.env.NEXT_PUBLIC_API_URL
+                    : 'http://127.0.0.1:8000')
+                || 'http://127.0.0.1:8000';
+            if (accessToken && data?.id) {
+                try {
+                    console.log(`[rag] Starting ingestion for document ${data.id}`);
+                    const ingestionResponse = await fetch(`${ragBackendUrl}/api/rag/ingest`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                        body: JSON.stringify({
+                            document_id: data.id,
+                            document_url: data.url,
+                            document_name: data.name,
+                            document_type: data.type,
+                        }),
+                    });
+                    if (!ingestionResponse.ok) {
+                        console.error('[rag] Ingestion trigger failed:', ingestionResponse.status, await ingestionResponse.text());
+                    } else {
+                        console.log(`[rag] Ingestion queued for document ${data.id}`);
+                    }
+                } catch (ingestionError) {
+                    console.error('[rag] Could not reach ingestion backend:', ingestionError);
+                }
+            } else {
+                console.warn('[rag] Skipping ingestion trigger: missing access token or document ID');
+            }
             res.status(200).json({ document: data });
         } catch (e) {
             console.error('Unexpected error during metadata save:', e);

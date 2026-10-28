@@ -109,3 +109,41 @@ $$;
 
 REVOKE ALL ON FUNCTION ingest_document_chunks(UUID, UUID, JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ingest_document_chunks(UUID, UUID, JSONB) TO service_role;
+
+CREATE OR REPLACE FUNCTION match_graph_document_chunks(
+    query_embedding VECTOR(768),
+    match_threshold FLOAT,
+    match_count INT,
+    p_user_id UUID,
+    p_graph_id UUID
+)
+RETURNS TABLE (
+    id UUID,
+    document_id UUID,
+    content TEXT,
+    metadata JSONB,
+    similarity FLOAT
+)
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT
+        dc.id,
+        dc.document_id,
+        dc.content,
+        dc.metadata,
+        (1 - (dc.embedding <=> query_embedding))::FLOAT AS similarity
+    FROM document_chunks AS dc
+    INNER JOIN supporting_documents AS document
+        ON document.id = dc.document_id
+    WHERE dc.user_id = p_user_id
+      AND document.graph_id = p_graph_id
+      AND 1 - (dc.embedding <=> query_embedding) > match_threshold
+    ORDER BY dc.embedding <=> query_embedding
+    LIMIT match_count;
+$$;
+
+REVOKE ALL ON FUNCTION match_graph_document_chunks(VECTOR(768), FLOAT, INT, UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION match_graph_document_chunks(VECTOR(768), FLOAT, INT, UUID, UUID) TO service_role;

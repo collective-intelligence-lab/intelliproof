@@ -409,3 +409,16 @@ class LinkerNodeLinks(BaseModel):
 class LinkerResponse(BaseModel):
     """Validated output from the evidence linking agent."""
     links: List[LinkerNodeLinks]
+    unmatched_node_ids: List[str] = Field(default_factory=list)
+    summary: str = ""
+
+
+class RAGLinkerNode(BaseModel):
+    id: str
+    text: str
+    type: Optional[str] = None
+
+
+class RAGLinkerRequest(BaseModel):
+    graph_id: str
+    nodes: List[RAGLinkerNode]

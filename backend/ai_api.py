@@ -13,7 +13,7 @@ Dependencies:
 - Pydantic for data validation
 """
 
-from fastapi import APIRouter, HTTPException, Body, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Header
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import math
@@ -27,6 +27,7 @@ import io
 import json
 import re
 import ast
+from supabase import create_client
 from ai_models import (
     NodeModel,
     EdgeModel,
@@ -57,7 +58,9 @@ from ai_models import (
     ChatRequest,  # NEW
     ChatResponse,  # NEW
     LinkerResponse,
+    RAGLinkerRequest,
 )
+from rag_linker import run_rag_linker
 from llm_manager import (
     run_llm,
     DEFAULT_MCP,
@@ -82,6 +85,14 @@ EDGE_VALIDATION_MCP = ModelControlProtocol(max_completion_tokens=2048)
 
 # Create FastAPI router for AI endpoints
 router = APIRouter()
+
+
+def _rag_supabase_client():
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        raise HTTPException(status_code=500, detail="Database service not available")
+    return create_client(url, key)
 
 PENDING_EVIDENCE_SCORE = 0.2
 
@@ -2593,3 +2604,63 @@ def linker_model(data: ChatRequest = Body(...)):
     except Exception as e:
         print(f"[ai_api] linker_model: Error during evidence linking: {e}")
         raise HTTPException(status_code=500, detail=f"Evidence linking failed: {str(e)}")
+
+
+@router.post("/api/ai/rag-linker", response_model=LinkerResponse)
+def rag_linker_model(
+    data: RAGLinkerRequest = Body(...),
+    authorization: str | None = Header(default=None),
+):
+    """Link exact graph-local document chunks to claims using vector retrieval."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
+
+    supabase = _rag_supabase_client()
+    token = authorization.removeprefix("Bearer ")
+    try:
+        user_response = supabase.auth.get_user(token)
+    except Exception as error:
+        raise HTTPException(status_code=401, detail="Invalid or expired session") from error
+    if not user_response or not user_response.user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    user_id = str(user_response.user.id)
+    profile = (
+        supabase.table("profiles")
+        .select("email")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="User profile not found")
+
+    graph = (
+        supabase.table("graphs")
+        .select("id")
+        .eq("id", data.graph_id)
+        .eq("owner_email", profile.data["email"])
+        .single()
+        .execute()
+    )
+    if not graph.data:
+        raise HTTPException(status_code=404, detail="Graph not found")
+
+    try:
+        result = run_rag_linker(
+            graph_id=data.graph_id,
+            user_id=user_id,
+            nodes=[node.model_dump() for node in data.nodes],
+            supabase=supabase,
+        )
+        print(
+            f"[rag-linker] Graph {data.graph_id}: "
+            f"{len(result.links)} nodes processed, "
+            f"{len(result.unmatched_node_ids)} unmatched"
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as error:
+        print(f"[rag-linker] Failed for graph {data.graph_id}: {error}")
+        raise HTTPException(status_code=500, detail=f"RAG evidence linking failed: {error}") from error

@@ -1953,24 +1953,38 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
     setIsAutoLinking(true);
 
     try {
-      const response = await fetch("/api/ai/linker", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_message:
-            mode === "rag"
-              ? "Use RAG Based Search to automatically link supporting documents to relevant graph claims. For now, use the available full-document search as the placeholder implementation."
-              : "Use Full Document search to automatically link supporting documents to relevant graph claims.",
-          chat_history: [],
-          graph_data: {
+      if (mode === "rag" && !currentGraphId) {
+        throw new Error("RAG search requires an active graph.");
+      }
+      const accessToken = mode === "rag" ? localStorage.getItem("access_token") : null;
+      const requestBody = mode === "rag"
+        ? {
+            graph_id: currentGraphId,
             nodes: originalNodes.map((node) => ({
               id: node.id,
               text: node.data.text,
               type: node.data.type,
             })),
-            supportingDocuments,
-          },
-        }),
+          }
+        : {
+            user_message: "Use Full Document search to automatically link supporting documents to relevant graph claims.",
+            chat_history: [],
+            graph_data: {
+              nodes: originalNodes.map((node) => ({
+                id: node.id,
+                text: node.data.text,
+                type: node.data.type,
+              })),
+              supportingDocuments,
+            },
+          };
+      const response = await fetch(mode === "rag" ? "/api/ai/rag-linker" : "/api/ai/linker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
@@ -1991,6 +2005,8 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
             confidence: number;
           }>;
         }>;
+        unmatched_node_ids?: string[];
+        summary?: string;
       } = await response.json();
 
       const nextEvidenceCards = [...originalEvidenceCards];
@@ -2034,6 +2050,20 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
       autoLinkOriginalStateRef.current = null;
       setIsAutoLinking(false);
       setToast("Evidence linked successfully.");
+      setToast(
+        mode === "rag"
+          ? `${result.summary || "RAG evidence linking completed."}${
+              result.unmatched_node_ids?.length
+                ? ` Unmatched claims: ${result.unmatched_node_ids
+                    .map((nodeId) => {
+                      const node = originalNodes.find((candidate) => candidate.id === nodeId);
+                      return node?.data.text?.slice(0, 40) || nodeId;
+                    })
+                    .join("; ")}`
+                : ""
+            }`
+          : "Evidence linked successfully."
+      );
       setTimeout(() => setToast(null), 2500);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -5658,14 +5688,14 @@ const GraphCanvasInner = ({ hideNavbar = false }: GraphCanvasProps) => {
                             RAG Based Search
                           </span>
                           <span className="mt-1 block text-sm text-gray-500">
-                            Search the most relevant sections first instead of reviewing every part of a document.
+                            Find the most relevant passages first, then select exact evidence for your claims.
                           </span>
                         </button>
                       </div>
 
                       {autoLinkMode === "rag" && (
                         <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm leading-5 text-blue-900">
-                          RAG means IntelliProof first finds the parts of your documents that are most relevant to each claim, then uses those parts to suggest evidence. This can make searches faster and easier to review. RAG Based Search is being prepared and currently uses the Full Document search as a placeholder.
+                          IntelliProof first searches the prepared passages in this graph's documents, then selects the most relevant exact passages as evidence for each claim. Only passages above the relevance threshold are considered, making the results faster to review and keeping unrelated documents out of the search.
                         </div>
                       )}
 
